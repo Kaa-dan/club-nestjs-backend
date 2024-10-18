@@ -9,17 +9,19 @@ This repository contains the backend code for ClubWize, a professional social pl
 1. [Technologies](#technologies)
 2. [Project Structure](#project-structure)
 3. [Setup](#setup)
-4. [API Documentation](#api-documentation)
-5. [Database Schema](#database-schema)
-6. [Authentication](#authentication)
-7. [Testing](#testing)
-8. [Deployment](#deployment)
-9. [Contributing](#contributing)
+4. [Running the App](#running-the-app)
+5. [Testing](#testing)
+6. [API Documentation](#api-documentation)
+7. [Database Schema](#database-schema)
+8. [Authentication](#authentication)
+9. [Deployment](#deployment)
+10. [Resources](#resources)
+11. [Contributing](#contributing)
 
 ## Technologies
 
-- Node.js
-- Express.js
+- [NestJS](https://nestjs.com/) (Node.js framework)
+- TypeScript
 - MongoDB
 - Redis (for caching)
 - Socket.io (for real-time features)
@@ -34,11 +36,11 @@ clubwize-backend/
 │   ├── controllers/
 │   ├── middleware/
 │   ├── models/
-│   ├── routes/
+│   ├── modules/
 │   ├── services/
 │   ├── utils/
-│   └── app.js
-├── tests/
+│   └── main.ts
+├── test/
 ├── .env.example
 ├── .gitignore
 ├── package.json
@@ -57,21 +59,40 @@ clubwize-backend/
 2. Install dependencies:
 
    ```
-   npm install
+   pnpm install
    ```
 
 3. Set up environment variables:
-
    ```
    cp .env.example .env
    ```
-
    Edit the `.env` file with your configuration details.
 
-4. Start the development server:
-   ```
-   npm run dev
-   ```
+## Running the App
+
+```bash
+# development
+$ pnpm run start
+
+# watch mode
+$ pnpm run start:dev
+
+# production mode
+$ pnpm run start:prod
+```
+
+## Testing
+
+```bash
+# unit tests
+$ pnpm run test
+
+# e2e tests
+$ pnpm run test:e2e
+
+# test coverage
+$ pnpm run test:cov
+```
 
 ## API Documentation
 
@@ -96,26 +117,39 @@ Refer to the `src/models` directory for detailed schema definitions.
 
 Authentication is handled using JSON Web Tokens (JWT). Protected routes require a valid token in the Authorization header.
 
-## Testing
-
-Run tests using:
-
-```
-npm test
-```
-
 ## Deployment
+
+When you're ready to deploy your ClubWize NestJS application to production, follow these steps:
 
 1. Build the project:
 
-   ```
-   npm run build
+   ```bash
+   $ pnpm run build
    ```
 
 2. Start the production server:
+   ```bash
+   $ pnpm run start:prod
    ```
-   npm start
-   ```
+
+For cloud-based deployment, consider using [Mau](https://mau.nestjs.com), the official platform for deploying NestJS applications on AWS:
+
+```bash
+$ pnpm install -g mau
+$ mau deploy
+```
+
+For more information on deployment options, check out the [NestJS deployment documentation](https://docs.nestjs.com/deployment).
+
+## Resources
+
+- [NestJS Documentation](https://docs.nestjs.com)
+- [NestJS Discord Channel](https://discord.gg/G7Qnnhy)
+- [NestJS Video Courses](https://courses.nestjs.com/)
+- [NestJS Mau](https://mau.nestjs.com)
+- [NestJS Devtools](https://devtools.nestjs.com)
+- [NestJS Enterprise Support](https://enterprise.nestjs.com)
+- [NestJS Jobs Board](https://jobs.nestjs.com)
 
 ## Contributing
 
@@ -130,3 +164,16 @@ For major changes, please open an issue first to discuss what you would like to 
 ---
 
 For more information about ClubWize, visit our [official website](https://clubwize.com).
+
+## Support
+
+ClubWize is an open-source project. If you'd like to support the project, please consider [becoming a sponsor](https://opencollective.com/clubwize).
+
+## Stay in touch
+
+- Website - [https://clubwize.com](https://clubwize.com/)
+- Twitter - [@clubwize](https://twitter.com/clubwize)
+
+## License
+
+ClubWize is [MIT licensed](LICENSE).
