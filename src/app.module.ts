@@ -1,10 +1,22 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UserModule } from './user/user.module';
+import { ConfigModule } from '@nestjs/config';
+import envConfig from './utils/config/env.config';
+import { MongooseModule } from '@nestjs/mongoose';
+import { connection } from 'mongoose';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    UserModule,
+    ConfigModule.forRoot({
+      load: [envConfig],
+      isGlobal: true,
+    }),
+    MongooseModule.forRoot(process.env.DATABASE)
+  ],
 })
-export class AppModule {}
+export class AppModule {
+
+}
