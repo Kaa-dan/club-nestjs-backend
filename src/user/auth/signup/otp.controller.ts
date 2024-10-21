@@ -20,7 +20,7 @@ import { SendOtpDto } from './dto/send-otp-dto';
   
     @Post()
     @HttpCode(HttpStatus.OK)
-    async generateOtp(@Body('email') email: SendOtpDto, @Res() res: Response) {
+    async generateOtp(@Body('email') email : SendOtpDto, @Res() res: Response) {
       try {
         const token = await this.otpService.generateAndStoreOtp(email);
         return res.status(HttpStatus.OK).json({
@@ -53,7 +53,7 @@ import { SendOtpDto } from './dto/send-otp-dto';
   
     @Patch()
     @HttpCode(HttpStatus.OK)
-    async verifyOtp(@Body('email') email: string, @Body('otp') otp: string, @Res() res: Response) {
+    async verifyOtp(@Body('email') email: SendOtpDto, @Body('otp') otp: string, @Res() res: Response) {
         console.log(otp,email)
       try {
         const result = await this.otpService.verifyOtp(email, otp);

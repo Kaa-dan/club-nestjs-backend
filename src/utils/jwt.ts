@@ -1,7 +1,7 @@
 // src/utils/jwt.helper.ts
 import { sign, verify } from 'jsonwebtoken';
 
-const JWT_SECRET = 'your_jwt_secret'; // Replace with your actual secret
+const JWT_SECRET = "IL300"
 
 export const generateToken = (payload: object, expiresIn: string): string => {
   return sign(payload, JWT_SECRET, { expiresIn });

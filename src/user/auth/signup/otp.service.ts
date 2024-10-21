@@ -8,62 +8,55 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OTP } from './entities/otp.entity';
-import { User } from './entities/user.entity'; // Make sure to import your User model
-import { generateOtp, generateToken } from 'src/utils';
+import { User } from './entities/user.entity';
+import { generateOtp } from 'src/utils';
 import { SendOtpDto } from './dto/send-otp-dto';
+import { generateToken } from 'src/utils';
 @Injectable()
 export class OtpService {
   constructor(
     @InjectModel(OTP.name) private otpModel: Model<OTP>,
-    @InjectModel(User.name) private userModel: Model<User>, // Inject the User model
+    @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
-  async generateAndStoreOtp(email:SendOtpDto): Promise<string> {
-    // Check if email is provided
+  async generateAndStoreOtp(emailDto:SendOtpDto): Promise<string> {
+    
+    const  email  = emailDto; // Extract email from DTO
     if (!email) {
       throw new BadRequestException('Email is required');
     }
-  
-    // Generate a 6-digit OTP
-    const otp = generateOtp();
-  
+
+    const otp = generateOtp(); // Generate a 6-digit OTP
+
     try {
       // Check if a user with the provided email already exists
       let user = await this.userModel.findOne({ email });
-      
-      // If user doesn't exist, create a new user entry
       if (!user) {
-        user = await this.userModel.create({ email, emailVerified: false }); // Assuming emailVerified is set to false initially
+        // If user doesn't exist, create a new user entry
+        user = await this.userModel.create({ email, emailVerified: false });
       }
-  
-      // Check if an OTP already exists for this email
-      const existingOtp = await this.otpModel.findOne({ email });
-      if (existingOtp) {
-        // Update the existing OTP
-        existingOtp.otp = otp;
-        await existingOtp.save();
-      } else {
-        // Create a new OTP document
-        await this.otpModel.create({ email, otp });
-      }
-  
+
+      // Delete any existing OTP for this email
+      await this.otpModel.deleteOne({ email });
+
+      // Create a new OTP document
+      await this.otpModel.create({ email, otp });
+
       // In a real-world scenario, you would send the OTP via email here
       console.log(`OTP for ${email}: ${otp}`);
-  
+
       // Generate and return a JWT token
       const token = generateToken({ email }, '10min');
       return token;
     } catch (error) {
-      // Handle database errors or other unexpected errors
-      throw new InternalServerErrorException('An error occurred while generating OTP');
+      throw new InternalServerErrorException('Error generating OTP', error.message);
     }
   }
 
   async verifyOtp(
-    email: string,
+    email: SendOtpDto,
     otp: string,
   ): Promise<{ message: string; token: string }> {
-    // Check if email and OTP are provided
     if (!email || !otp) {
       throw new BadRequestException('Email and OTP are required');
     }
@@ -77,22 +70,44 @@ export class OtpService {
         throw new NotFoundException('Invalid or expired OTP');
       }
 
-      // If OTP is valid, delete it from the collection
+      // Delete the OTP after successful verification
       await this.otpModel.deleteOne({ _id: storedOtp._id });
 
-      // Update the user’s email verification status
+      // Update the user's email verification status
       await this.userModel.updateOne({ email }, { emailVerified: true });
 
-      // Generate a new token for the verified user
+      // Generate a new JWT token for the verified user
       const token = generateToken({ email }, '10min');
 
-      // Return success message and token
       return {
         message: 'Email verified successfully',
-        token: token,
+        token,
       };
     } catch (error) {
-      throw error;
+      throw new InternalServerErrorException('Error verifying OTP', error.message);
+    }
+  }
+
+  async resendOtp(email: string): Promise<{ message: string }> {
+    if (!email) {
+      throw new BadRequestException('Email is required');
+    }
+
+    try {
+      const otp = generateOtp(); // Generate a new OTP
+
+      // Delete any existing OTP for this email
+      await this.otpModel.deleteOne({ email });
+
+      // Create a new OTP document
+      await this.otpModel.create({ email, otp });
+
+      // In a real-world scenario, send the new OTP via email
+      console.log(`New OTP for ${email}: ${otp}`);
+
+      return { message: 'New OTP has been sent successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException('Error resending OTP', error.message);
     }
   }
 }

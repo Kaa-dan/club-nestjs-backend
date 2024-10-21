@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -15,36 +16,32 @@ export class SignupService {
 
   async signUp(
     signupData: CreateUserDto,
-  ): Promise<{ status: string; message: string }> {
-    const { userName, email, password, ...rest } = signupData;
+  ): Promise<{ status: boolean; message: string }> {
+    const { email, password } = signupData;
 
     const existingUser = await this.userModel.findOne({
-      $or: [{ email }, { userName }],
+      email,
     });
-
-    if (existingUser) {
+    if (existingUser.registered) {
       throw new ConflictException('Email or username already exists');
     }
 
     try {
       const hashedPassword = await hashPassword(password);
 
-      const newUser = new this.userModel({
-        userName,
-        email,
-        password: hashedPassword,
-        ...rest,
-      });
+      existingUser.password = hashedPassword;
 
-      await newUser.save();
+      existingUser.registered = true;
+
+      await existingUser.save();
 
       // Return a success response with a status and message
       return {
-        status: 'success',
+        status: true,
         message: 'User created successfully',
       };
     } catch (error) {
-      throw error;
+      throw new InternalServerErrorException(error);
     }
   }
 }
