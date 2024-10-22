@@ -1,7 +1,6 @@
 import {
   Injectable,
   ConflictException,
-  BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
