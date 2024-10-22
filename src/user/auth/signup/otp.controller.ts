@@ -14,11 +14,11 @@ import {
   import { Response } from 'express'; // Import Response type from Express
 import { SendOtpDto } from './dto/send-otp-dto';
   
-  @Controller('otp')
+  @Controller()
   export class OtpController {
     constructor(private readonly otpService: OtpService) {}
   
-    @Post()
+    @Post('send-otp')
     @HttpCode(HttpStatus.OK)
     async generateOtp(@Body('email') email : SendOtpDto, @Res() res: Response) {
       try {
@@ -51,7 +51,7 @@ import { SendOtpDto } from './dto/send-otp-dto';
       }
     }
   
-    @Patch()
+    @Patch('verify-otp')
     @HttpCode(HttpStatus.OK)
     async verifyOtp(@Body('email') email: SendOtpDto, @Body('otp') otp: string, @Res() res: Response) {
         console.log(otp,email)
