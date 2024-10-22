@@ -1,4 +1,4 @@
-import {  Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
@@ -16,9 +16,7 @@ import { SharedModule } from './shared/shared.module';
     }),
     MongooseModule.forRoot(process.env.DATABASE),
     LoginModule,
-    SharedModule
+    SharedModule,
   ],
 })
-export class AppModule {
-
-}
+export class AppModule {}
