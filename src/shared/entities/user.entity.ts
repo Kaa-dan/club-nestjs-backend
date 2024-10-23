@@ -18,6 +18,19 @@ export class User extends Document {
   @Prop({ required: false })
   lastName: string;
 
+  @Prop({ required: false })
+  phoneNumber: string;
+
+  @Prop({
+    type: Date,
+    required: false,
+    validate: {
+      validator: (value: Date) => value < new Date(),
+      message: "Date of birth must be in the past",
+    },
+  })
+  dateOfBirth: Date;
+
   @Prop({ enum: ['male', 'female', 'other'] })
   gender: string;
 
@@ -35,6 +48,9 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
+
+  @Prop({ default: false })
+  isOnBoarded: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
