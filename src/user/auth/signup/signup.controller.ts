@@ -19,6 +19,7 @@ export class SignupController {
     @Res() res: Response,
   ) {
     try {
+      
       // Use the SignupService to handle the registration
       const result = await this.signupService.signUp(createUser);
  
