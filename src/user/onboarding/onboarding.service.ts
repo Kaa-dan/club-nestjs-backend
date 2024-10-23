@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDetailsDto } from './dto/create-details.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { User } from 'src/shared/entities/user.entity';
 import { Model } from 'mongoose';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
+import { User } from '../auth/signup/entities/user.entity';
 
 @Injectable()
 export class OnboardingService {
