@@ -14,14 +14,11 @@ export class SignupController {
   constructor(private readonly signupService: SignupService) {}
 
   @Post()
-  async registerUser(
-    @Body() createUser: CreateUserDto,
-    @Res() res: Response,
-  ) {
+  async registerUser(@Body() createUser: CreateUserDto, @Res() res: Response) {
     try {
       // Use the SignupService to handle the registration
       const result = await this.signupService.signUp(createUser);
- 
+
       // Return a success response
       return res.status(HttpStatus.CREATED).json({
         status: result.status,

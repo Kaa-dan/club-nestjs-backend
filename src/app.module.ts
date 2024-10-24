@@ -6,6 +6,7 @@ import envConfig from './utils/config/env.config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { LoginModule } from './user/auth/login/login.module';
 import { SharedModule } from './shared/shared.module';
+import { InterestModule } from './interest/interest.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { SharedModule } from './shared/shared.module';
     MongooseModule.forRoot(process.env.DATABASE),
     LoginModule,
     SharedModule,
+    InterestModule,
   ],
 })
 export class AppModule {}
