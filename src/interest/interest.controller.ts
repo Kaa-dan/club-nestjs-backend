@@ -13,7 +13,7 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import { InterestService } from './interest.service';
-import { CreateInterestDto, UpdateInterestDto } from './interest.dto';
+import { CreateInterestDto, UpdateInterestDto } from './dto/interest.dto';
 import { Interest } from '../shared/entities/interest.entity';
 
 @Controller('interest')
@@ -76,6 +76,7 @@ export class InterestController {
       throw new BadRequestException('Failed to create interest');
     }
   }
+
 
   /**
    * Update interest by ID

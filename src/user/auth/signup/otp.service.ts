@@ -19,9 +19,10 @@ export class OtpService {
     @InjectModel(User.name) private userModel: Model<User>,
   ) {}
 
-  async generateAndStoreOtp(emailDto:SendOtpDto): Promise<string> {
-    
-    const  email  = emailDto; // Extract email from DTO
+  async generateAndStoreOtp(emailDto: string): Promise<{ status: boolean }> {
+    // console.log(emailDto,"emm");
+
+    const email = emailDto; // Extract email from DTO
     if (!email) {
       throw new BadRequestException('Email is required');
     }
@@ -31,6 +32,7 @@ export class OtpService {
     try {
       // Check if a user with the provided email already exists
       let user = await this.userModel.findOne({ email });
+
       if (!user) {
         // If user doesn't exist, create a new user entry
         user = await this.userModel.create({ email, emailVerified: false });
@@ -47,14 +49,18 @@ export class OtpService {
 
       // Generate and return a JWT token
       const token = generateToken({ email }, '10min');
-      return token;
+      return { status: true };
     } catch (error) {
-      throw new InternalServerErrorException('Error generating OTP', error.message);
+      console.log(error, 'errr');
+      throw new InternalServerErrorException(
+        'Error generating OTP',
+        error.message,
+      );
     }
   }
 
   async verifyOtp(
-    email: SendOtpDto,
+    email: string,
     otp: string,
   ): Promise<{ message: string; token: string }> {
     if (!email || !otp) {
@@ -84,7 +90,8 @@ export class OtpService {
         token,
       };
     } catch (error) {
-      throw new InternalServerErrorException('Error verifying OTP', error.message);
+      console.log(error,"Err")
+      throw error;
     }
   }
 
@@ -107,7 +114,7 @@ export class OtpService {
 
       return { message: 'New OTP has been sent successfully' };
     } catch (error) {
-      throw new InternalServerErrorException('Error resending OTP', error.message);
+      throw new InternalServerErrorException(error);
     }
   }
 }

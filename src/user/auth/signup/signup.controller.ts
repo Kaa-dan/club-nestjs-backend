@@ -9,11 +9,11 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
-@Controller('register')
+@Controller()
 export class SignupController {
   constructor(private readonly signupService: SignupService) {}
 
-  @Post()
+  @Post('sign-up')
   async registerUser(@Body() createUser: CreateUserDto, @Res() res: Response) {
     try {
       // Use the SignupService to handle the registration

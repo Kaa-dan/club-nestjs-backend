@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Interest } from '../shared/entities/interest.entity';
-import { CreateInterestDto, UpdateInterestDto } from './interest.dto';
+import { CreateInterestDto, UpdateInterestDto } from './dto/interest.dto';
 
 @Injectable()
 export class InterestService {
