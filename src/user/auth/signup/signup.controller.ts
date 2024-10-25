@@ -29,7 +29,7 @@ export class SignupController {
       if (error instanceof ConflictException) {
         return res.status(HttpStatus.CONFLICT).json({
           status: false,
-          message: error.message,
+          message: 'user already exist please sign in again',
         });
       } else {
         // Handle any other unanticipated errors

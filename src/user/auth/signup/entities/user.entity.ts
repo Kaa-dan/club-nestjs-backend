@@ -35,6 +35,8 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
+  @Prop({ default: 0 })
+  isOnBoarded: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

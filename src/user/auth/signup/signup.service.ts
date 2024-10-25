@@ -5,9 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User } from './entities/user.entity';
+
 import { CreateUserDto } from './dto/create-user.dto';
 import { hashPassword } from 'src/utils';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class SignupService {
@@ -23,17 +24,21 @@ export class SignupService {
     const existingUser = await this.userModel.findOne({
       email,
     });
-
+    console.log(1);
     if (existingUser.registered) {
       throw new ConflictException('Email or username already exists');
     }
 
+    console.log(2);
     try {
       const hashedPassword = await hashPassword(password);
 
       existingUser.password = hashedPassword;
 
       existingUser.registered = true;
+
+      //for identifying the step
+      existingUser.isOnBoarded = 1;
 
       await existingUser.save();
 
