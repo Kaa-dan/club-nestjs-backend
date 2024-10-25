@@ -17,15 +17,16 @@ export class SignupService {
   async signUp(
     signupData: CreateUserDto,
   ): Promise<{ status: boolean; message: string }> {
-    console.log(signupData, 'okkk');
 
     const { email, password } = signupData;
 
     const existingUser = await this.userModel.findOne({
       email,
+      
     });
-    console.log(1);
-    if (existingUser.registered) {
+    console.log(existingUser,"exx");
+
+    if (existingUser && existingUser?.registered) {
       throw new ConflictException('Email or username already exists');
     }
 
@@ -50,7 +51,7 @@ export class SignupService {
     } catch (error) {
       console.log(error, 'errr');
 
-      throw new InternalServerErrorException(error);
+      throw error;
     }
   }
 }

@@ -20,22 +20,18 @@ export class SignupController {
       const result = await this.signupService.signUp(createUser);
 
       // Return a success response
-      return res.status(HttpStatus.CREATED).json({
-        status: result.status,
-        message: result.message,
-      });
+      return res.status(HttpStatus.CREATED).json(result);
     } catch (error) {
+      console.log(error,"err");
+      
       // Use instanceof to check for specific exceptions
       if (error instanceof ConflictException) {
-        return res.status(HttpStatus.CONFLICT).json({
-          status: false,
-          message: 'user already exist please sign in again',
-        });
+        return res.status(HttpStatus.CONFLICT).json(error);
       } else {
         // Handle any other unanticipated errors
         return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
           status: false,
-          message: error.message,
+          message: 'internal server error',
         });
       }
     }
