@@ -8,6 +8,7 @@ import { Model } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
 import { GoogleAuthDto } from './dto/google-auth';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
+import { generateToken } from 'src/utils';
 
 @Injectable()
 export class GoogleSignupService {
@@ -16,7 +17,6 @@ export class GoogleSignupService {
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     
     const { email, userName, imageUrl, phoneNumber,signupThrough } = googleAuthData;
-    // console.log(googleAuthData, 'gewuguegh');
  
 
     try {
@@ -38,12 +38,13 @@ export class GoogleSignupService {
       });
 
       // Save the new user to the database
-      const usersss=await newUser.save();
-      console.log({usersss })
+      const user =await newUser.save();
+      const token = generateToken({email:user.email},"3hr")
       return {
         success: true,
         message: 'signup successful, please login',
         status: 200,
+        token
       };
     } catch (error) {
       throw error;
