@@ -9,6 +9,7 @@ import {
   NotFoundException,
   HttpStatus,
   HttpCode,
+  ConflictException,
 } from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { Response } from 'express'; // Import Response type from Express
@@ -40,6 +41,8 @@ export class OtpController {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
           message: 'An error occurred while generating OTP',
         });
+      } else if (error instanceof ConflictException) {
+        res.status(HttpStatus.CONFLICT).json(error);
       } else {
         // For any unexpected errors
         return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -59,7 +62,7 @@ export class OtpController {
   ) {
     try {
       const result = await this.otpService.verifyOtp(email, otp);
-      console.log(result,"resss")
+      console.log(result, 'resss');
       return res.status(HttpStatus.OK).json({
         statusCode: HttpStatus.OK,
         message: 'Email verified successfully',
@@ -93,7 +96,7 @@ export class OtpController {
 
   @Post('resend-otp') // Route for resending OTP
   async resendOtp(@Body() SendOtpDto: SendOtpDto, @Res() res: Response) {
-    try { 
+    try {
       const { email } = SendOtpDto;
       // Call the service function to resend the OTP
       const result = await this.otpService.resendOtp(email);

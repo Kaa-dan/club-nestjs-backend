@@ -26,7 +26,7 @@ export class User extends Document {
     required: false,
     validate: {
       validator: (value: Date) => value < new Date(),
-      message: "Date of birth must be in the past",
+      message: 'Date of birth must be in the past',
     },
   })
   dateOfBirth: Date;
@@ -48,7 +48,13 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
-
+  @Prop({
+    type: String,
+    enum: ['google', 'apple', 'facebook', 'gmail'],
+    default: 'gmail',
+    required: true,
+  })
+  signupThrough: string;
   @Prop({ default: false })
   isOnBoarded: boolean;
 }

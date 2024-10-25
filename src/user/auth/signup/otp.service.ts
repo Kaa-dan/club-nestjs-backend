@@ -23,6 +23,7 @@ export class OtpService {
     // console.log(emailDto,"emm");
 
     const email = emailDto; // Extract email from DTO
+  console.log(email,"emaill")
     if (!email) {
       throw new BadRequestException('Email is required');
     }
@@ -32,7 +33,9 @@ export class OtpService {
     try {
       // Check if a user with the provided email already exists
       let user = await this.userModel.findOne({ email });
-
+      if (user?.email && user?.registered) {
+        throw new ConflictException('user with this email already exist!!');
+      }
       if (!user) {
         // If user doesn't exist, create a new user entry
         user = await this.userModel.create({ email, emailVerified: false });
@@ -51,11 +54,9 @@ export class OtpService {
       const token = generateToken({ email }, '10min');
       return { status: true };
     } catch (error) {
-      console.log(error, 'errr');
-      throw new InternalServerErrorException(
-        'Error generating OTP',
-        error.message,
-      );
+      console.log(error,"Err");
+      
+      throw error;
     }
   }
 
@@ -90,7 +91,7 @@ export class OtpService {
         token,
       };
     } catch (error) {
-      console.log(error,"Err")
+      console.log(error, 'Err');
       throw error;
     }
   }
@@ -114,7 +115,7 @@ export class OtpService {
 
       return { message: 'New OTP has been sent successfully' };
     } catch (error) {
-      throw new InternalServerErrorException(error);
+      throw error
     }
   }
 }

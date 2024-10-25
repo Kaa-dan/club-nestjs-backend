@@ -11,7 +11,6 @@ export class VerifyToken {
     try {
       // Verify the token using the JWT service
       const decoded = verifyToken(token)
-       console.log();
        
       return {
         status: true,
