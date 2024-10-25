@@ -8,6 +8,7 @@ import { LoginModule } from './user/auth/login/login.module';
 import { SharedModule } from './shared/shared.module';
 import { InterestModule } from './interest/interest.module';
 
+
 @Module({
   imports: [
     UserModule,
@@ -20,5 +21,6 @@ import { InterestModule } from './interest/interest.module';
     SharedModule,
     InterestModule,
   ],
+  controllers: [],
 })
 export class AppModule {}
