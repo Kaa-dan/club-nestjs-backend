@@ -1,7 +1,7 @@
-import { IsArray, IsString } from 'class-validator';
+import { IsArray, IsString } from "class-validator"
 
 export class UpdateInterestDto {
-  @IsArray()
-  @IsString({ each: true })
-  interests: string[];
+    @IsArray()
+    @IsString({ each: true })
+    interests: string[]
 }

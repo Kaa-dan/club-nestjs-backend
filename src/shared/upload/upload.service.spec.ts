@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { UploadService } from './upload.module';
+import { UploadService } from './upload.service';
 
 describe('UploadService', () => {
   let service: UploadService;

@@ -5,13 +5,13 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User } from '../auth/signup/entities/user.entity';
+import { User, ImageData } from '../auth/signup/entities/user.entity';
 import { CreateDetailsDto } from './dto/create-details.dto';
-import { UpdateImageDto } from './dto/update-image.dto';
 import { UpdateInterestDto } from './dto/update-interest.dto';
-
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { OnboardingStage } from './dto/onboarding-stages.enum';
+import { UploadService } from 'src/shared/upload/upload.service';
+
 
 @Injectable()
 export class OnboardingService {
@@ -22,7 +22,10 @@ export class OnboardingService {
     OnboardingStage.NODE,
   ];
 
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    private readonly uploadService: UploadService,
+  ) {}
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(
@@ -39,9 +42,7 @@ export class OnboardingService {
     createDetailsDto: CreateDetailsDto,
   ): Promise<ServiceResponse> {
     try {
-      console.log({ id });
       const user = await this.userModel.findOne({ _id: id });
-      console.log({ user });
       if (!user) {
         throw new NotFoundException('User not found');
       }
@@ -80,7 +81,10 @@ export class OnboardingService {
 
   async updateImages(
     id: string,
-    updateImageDto: UpdateImageDto,
+    imageFiles: {
+      profileImage?: Express.Multer.File;
+      coverImage?: Express.Multer.File;
+    },
   ): Promise<ServiceResponse> {
     try {
       const user = await this.userModel.findById(id);
@@ -93,15 +97,63 @@ export class OnboardingService {
         throw new BadRequestException('Invalid onboarding stage');
       }
 
+      const updateData: {
+        onBoardingStage: string;
+        profileImage?: ImageData;
+        coverImage?: ImageData;
+      } = {
+        onBoardingStage: this.getNextStage(OnboardingStage.IMAGE),
+      };
+
+      // Handle profile image upload
+      if (imageFiles.profileImage) {
+        const profileImageResult = await this.uploadService.uploadFile(
+          imageFiles.profileImage,
+        );
+
+        // Delete old profile image if it exists
+        if (user.profileImage?.public_id) {
+          try {
+            await this.uploadService.deleteFile(user.profileImage.public_id);
+          } catch (error) {
+            console.error('Error deleting old profile image:', error);
+          }
+        }
+
+        // Create ImageData object with correct typing
+        updateData.profileImage = {
+          url: profileImageResult.url,
+          public_id: profileImageResult.public_id,
+        } as ImageData;
+      }
+
+      // Handle cover image upload
+      if (imageFiles.coverImage) {
+        const coverImageResult = await this.uploadService.uploadFile(
+          imageFiles.coverImage,
+        );
+
+        // Delete old cover image if it exists
+        if (user.coverImage?.public_id) {
+          try {
+            await this.uploadService.deleteFile(user.coverImage.public_id);
+          } catch (error) {
+            console.error('Error deleting old cover image:', error);
+          }
+        }
+
+        // Create ImageData object with correct typing
+        updateData.coverImage = {
+          url: coverImageResult.url,
+          public_id: coverImageResult.public_id,
+        } as ImageData;
+      }
+
+      // Update user with new image data
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
-          {
-            $set: {
-              ...updateImageDto,
-              onBoardingStage: this.getNextStage(OnboardingStage.IMAGE),
-            },
-          },
+          { $set: updateData },
           { new: true, runValidators: true },
         )
         .select('-password');

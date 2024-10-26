@@ -5,15 +5,21 @@ import {
   HttpStatus,
   Param,
   Put,
+  UploadedFiles,
 } from '@nestjs/common';
 import { CreateDetailsDto } from './dto/create-details.dto';
-import { UpdateImageDto } from './dto/update-image.dto';
-import { UpdateInterestDto } from './dto/update-interest.dto';
+
 import { OnboardingService } from './onboarding.service';
+import { UploadService } from 'src/shared/upload/upload.service';
+
+
 
 @Controller('onboarding')
 export class OnboardingController {
-  constructor(private readonly onboardingService: OnboardingService) {}
+  constructor(
+    private readonly onBoardingService: OnboardingService,
+ 
+  ) {}
 
   @Put('details/:id')
   async createDetails(
@@ -21,7 +27,7 @@ export class OnboardingController {
     @Body() createDetailsDto: CreateDetailsDto,
   ) {
     try {
-      return await this.onboardingService.createDetails(id, createDetailsDto);
+      return await this.onBoardingService.createDetails(id, createDetailsDto);
     } catch (error) {
       throw new HttpException(
         {
@@ -34,60 +40,32 @@ export class OnboardingController {
     }
   }
 
-  //   @Put('images/:id')
-  //   async updateImages(
-  //     @Param('id') id: string,
-  //     @Body() updateImageDto: UpdateImageDto,
-  //   ) {
-  //     try {
-  //       return await this.onboardingService.updateImages(id, updateImageDto);
-  //     } catch (error) {
-  //       throw new HttpException(
-  //         {
-  //           success: false,
-  //           status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //           message: error.message || 'Internal Server Error',
-  //         },
-  //         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //       );
-  //     }
-  //   }
+  @Put('images/:id')
+  async updateImages(
+    @Param('id') id: string,
 
-  //   @Put('interests/:id')
-  //   async updateInterests(
-  //     @Param('id') id: string,
-  //     @Body() updateInterestDto: UpdateInterestDto,
-  //   ) {
-  //     try {
-  //       return await this.onboardingService.updateInterests(
-  //         id,
-  //         updateInterestDto,
-  //       );
-  //     } catch (error) {
-  //       throw new HttpException(
-  //         {
-  //           success: false,
-  //           status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //           message: error.message || 'Internal Server Error',
-  //         },
-  //         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //       );
-  //     }
-  //   }
+    @UploadedFiles()
+    files: {
+      profileImage?: Express.Multer.File[];
+      coverImage?: Express.Multer.File[];
+    },
+  ) {
+    try {
+      const imageFiles = {
+        profileImage: files?.profileImage?.[0],
+        coverImage: files?.coverImage?.[0],
+      };
 
-  //   @Put('complete/:id')
-  //   async completeOnboarding(@Param('id') id: string) {
-  //     try {
-  //       return await this.onboardingService.completeOnboarding(id);
-  //     } catch (error) {
-  //       throw new HttpException(
-  //         {
-  //           success: false,
-  //           status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //           message: error.message || 'Internal Server Error',
-  //         },
-  //         error.status || HttpStatus.INTERNAL_SERVER_ERROR,
-  //       );
-  //     }
-  //   }
+      return await this.onBoardingService.updateImages(id, imageFiles);
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Internal Server Error',
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

@@ -1,11 +1,13 @@
-import { IsString, IsOptional } from 'class-validator';
+// update-image.dto.ts
+import { IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateImageDto {
-  @IsString()
+  @ApiProperty({ type: 'string', format: 'binary', required: false })
   @IsOptional()
-  profileImage?: string;
+  profileImage?: Express.Multer.File;
 
-  @IsString()
+  @ApiProperty({ type: 'string', format: 'binary', required: false })
   @IsOptional()
-  coverImage?: string;
+  coverImage?: Express.Multer.File;
 }

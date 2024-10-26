@@ -7,43 +7,18 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { CreateUserDto } from './dto/create-user.dto';
+
 import { hashPassword } from 'src/utils';
-import { User } from './entities/user.entity';
+import { User, ImageData } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto, UpdateUserImagesDto } from 'src/user/onboarding/dto/update-user.dto';
 
-// Define types for different stages
-interface UserDetails {
-  firstName: string;
-  lastName: string;
-  dateOfBirth: Date;
-  gender: string;
-  phoneNumber?: string;
-}
-
-interface UserImage {
-  profileImage: string;
-  coverImage?: string;
-}
-
-interface UserInterest {
-  interests: string[];
-  categories: string[];
-}
-
-interface UserNode {
-  location: {
-    type: string;
-    coordinates: [number, number];
-  };
-  preferredLanguages?: string[];
-}
-
-// Combined type for all onboarding data
 interface OnBoardingData {
   userId: string;
   stage: 'details' | 'image' | 'interest' | 'node';
-  data: UserDetails | UserImage | UserInterest | UserNode;
+  data: any;
 }
+
 @Injectable()
 export class SignupService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
@@ -51,10 +26,10 @@ export class SignupService {
   async signUp(
     signupData: CreateUserDto,
   ): Promise<{ status: boolean; message: string; data: any }> {
-    const { email, password } = signupData;
+    const { email, password, userName, firstName, lastName, gender, profileImage, coverImage } = signupData;
 
     const existingUser = await this.userModel.findOne({
-      email,
+      $or: [{ email }, { userName }],
     });
 
     if (existingUser && existingUser?.registered) {
@@ -63,61 +38,94 @@ export class SignupService {
 
     try {
       const hashedPassword = await hashPassword(password);
+      
+      let user;
+      if (existingUser) {
+        // Update existing user
+        existingUser.password = hashedPassword;
+        existingUser.userName = userName;
+        existingUser.firstName = firstName;
+        existingUser.lastName = lastName;
+        existingUser.gender = gender;
+        existingUser.registered = true;
+        
+        if (profileImage) {
+          existingUser.profileImage = {
+            url: profileImage,
+            public_id: `profile_${Date.now()}`  // You might want to generate this differently
+          };
+        }
+        
+        if (coverImage) {
+          existingUser.coverImage = {
+            url: coverImage,
+            public_id: `cover_${Date.now()}`  // You might want to generate this differently
+          };
+        }
+        
+        user = await existingUser.save();
+      } else {
+        // Create new user
+        const newUser = new this.userModel({
+          email,
+          password: hashedPassword,
+          userName,
+          firstName,
+          lastName,
+          gender,
+          registered: true,
+          profileImage: profileImage ? {
+            url: profileImage,
+            public_id: `profile_${Date.now()}`
+          } : undefined,
+          coverImage: coverImage ? {
+            url: coverImage,
+            public_id: `cover_${Date.now()}`
+          } : undefined,
+        });
+        
+        user = await newUser.save();
+      }
 
-      existingUser.password = hashedPassword;
-
-      existingUser.registered = true;
-
-      const createdUser = await existingUser.save();
-
-      // Return a success response with a status and message
       return {
         status: true,
         message: 'User created successfully',
-        data: createdUser,
+        data: user,
       };
     } catch (error) {
-      console.log(error, 'errr');
-
-      throw error;
+      console.error('Error in signup:', error);
+      throw new InternalServerErrorException('Failed to create user');
     }
   }
+
   async onBoarding(
     onBoardingData: OnBoardingData,
   ): Promise<{ status: boolean; message: string; data: any }> {
     const { userId, stage, data } = onBoardingData;
 
-    // Find the user
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
     try {
-      // Handle different stages
       switch (stage) {
         case 'details':
-          await this.handleDetailsStage(user, data as UserDetails);
+          await this.handleDetailsUpdate(user, data as UpdateUserDto);
           break;
 
         case 'image':
-          await this.handleImageStage(user, data as UserImage);
+          await this.handleImageUpdate(user, data as { 
+            profileImage?: UpdateUserImagesDto; 
+            coverImage?: UpdateUserImagesDto 
+          });
           break;
-
-        // case 'interest':
-        //   await this.handleInterestStage(user, data as UserInterest);
-        //   break;
-
-        // case 'node':
-        //   await this.handleNodeStage(user, data as UserNode);
-        //   break;
 
         default:
           throw new BadRequestException('Invalid onboarding stage');
       }
 
-      // Update onboarding progress
-      // user.onboardingCompleted = this.checkOnboardingCompletion(user);
+      user.isOnBoarded = true;
       await user.save();
 
       return {
@@ -136,80 +144,34 @@ export class SignupService {
     }
   }
 
-  private async handleDetailsStage(
+  private async handleDetailsUpdate(
     user: User,
-    data: UserDetails,
+    data: UpdateUserDto,
   ): Promise<void> {
-    // Validate required fields
-    if (
-      !data.firstName ||
-      !data.lastName ||
-      !data.dateOfBirth ||
-      !data.gender
-    ) {
-      throw new BadRequestException('Missing required details');
-    }
+    // Update only provided fields
+    if (data.firstName) user.firstName = data.firstName;
+    if (data.lastName) user.lastName = data.lastName;
+    if (data.gender) user.gender = data.gender;
+    if (data.dateOfBirth) user.dateOfBirth = new Date(data.dateOfBirth);
+    if (data.phoneNumber) user.phoneNumber = data.phoneNumber;
 
-    // Update user details
-    user.firstName = data.firstName;
-    user.lastName = data.lastName;
-    user.dateOfBirth = new Date(data.dateOfBirth);
-    user.gender = data.gender;
-    user.phoneNumber = data.phoneNumber;
     user.onBoardingStage = 'details';
-
     await user.save();
   }
 
-  private async handleImageStage(user: User, data: UserImage): Promise<void> {
-    // Validate profile image
-    if (!data.profileImage) {
-      throw new BadRequestException('Profile image is required');
+  private async handleImageUpdate(
+    user: User,
+    data: { profileImage?: UpdateUserImagesDto; coverImage?: UpdateUserImagesDto },
+  ): Promise<void> {
+    if (data.profileImage) {
+      user.profileImage = data.profileImage as ImageData;
     }
 
-    // Update user images
-    user.profileImage = data.profileImage;
-    user.coverImage = data.coverImage;
-    user.onBoardingStage = 'image';
+    if (data.coverImage) {
+      user.coverImage = data.coverImage as ImageData;
+    }
 
+    user.onBoardingStage = 'image';
     await user.save();
   }
-
-  // private async handleInterestStage(
-  //   user: User,
-  //   data: UserInterest,
-  // ): Promise<void> {
-  //   // Validate interests
-  //   if (!data.interests?.length) {
-  //     throw new BadRequestException('At least one interest is required');
-  //   }
-
-  //   // Update user interests
-  //   // user.interests = data.interests;
-  //   // user.categories = data.categories || [];
-  //   user.onBoardingStage =  'interest';
-
-  //   await user.save();
-  // }
-
-  // private async handleNodeStage(user: User, data: UserNode): Promise<void> {
-  //   // Validate location
-  //   if (!data.location?.coordinates || data.location.coordinates.length !== 2) {
-  //     throw new BadRequestException('Valid location coordinates are required');
-  //   }
-
-  //   // Update user node information
-  //   user.location = data.location;
-  //   user.preferredLanguages = data.preferredLanguages || [];
-  //   user.onBoardingStage = [...user.onBoardingStage, 'node'];
-
-  //   await user.save();
-  // }
-
-  // private checkOnboardingCompletion(user: User): boolean {
-  //   const requiredStages = ['details', 'image', 'interest', 'node'];
-  //   return requiredStages.every((stage) =>
-  //     user.onBoardingStage.includes(stage),
-  //   );
-  // }
 }
