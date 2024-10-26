@@ -15,14 +15,13 @@ export class GoogleSignupService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
-    
-    const { email, userName, imageUrl, phoneNumber,signupThrough } = googleAuthData;
- 
+    const { email, userName, imageUrl, phoneNumber, signupThrough } =
+      googleAuthData;
 
     try {
       // Check if the user already exists by email
       const existingUser = await this.userModel.findOne({ email });
-      if (existingUser) {
+      if (existingUser && existingUser.registered && existingUser.emailVerified ) {
         throw new ConflictException('User with this email already exists');
       }
 
@@ -30,21 +29,21 @@ export class GoogleSignupService {
       const newUser = new this.userModel({
         email,
         signupThrough,
-        userName,
+        userName : userName.split(' ')[0],
         profileImage: imageUrl,
         phoneNumber,
-        emailVerified:true,
-        registered:true
+        emailVerified: true,
+        registered: true,
       });
 
       // Save the new user to the database
-      const user =await newUser.save();
-      const token = generateToken({email:user.email},"3hr")
+      const user = await newUser.save();
+      const token = generateToken({ email: user.email }, '3hr');
       return {
         success: true,
         message: 'signup successful, please login',
         status: 200,
-        token
+        token,
       };
     } catch (error) {
       throw error;

@@ -18,7 +18,7 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email });
       // User exists, generate a token and send response
       const token = generateToken({ email }, '2hr');
-      if (user) {
+      if (user && user.registered && user.emailVerified) {
         return {
           success: true,
           message: 'login successful',
@@ -29,7 +29,7 @@ export class GoogleSigninService {
         // User does not exist, create new user
         const newUser = new this.userModel({
           email,
-          userName,
+          userName : userName.split(' ')[0],
           imageUrl,
           phoneNumber,
           signupThrough:"google",
@@ -41,7 +41,7 @@ export class GoogleSigninService {
 
         return {
           success: true,
-          message: 'User created successfully, login successful',
+          message: 'login successful',
           token,
           user,
         };

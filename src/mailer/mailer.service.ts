@@ -1,19 +1,17 @@
-// src/brevo/brevo.service.ts
-
 import { Injectable } from '@nestjs/common';
-import * as SibApiV3Sdk from 'sib-api-v3-sdk';
+import { TransactionalEmailsApi, SendSmtpEmail} from '@getbrevo/brevo';
 import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class MailerService {
-  private readonly apiInstance: SibApiV3Sdk.TransactionalEmailsApi;
+  private readonly apiInstance: TransactionalEmailsApi;
 
   constructor() {
-    // Configure the API with your API key
-    const apiKey = SibApiV3Sdk.ApiClient.instance.authentications['api-key'];
-    apiKey.apiKey = ENV.BREVO_API_KEY;
-
-    this.apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+    // Initialize the API instance
+    this.apiInstance = new TransactionalEmailsApi();
+    
+    // Set the API key using DefaultApiKeyAuth
+    (this.apiInstance as any).defaultHeaders['api-key'] = ENV.BREVO_API_KEY;
   }
 
   async sendEmail(
@@ -21,7 +19,7 @@ export class MailerService {
     subject: string,
     htmlContent: string,
   ): Promise<void> {
-    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    const sendSmtpEmail = new SendSmtpEmail();
     sendSmtpEmail.to = [{ email: to }];
     sendSmtpEmail.sender = {
       name: ENV.DEFAULT_FROM_NAME,
