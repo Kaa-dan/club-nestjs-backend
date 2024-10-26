@@ -48,14 +48,13 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
-  
+
   @Prop({
     type: String,
     enum: ['google', 'apple', 'facebook', 'gmail'],
     default: 'gmail',
     required: true,
   })
-
   signupThrough: string;
   @Prop({ default: false })
   isOnBoarded: boolean;

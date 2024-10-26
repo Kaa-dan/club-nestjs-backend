@@ -7,7 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { LoginModule } from './user/auth/login/login.module';
 import { SharedModule } from './shared/shared.module';
 import { InterestModule } from './interest/interest.module';
-
+import { UploadController } from './shared/upload/upload.controller';
+import { UploadService } from './shared/upload/upload.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { InterestModule } from './interest/interest.module';
     SharedModule,
     InterestModule,
   ],
-  controllers: [],
+  controllers: [UploadController],
+  providers: [UploadService],
 })
 export class AppModule {}

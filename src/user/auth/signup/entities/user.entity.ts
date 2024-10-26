@@ -54,9 +54,19 @@ export class User extends Document {
     default: 'gmail',
     required: true,
   })
+
+  
   signupThrough: string;
   @Prop({ default: false })
   isOnBoarded: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['details', 'image', 'interest', 'node'],
+    default: 'details',
+    required: true,
+  })
+  onBoardingStage: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
