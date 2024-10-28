@@ -4,7 +4,9 @@ import {  GoogleSignupService } from './google-signup.service';
 import { GoogleAuthDto } from './dto/google-auth';
 import { User } from 'src/shared/entities/user.entity';
 import { ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller() 
 export class GoogleSignupController {
   constructor(private readonly googleSignupService: GoogleSignupService) {}
