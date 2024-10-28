@@ -3,7 +3,7 @@ import { CreateDetailsDto } from './dto/create-details.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
-import { User } from '../auth/signup/entities/user.entity';
+import { User } from 'src/shared/entities/user.entity';
 
 @Injectable()
 export class OnboardingService {

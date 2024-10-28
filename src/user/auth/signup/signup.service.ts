@@ -1,12 +1,9 @@
-import {
-  Injectable,
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
-import { User } from './entities/user.entity';
+
+import { User } from 'src/shared/entities/user.entity';
 import { generateToken, hashPassword } from 'src/utils';
 
 @Injectable()
@@ -23,10 +20,9 @@ export class SignupService {
     });
 
     if (existingUser && existingUser?.registered) {
-      throw new ConflictException('Email or username already exists');
+      throw new ConflictException('Email  already exists');
     }
 
-    console.log(2);
     try {
       const hashedPassword = await hashPassword(password);
 

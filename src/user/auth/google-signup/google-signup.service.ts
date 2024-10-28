@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  ConflictException,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
@@ -19,26 +15,53 @@ export class GoogleSignupService {
       googleAuthData;
 
     try {
+      let token: string;
+
       // Check if the user already exists by email
       const existingUser = await this.userModel.findOne({ email });
-      if (existingUser && existingUser.registered && existingUser.emailVerified ) {
+      if (
+        existingUser &&
+        existingUser.registered &&
+        existingUser.emailVerified
+      ) {
+        console.log('Errr,');
+
         throw new ConflictException('User with this email already exists');
       }
 
+      if (existingUser && existingUser.emailVerified) {
+        existingUser.registered = true;
+        existingUser.signupThrough = signupThrough;
+        await existingUser.save();
+        token = generateToken({ email: existingUser.email }, '3hr');
+      } else if (
+        existingUser &&
+        !existingUser.registered &&
+        !existingUser.emailVerified
+      ) {
+        existingUser.registered = true;
+        existingUser.emailVerified = true;
+        existingUser.signupThrough = signupThrough;
+        await existingUser.save();
+        token = generateToken({ email: existingUser.email }, '3hr');
+      } else {
+        const newUser = new this.userModel({
+          email,
+          signupThrough,
+          userName: userName.split(' ')[0],
+          profileImage: imageUrl,
+          phoneNumber,
+          emailVerified: true,
+          registered: true,
+        });
+        await newUser.save();
+        token = generateToken({ email: newUser.email }, '3hr');
+      }
+
       // Create a new user if they don't exist
-      const newUser = new this.userModel({
-        email,
-        signupThrough,
-        userName : userName.split(' ')[0],
-        profileImage: imageUrl,
-        phoneNumber,
-        emailVerified: true,
-        registered: true,
-      });
 
       // Save the new user to the database
-      const user = await newUser.save();
-      const token = generateToken({ email: user.email }, '3hr');
+
       return {
         success: true,
         message: 'signup successful, please login',

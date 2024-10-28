@@ -7,9 +7,8 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { OTP } from './entities/otp.entity';
-import { User } from './entities/user.entity';
+import { User } from 'src/shared/entities/user.entity';
 import { generateOtp } from 'src/utils';
-import { SendOtpDto } from './dto/send-otp-dto';
 import { generateToken } from 'src/utils';
 import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
@@ -24,7 +23,6 @@ export class OtpService {
     // console.log(emailDto,"emm");
 
     const email = emailDto; // Extract email from DTO
-    console.log(email, 'emaill');
     if (!email) {
       throw new BadRequestException('Email is required');
     }
@@ -53,140 +51,137 @@ export class OtpService {
         email,
         'OTP',
         `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title></title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      color: #333;
-      background-color: #fff;
-    }
-
-    .container {
-      margin: 0 auto;
-      width: 100%;
-      max-width: 600px;
-      padding: 0 0px;
-      padding-bottom: 10px;
-      border-radius: 5px;
-      line-height: 1.8;
-    }
-
-    .header {
-      border-bottom: 1px solid #eee;
-    }
-
-    .header a {
-      font-size: 1.4em;
-      color: #000;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .content {
-      min-width: 700px;
-      overflow: auto;
-      line-height: 2;
-    }
-
-    .otp {
-      background: linear-gradient(to right, #00bc69 0, #00bc88 50%, #00bca8 100%);
-      margin: 0 auto;
-      width: max-content;
-      padding: 0 10px;
-      color: #fff;
-      border-radius: 4px;
-    }
-
-    .footer {
-      color: #aaa;
-      font-size: 0.8em;
-      line-height: 1;
-      font-weight: 300;
-    }
-
-    .email-info {
-      color: #666666;
-      font-weight: 400;
-      font-size: 13px;
-      line-height: 18px;
-      padding-bottom: 6px;
-    }
-
-    .email-info a {
-      text-decoration: none;
-      color: #00bc69;
-    }
-  </style>
-</head>
-
-<body>
-  <!--Subject: Login Verification Required for Your [App Name] Account-->
-  <div class="container">
-    <div class="header">
-     
-    </div>
-    <br />
-    
-    <p>
-      We have received a signup request for your [App Name] account. For
-      security purposes, please verify your identity by providing the
-      following One-Time Password (OTP).
-      <br />
-      <b>Your One-Time Password (OTP) verification code is:</b>
-    </p>
-    <h2 class="otp">${otp}</h2>
-    <p style="font-size: 0.9em">
-      <strong>One-Time Password (OTP) is valid for 1 minutes.</strong>
-      <br />
-      <br />
-      If you did not initiate this login request, please disregard this
-      message. Please ensure the confidentiality of your OTP and do not share
-      it with anyone.<br />
-      <strong>Do not forward or give this code to anyone.</strong>
-      <br />
-      <br />
-      <strong>Thank you for using [App Name].</strong>
-      <br />
-      <br />
-      Best regards,
-      <br />
-      <strong>[Company Name]</strong>
-    </p>
-
-    <hr style="border: none; border-top: 0.5px solid #131111" />
-    <div class="footer">
-      <p>This email can't receive replies.</p>
-      <p>
-        For more information about [App Name] and your account, visit
-        <strong>[Name]</strong>
-      </p>
-    </div>
-  </div>
-  <div style="text-align: center">
-    <div class="email-info">
-      <span>
-        This email was sent to
-        <a href="mailto:{Email Adress}">{Email Adress}</a>
-      </span>
-    </div>
-    <div class="email-info">
-      <a href="/">[Company Name]</a> | [Address]
-      | [Address] - [Zip Code/Pin Code], [Country Name]
-    </div>
-    <div class="email-info">
-      &copy; 2023 [Company Name]. All rights
-      reserved.
-    </div>
-  </div>
-</body>
-<!--    This template is made Redwan one from Ocoxe. -->
-<!-- https://www.ocoxe.com -->
-</html>`,
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <title></title>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+              color: #333;
+              background-color: #fff;
+            }
+        
+            .container {
+              margin: 0 auto;
+              width: 100%;
+              max-width: 600px;
+              padding: 0 0px;
+              padding-bottom: 10px;
+              border-radius: 5px;
+              line-height: 1.8;
+            }
+        
+            .header {
+              border-bottom: 1px solid #eee;
+            }
+        
+            .header a {
+              font-size: 1.4em;
+              color: #000;
+              text-decoration: none;
+              font-weight: 600;
+            }
+        
+            .content {
+              min-width: 700px;
+              overflow: auto;
+              line-height: 2;
+            }
+        
+            .otp {
+              background: linear-gradient(to right, #00bc69 0, #00bc88 50%, #00bca8 100%);
+              margin: 0 auto;
+              width: max-content;
+              padding: 0 10px;
+              color: #fff;
+              border-radius: 4px;
+            }
+        
+            .footer {
+              color: #aaa;
+              font-size: 0.8em;
+              line-height: 1;
+              font-weight: 300;
+            }
+        
+            .email-info {
+              color: #666666;
+              font-weight: 400;
+              font-size: 13px;
+              line-height: 18px;
+              padding-bottom: 6px;
+            }
+        
+            .email-info a {
+              text-decoration: none;
+              color: #00bc69;
+            }
+          </style>
+        </head>
+        
+        <body>
+          <!--Subject: Login Verification Required for Your Clubwize Account-->
+          <div class="container">
+            <div class="header">
+             
+            </div>
+            <br />
+            
+            <p>
+              We have received a signup request for your Clubwize account. For
+              security purposes, please verify your identity by providing the
+              following One-Time Password (OTP).
+              <br />
+              <b>Your One-Time Password (OTP) verification code is:</b>
+            </p>
+            <h2 class="otp">${otp}</h2>
+            <p style="font-size: 0.9em">
+              <strong>One-Time Password (OTP) is valid for 10 minutes.</strong>
+              <br />
+              <br />
+              If you did not initiate this login request, please disregard this
+              message. Please ensure the confidentiality of your OTP and do not share
+              it with anyone.<br />
+              <strong>Do not forward or give this code to anyone.</strong>
+              <br />
+              <br />
+              <strong>Thank you for using Clubwize.</strong>
+              <br />
+              <br />
+              Best regards,
+              <br />
+              <strong>Clubwize</strong>
+            </p>
+        
+            <hr style="border: none; border-top: 0.5px solid #131111" />
+            <div class="footer">
+              <p>This email can't receive replies.</p>
+              <p>
+                For more information about clubwize and your account, visit
+                <strong>Clubwize</strong>
+              </p>
+            </div>
+          </div>
+          <div style="text-align: center">
+          
+           <!-- 
+        <div class="email-info">
+          <a href="/">[Company Name]</a> | [Address]
+          | [Address] - [Zip Code/Pin Code], [Country Name]
+        </div>
+        -->
+        
+            <div class="email-info">
+              &copy; 2024  clubwize. All rights
+              reserved.
+            </div>
+          </div>
+        </body>
+        
+        </html>`,
       );
       // Generate and return a JWT token
       const token = generateToken({ email }, '10min');
@@ -321,7 +316,7 @@ export class OtpService {
 </head>
 
 <body>
-  <!--Subject: Login Verification Required for Your [App Name] Account-->
+  <!--Subject: Login Verification Required for Your Clubwize Account-->
   <div class="container">
     <div class="header">
      
@@ -329,7 +324,7 @@ export class OtpService {
     <br />
     
     <p>
-      We have received a signup request for your [App Name] account. For
+      We have received a signup request for your Clubwize account. For
       security purposes, please verify your identity by providing the
       following One-Time Password (OTP).
       <br />
@@ -337,7 +332,7 @@ export class OtpService {
     </p>
     <h2 class="otp">${otp}</h2>
     <p style="font-size: 0.9em">
-      <strong>One-Time Password (OTP) is valid for 1 minutes.</strong>
+      <strong>One-Time Password (OTP) is valid for 10 minutes.</strong>
       <br />
       <br />
       If you did not initiate this login request, please disregard this
@@ -346,42 +341,39 @@ export class OtpService {
       <strong>Do not forward or give this code to anyone.</strong>
       <br />
       <br />
-      <strong>Thank you for using [App Name].</strong>
+      <strong>Thank you for using Clubwize.</strong>
       <br />
       <br />
       Best regards,
       <br />
-      <strong>[Company Name]</strong>
+      <strong>Clubwize</strong>
     </p>
 
     <hr style="border: none; border-top: 0.5px solid #131111" />
     <div class="footer">
       <p>This email can't receive replies.</p>
       <p>
-        For more information about [App Name] and your account, visit
-        <strong>[Name]</strong>
+        For more information about clubwize and your account, visit
+        <strong>Clubwize</strong>
       </p>
     </div>
   </div>
   <div style="text-align: center">
+  
+   <!-- 
+<div class="email-info">
+  <a href="/">[Company Name]</a> | [Address]
+  | [Address] - [Zip Code/Pin Code], [Country Name]
+</div>
+-->
+
     <div class="email-info">
-      <span>
-        This email was sent to
-        <a href="mailto:{Email Adress}">{Email Adress}</a>
-      </span>
-    </div>
-    <div class="email-info">
-      <a href="/">[Company Name]</a> | [Address]
-      | [Address] - [Zip Code/Pin Code], [Country Name]
-    </div>
-    <div class="email-info">
-      &copy; 2023 [Company Name]. All rights
+      &copy; 2024  clubwize. All rights
       reserved.
     </div>
   </div>
 </body>
-<!--    This template is made Redwan one from Ocoxe. -->
-<!-- https://www.ocoxe.com -->
+
 </html>`,
       );
       // In a real-world scenario, send the new OTP via email

@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ForgotPasswordController } from './forgot-password.controller';
 import { ForgotPasswordService } from './forgot-password.service';
-import { MongooseModule } from '@nestjs/mongoose';
-import { User, UserSchema } from 'src/shared/entities/user.entity';
+import { SharedModule } from 'src/shared/shared.module';
 @Module({
-  imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-  ],
+ imports:[SharedModule],
   controllers: [ForgotPasswordController],
   providers: [ForgotPasswordService],
 })

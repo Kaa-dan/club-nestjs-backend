@@ -53,8 +53,7 @@ export class VerifyToken {
   async verifyLogin(token: string) {
     try {
       if (!token) {
-        console.log(token);
-        
+
         throw new BadRequestException('Token is required');
       }
       const decoded = verifyToken(token) as { email: string };
@@ -66,8 +65,6 @@ export class VerifyToken {
         user,
       };
     } catch (error) {
-      
-      
       throw error;
     }
   }
