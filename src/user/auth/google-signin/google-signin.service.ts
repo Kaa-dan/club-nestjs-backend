@@ -16,35 +16,43 @@ export class GoogleSigninService {
 
       // Check if the user already exists
       let user = await this.userModel.findOne({ email });
+
       // User exists, generate a token and send response
       const token = generateToken({ email }, '2hr');
-      if (user) {
+      if (user && user.registered && user.emailVerified) {
         return {
           success: true,
           message: 'login successful',
           token,
           user,
         };
-      } else {
-        // User does not exist, create new user
-        const newUser = new this.userModel({
-          email,
-          userName,
-          imageUrl,
-          phoneNumber,
-          signupThrough:"google",
-          registered:true,
-          emailVerified:true
-          
-        });
-        user = await newUser.save();
+      }
+
+      if (user && user.emailVerified) {
+        user = await user.save();
 
         return {
           success: true,
-          message: 'User created successfully, login successful',
+          message: 'login successful',
           token,
           user,
         };
+      }else{
+        const newUser = await  this.userModel.create({
+          email,
+          userName : userName.split(" ")[0],
+          profileImage: imageUrl,
+          phoneNumber,
+          signupThrough
+        })
+       const token = generateToken({email:newUser.email},"5hr")
+        return {
+          success:true,
+          message:'login successful',
+          token,
+          user:newUser
+
+        }
       }
     } catch (error) {
       throw error;

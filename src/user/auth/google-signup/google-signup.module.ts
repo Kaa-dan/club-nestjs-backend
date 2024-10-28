@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { UserSchema, User } from 'src/shared/entities/user.entity';
+
 import { GoogleSignupController } from './google-signup.controller';
 import { GoogleSignupService } from './google-signup.service';
+import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+   SharedModule
   ],
   controllers: [GoogleSignupController],
   providers: [GoogleSignupService],

@@ -4,15 +4,16 @@ import { SignupService } from './signup.service';
 import { MongooseModule } from '@nestjs/mongoose';
 // import { SignupService } from './signup.service';
 import { OTP, OTPSchema } from './entities/otp.entity';
-import { User, UserSchema } from './entities/user.entity';
+import { UserSchema, User } from 'src/shared/entities/user.entity';
 import { OtpController } from './otp.controller';
 import { OtpService } from './otp.service';
 import { ResendController } from './resend.service.controller';
 import { VerifyToken } from './verifytoken.service';
 import { VerifyTokenController } from './verifytoken.controller';
+import { SharedModule } from 'src/shared/shared.module';
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    SharedModule,
     MongooseModule.forFeature([{ name: OTP.name, schema: OTPSchema }]),
   ],
   controllers: [
