@@ -9,13 +9,9 @@ import { User, ImageData } from '../auth/signup/entities/user.entity';
 import { CreateDetailsDto } from './dto/create-details.dto';
 import { UpdateInterestDto } from './dto/update-interest.dto';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
-<<<<<<< HEAD
-import { User } from 'src/shared/entities/user.entity';
-=======
 import { OnboardingStage } from './dto/onboarding-stages.enum';
 import { UploadService } from 'src/shared/upload/upload.service';
 
->>>>>>> 1adc70332a508023b06fcdb495acc1248d7abf2e
 
 @Injectable()
 export class OnboardingService {
