@@ -6,7 +6,7 @@ export class ImageData {
   public_id: string;
 }
 
-@Schema()
+@Schema({ collection: 'users' })
 export class User extends Document {
   @Prop({ trim: true })
   userName: string;
