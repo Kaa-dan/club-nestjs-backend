@@ -4,7 +4,6 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtVerifyGuard } from './guards/jwt.verify.guard';
 
-
 @Module({
   imports: [
     AuthModule,

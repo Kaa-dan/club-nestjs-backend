@@ -48,6 +48,7 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
+
   @Prop({
     type: String,
     enum: ['google', 'apple', 'facebook', 'gmail'],
