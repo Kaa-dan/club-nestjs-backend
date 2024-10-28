@@ -13,9 +13,6 @@ export class JwtVerifyGuard implements CanActivate {
     canActivate(context: ExecutionContext): boolean {
         const request: Request = context.switchToHttp().getRequest();
 
-        console.log(context.getHandler())
-        console.log(context.getClass())
-
         // Check if the route or its controller/module has @SkipAuth() applied
         const skipAuth = this.reflector.getAllAndOverride<boolean>(SKIP_AUTH_KEY, [
             context.getHandler(),

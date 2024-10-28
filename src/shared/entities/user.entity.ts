@@ -81,12 +81,11 @@ export class User extends Document {
   
   @Prop({
     type: String,
-    enum: ['details', 'image', 'interest', 'node'],
+    enum: ['details', 'image', 'interest', 'node', 'completed'],
     default: 'details',
     required: true,
   })
   onBoardingStage: string;
-  user: import("/home/rishale/clubWize/clubwize-backend/src/user/auth/signup/entities/user.entity").ImageData;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
