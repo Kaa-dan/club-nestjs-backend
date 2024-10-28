@@ -12,6 +12,8 @@ export class GoogleSignupController {
   @Post('google-signup') 
   async googleSignUp(@Body() googleAuthDto: GoogleAuthDto, @Res() res: Response): Promise<Response> {
     try {
+      
+      
       const user = await this.googleSignupService.googleAuth(googleAuthDto);
       return res.status(HttpStatus.CREATED).json(user); 
     } catch (error) {

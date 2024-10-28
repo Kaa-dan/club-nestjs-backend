@@ -9,7 +9,7 @@ import { SharedModule } from './shared/shared.module';
 import { InterestModule } from './interest/interest.module';
 
 import { FileUploadMiddleware } from './shared/middleware/file-upload.middleware';
-
+import { MailerModule } from './mailer/mailer.module';
 @Module({
   imports: [
     UserModule,
@@ -21,6 +21,7 @@ import { FileUploadMiddleware } from './shared/middleware/file-upload.middleware
     LoginModule,
     SharedModule,
     InterestModule,
+    MailerModule,
   ],
 })
 export class AppModule {

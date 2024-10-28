@@ -1,19 +1,17 @@
-import {
-  Injectable,
-  ConflictException,
-  InternalServerErrorException,
-  BadRequestException,
+import { Injectable, ConflictException, BadRequestException, InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { hashPassword } from 'src/utils';
-import { User, ImageData } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+
+import { generateToken, hashPassword } from 'src/utils';
 import {
   UpdateUserDto,
   UpdateUserImagesDto,
 } from 'src/user/onboarding/dto/update-user.dto';
+import { ImageData } from './entities/user.entity';
+import { User } from 'src/shared/entities/user.entity';
 
 interface OnBoardingData {
   userId: string;
@@ -27,16 +25,15 @@ export class SignupService {
 
   async signUp(
     signupData: CreateUserDto,
-  ): Promise<{ status: boolean; message: string; data?: any }> {
+  ): Promise<{ status: boolean; message: string; data?: any; token: string }> {
     const { email, password } = signupData;
 
     const existingUser = await this.userModel.findOne({
       email,
     });
-    console.log(existingUser, 'exx');
 
     if (existingUser && existingUser?.registered) {
-      throw new ConflictException('Email or username already exists');
+      throw new ConflictException('Email  already exists');
     }
 
     try {
@@ -50,12 +47,14 @@ export class SignupService {
       // existingUser.isOnBoarded = 1;
 
       await existingUser.save();
-
+      const token = generateToken({ email }, '3hrs');
       // Return a success response with a status and message
       return {
         status: true,
+
         message: 'User created successfully',
         data: existingUser,
+        token,
       };
     } catch (error) {
       console.error('Error in signup:', error);

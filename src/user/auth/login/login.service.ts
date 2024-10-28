@@ -43,7 +43,7 @@ export class LoginService {
     }
 
     // Generate JWT token
-    const token = generateToken({ email: user.email }, '3hrs');
+    const token = generateToken({ email: user.email,id:user._id }, '3hrs');
 
     // Return a successful response with the token
     return {
