@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
@@ -7,6 +7,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { LoginModule } from './user/auth/login/login.module';
 import { SharedModule } from './shared/shared.module';
 import { InterestModule } from './interest/interest.module';
+
+import { FileUploadMiddleware } from './shared/middleware/file-upload.middleware';
 import { MailerModule } from './mailer/mailer.module';
 @Module({
   imports: [
@@ -22,4 +24,11 @@ import { MailerModule } from './mailer/mailer.module';
     MailerModule,
   ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(FileUploadMiddleware).forRoutes({
+      path: 'onboarding/images/:id',
+      method: RequestMethod.PUT,
+    });
+  }
+}
