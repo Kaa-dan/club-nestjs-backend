@@ -1,5 +1,11 @@
+// user.entity.ts
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+
+export class ImageData {
+  url: string;
+  public_id: string;
+}
 
 @Schema()
 export class User extends Document {
@@ -34,11 +40,25 @@ export class User extends Document {
   @Prop({ enum: ['male', 'female', 'other'] })
   gender: string;
 
-  @Prop({ required: false })
-  profileImage: string;
+  @Prop({
+    type: {
+      url: String,
+      public_id: String,
+    },
+    required: false,
+    _id: false,
+  })
+  profileImage?: ImageData;
 
-  @Prop({ required: false })
-  coverImage: string;
+  @Prop({
+    type: {
+      url: String,
+      public_id: String,
+    },
+    required: false,
+    _id: false,
+  })
+  coverImage?: ImageData;
 
   @Prop({ default: false })
   isBlocked: boolean;
@@ -48,6 +68,7 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
+
   @Prop({
     type: String,
     enum: ['google', 'apple', 'facebook', 'gmail'],
@@ -55,8 +76,17 @@ export class User extends Document {
     required: true,
   })
   signupThrough: string;
+
   @Prop({ default: false })
   isOnBoarded: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['details', 'image', 'interest', 'node'],
+    default: 'details',
+    required: true,
+  })
+  onBoardingStage: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
