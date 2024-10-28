@@ -3,13 +3,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
 import { GoogleSignIn } from './dto/google-signin-dto';
-import { generateToken } from 'src/utils';
-
+import { generateToken, hashPassword } from 'src/utils';
+import { generateRandomPassword } from 'src/utils/generatePasswor';
 @Injectable()
 export class GoogleSigninService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async googleLogin(signinData: GoogleSignIn) {
+    const hashedPassword = await hashPassword(generateRandomPassword())
     try {
       const { email, userName, imageUrl, phoneNumber, signupThrough } =
         signinData;
@@ -29,8 +30,9 @@ export class GoogleSigninService {
       }
 
       if (user && user.emailVerified) {
+        user.registered = true
         user = await user.save();
-
+        user.password = hashedPassword
         return {
           success: true,
           message: 'login successful',
@@ -41,9 +43,17 @@ export class GoogleSigninService {
         const newUser = await  this.userModel.create({
           email,
           userName : userName.split(" ")[0],
-          profileImage: imageUrl,
+          profileImage: {
+            url : imageUrl
+          },
           phoneNumber,
-          signupThrough
+          emailVerified:true,
+          registered:true,
+          signupThrough,
+          password : hashedPassword,
+          
+        
+          
         })
        const token = generateToken({email:newUser.email},"5hr")
         return {

@@ -86,7 +86,6 @@ export class User extends Document {
     required: true,
   })
   onBoardingStage: string;
-  user: import("/home/rishale/clubWize/clubwize-backend/src/user/auth/signup/entities/user.entity").ImageData;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

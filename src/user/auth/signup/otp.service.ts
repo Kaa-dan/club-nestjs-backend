@@ -32,13 +32,13 @@ export class OtpService {
     try {
       // Check if a user with the provided email already exists
       let user = await this.userModel.findOne({ email });
-      if (user?.email && user?.registered) {
+      if (user && user?.emailVerified) {
         throw new ConflictException('user with this email already exist!!');
       }
-      if (!user) {
+      await this.userModel.deleteOne({email})
         // If user doesn't exist, create a new user entry
         user = await this.userModel.create({ email, emailVerified: false });
-      }
+      
 
       // Delete any existing OTP for this email
       await this.otpModel.deleteOne({ email });
@@ -187,6 +187,8 @@ export class OtpService {
       const token = generateToken({ email }, '10min');
       return { status: true };
     } catch (error) {
+      console.log(error,"errrr");
+      
       throw error;
     }
   }

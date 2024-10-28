@@ -317,10 +317,11 @@ export class ForgotPasswordService {
       );
       return {
         success: true,
-        message: 'Change password link generated successfully',
+        message: 'A password reset link has been sent to your email. Please check your inbox to proceed.',
         status: 200,
         data: changePasswordUrl,
       };
+      
     } catch (error) {
       console.log(error, 'err');
 
