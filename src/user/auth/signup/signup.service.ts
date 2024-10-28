@@ -25,12 +25,13 @@ export class SignupService {
 
   async signUp(
     signupData: CreateUserDto,
-  ): Promise<{ status: boolean; message: string; data: any }> {
-    const { email, password, userName, firstName, lastName, gender, profileImage, coverImage } = signupData;
+  ): Promise<{ status: boolean; message: string }> {
+    const { email, password } = signupData;
 
     const existingUser = await this.userModel.findOne({
-      $or: [{ email }, { userName }],
+      email,
     });
+    console.log(existingUser, 'exx');
 
     if (existingUser && existingUser?.registered) {
       throw new ConflictException('Email or username already exists');
@@ -38,55 +39,17 @@ export class SignupService {
 
     try {
       const hashedPassword = await hashPassword(password);
-      
-      let user;
-      if (existingUser) {
-        // Update existing user
-        existingUser.password = hashedPassword;
-        existingUser.userName = userName;
-        existingUser.firstName = firstName;
-        existingUser.lastName = lastName;
-        existingUser.gender = gender;
-        existingUser.registered = true;
-        
-        if (profileImage) {
-          existingUser.profileImage = {
-            url: profileImage,
-            public_id: `profile_${Date.now()}`  // You might want to generate this differently
-          };
-        }
-        
-        if (coverImage) {
-          existingUser.coverImage = {
-            url: coverImage,
-            public_id: `cover_${Date.now()}`  // You might want to generate this differently
-          };
-        }
-        
-        user = await existingUser.save();
-      } else {
-        // Create new user
-        const newUser = new this.userModel({
-          email,
-          password: hashedPassword,
-          userName,
-          firstName,
-          lastName,
-          gender,
-          registered: true,
-          profileImage: profileImage ? {
-            url: profileImage,
-            public_id: `profile_${Date.now()}`
-          } : undefined,
-          coverImage: coverImage ? {
-            url: coverImage,
-            public_id: `cover_${Date.now()}`
-          } : undefined,
-        });
-        
-        user = await newUser.save();
-      }
 
+      existingUser.password = hashedPassword;
+
+      existingUser.registered = true;
+
+      //for identifying the step
+      // existingUser.isOnBoarded = 1;
+
+      await existingUser.save();
+
+      // Return a success response with a status and message
       return {
         status: true,
         message: 'User created successfully',
