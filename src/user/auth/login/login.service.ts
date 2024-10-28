@@ -2,31 +2,37 @@ import {
   Injectable,
   BadRequestException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { LoginDto } from './dto/login.sto';
 import { User } from 'src/shared/entities/user.entity';
-import { comparePasswords } from 'src/utils';
-import { generateToken } from 'src/utils';
+import { comparePasswords, generateToken } from 'src/utils';
+
 @Injectable()
 export class LoginService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
- 
   ) {}
 
   async login(
     loginDto: LoginDto,
   ): Promise<{ status: boolean; message: string; token?: string }> {
     const { email, password } = loginDto;
-
-    // Check if the user exists
+    try {
+         // Check if the user exists
     const user = await this.userModel.findOne({ email });
 
     if (!user) {
       // If the user is not found, throw a 400 Bad Request with a specific message
       throw new BadRequestException('No user found with this email address');
+    }
+
+    // Check if the email is verified
+    if (!user.emailVerified) {
+      // If email is not verified, throw a 403 Forbidden
+      throw new ForbiddenException('Please verify your email address to log in');
     }
 
     // Verify the password
@@ -43,7 +49,7 @@ export class LoginService {
     }
 
     // Generate JWT token
-    const token = generateToken({ email: user.email,id:user._id }, '3hrs');
+    const token = generateToken({ email: user.email, id: user._id }, '3hrs');
 
     // Return a successful response with the token
     return {
@@ -51,5 +57,13 @@ export class LoginService {
       message: 'Login successful',
       token,
     };
+    } catch (error) {
+      console.log(error);
+      
+      throw error
+    }
+ 
+
+ 
   }
 }

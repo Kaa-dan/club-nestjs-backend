@@ -14,6 +14,7 @@ export class VerifyTokenController {
     @Headers('authorization') authHeader: string, // Extract token from headers
     @Res() res: Response,
   ) {
+    
     if (!authHeader) {
       return res.status(HttpStatus.BAD_REQUEST).json({
         status: false,
@@ -26,6 +27,7 @@ export class VerifyTokenController {
     try {
       // Call the service to verify the token
       const result = await this.verify_Token.verifyToken(token);
+console.log(result,"ress");
 
       return res.status(HttpStatus.OK).json(result);
     } catch (error) {
