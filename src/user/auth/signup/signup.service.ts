@@ -7,11 +7,13 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-
 import { hashPassword } from 'src/utils';
 import { User, ImageData } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto, UpdateUserImagesDto } from 'src/user/onboarding/dto/update-user.dto';
+import {
+  UpdateUserDto,
+  UpdateUserImagesDto,
+} from 'src/user/onboarding/dto/update-user.dto';
 
 interface OnBoardingData {
   userId: string;
@@ -25,7 +27,7 @@ export class SignupService {
 
   async signUp(
     signupData: CreateUserDto,
-  ): Promise<{ status: boolean; message: string }> {
+  ): Promise<{ status: boolean; message: string; data?: any }> {
     const { email, password } = signupData;
 
     const existingUser = await this.userModel.findOne({
@@ -53,7 +55,7 @@ export class SignupService {
       return {
         status: true,
         message: 'User created successfully',
-        data: user,
+        data: existingUser,
       };
     } catch (error) {
       console.error('Error in signup:', error);
@@ -78,10 +80,13 @@ export class SignupService {
           break;
 
         case 'image':
-          await this.handleImageUpdate(user, data as { 
-            profileImage?: UpdateUserImagesDto; 
-            coverImage?: UpdateUserImagesDto 
-          });
+          await this.handleImageUpdate(
+            user,
+            data as {
+              profileImage?: UpdateUserImagesDto;
+              coverImage?: UpdateUserImagesDto;
+            },
+          );
           break;
 
         default:
@@ -124,7 +129,10 @@ export class SignupService {
 
   private async handleImageUpdate(
     user: User,
-    data: { profileImage?: UpdateUserImagesDto; coverImage?: UpdateUserImagesDto },
+    data: {
+      profileImage?: UpdateUserImagesDto;
+      coverImage?: UpdateUserImagesDto;
+    },
   ): Promise<void> {
     if (data.profileImage) {
       user.profileImage = data.profileImage as ImageData;
