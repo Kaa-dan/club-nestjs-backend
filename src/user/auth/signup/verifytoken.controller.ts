@@ -12,7 +12,6 @@ export class VerifyTokenController {
     @Headers('authorization') authHeader: string, // Extract token from headers
     @Res() res: Response,
   ) {
-    console.log(authHeader,"userr");
     
     if (!authHeader) {
       return res.status(HttpStatus.BAD_REQUEST).json({

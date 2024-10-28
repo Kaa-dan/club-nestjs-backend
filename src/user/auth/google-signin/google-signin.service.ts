@@ -4,13 +4,13 @@ import { Model } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
 import { GoogleSignIn } from './dto/google-signin-dto';
 import { generateToken, hashPassword } from 'src/utils';
-import { generateRandomPassword } from 'src/utils/generatePasswor';
+import { generateRandomPassword } from 'src/utils/generatePassword';
 @Injectable()
 export class GoogleSigninService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async googleLogin(signinData: GoogleSignIn) {
-    const hashedPassword = await hashPassword(generateRandomPassword())
+    const hashedPassword = await hashPassword(generateRandomPassword());
     try {
       const { email, userName, imageUrl, phoneNumber, signupThrough } =
         signinData;
@@ -30,39 +30,35 @@ export class GoogleSigninService {
       }
 
       if (user && user.emailVerified) {
-        user.registered = true
+        user.registered = true;
         user = await user.save();
-        user.password = hashedPassword
+        user.password = hashedPassword;
         return {
           success: true,
           message: 'login successful',
           token,
           user,
         };
-      }else{
-        const newUser = await  this.userModel.create({
+      } else {
+        const newUser = await this.userModel.create({
           email,
-          userName : userName.split(" ")[0],
+          userName: userName.split(' ')[0],
           profileImage: {
-            url : imageUrl
+            url: imageUrl,
           },
           phoneNumber,
-          emailVerified:true,
-          registered:true,
+          emailVerified: true,
+          registered: true,
           signupThrough,
-          password : hashedPassword,
-          
-        
-          
-        })
-       const token = generateToken({email:newUser.email},"5hr")
+          password: hashedPassword,
+        });
+        const token = generateToken({ email: newUser.email }, '5hr');
         return {
-          success:true,
-          message:'login successful',
+          success: true,
+          message: 'login successful',
           token,
-          user:newUser
-
-        }
+          user: newUser,
+        };
       }
     } catch (error) {
       throw error;
