@@ -1,22 +1,57 @@
 import { Injectable } from '@nestjs/common';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
+import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { UploadService } from 'src/shared/upload/upload.service';
+import { ServiceResponse } from 'src/shared/types/service.response.type';
 
 @Injectable()
 export class NodeService {
-  create(createNodeDto: CreateNodeDto) {
-    return 'This action adds a new node';
+  constructor(
+    @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
+    private readonly uploadService: UploadService,
+  ) {}
+
+  async create(createNodeDto: CreateNodeDto) {
+    const { name, about, description, location, profileImage, coverImage } =
+      createNodeDto;
+    const profileImageUpload = this.uploadService.uploadFile(
+      profileImage.buffer,
+      'node',
+    );
+    const coverImageUpload = this.uploadService.uploadFile(
+      coverImage.buffer,
+      'node',
+    );
+    const [profileImageResult, coverImageResult] = await Promise.all([
+      profileImageUpload,
+      coverImageUpload,
+    ]);
+    const node = new this.nodeModel({
+      name,
+      about,
+      description,
+      location,
+      profileImage: profileImageResult.url,
+      coverImage: coverImageResult.url,
+    });
+    await node.save();
+    return 'Successfully added a new node';
   }
 
-  findAll() {
-    return `This action returns all node`;
+  async findAll() {
+    const nodes = await this.nodeModel.find();
+    return nodes;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} node`;
+  async findOne(nodeId: string) {
+    const node = await this.nodeModel.findById(nodeId);
+    return node;
   }
 
-  update(id: number, updateNodeDto: UpdateNodeDto) {
+  update(id: string, updateNodeDto: UpdateNodeDto) {
     return `This action updates a #${id} node`;
   }
 

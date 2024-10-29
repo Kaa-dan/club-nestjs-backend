@@ -13,16 +13,15 @@ export class UploadService {
     });
   }
 
-  async uploadFile(file: Express.Multer.File) {
+  async uploadFile(file: Buffer, folder: string) {
     try {
       // Convert the buffer to base64
-      const b64 = Buffer.from(file.buffer).toString('base64');
-      const dataURI = `data:${file.mimetype};base64,${b64}`;
+      const b64 = Buffer.from(file).toString('base64');
 
       // Upload to cloudinary
-      const result = await cloudinary.uploader.upload(dataURI, {
+      const result = await cloudinary.uploader.upload(b64, {
         resource_type: 'auto',
-        folder: 'uploads', // Optional: organize uploads in folders
+        folder: folder,
       });
 
       return {

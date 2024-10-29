@@ -4,7 +4,7 @@ import { Document, Types } from 'mongoose';
 @Schema({
   collection: 'nodes',
 })
-export class Group extends Document {
+export class Node_ extends Document {
   @Prop({ required: true })
   name: string;
 
@@ -75,4 +75,4 @@ export class Group extends Document {
   }[];
 }
 
-export const GroupSchema = SchemaFactory.createForClass(Group);
+export const NodeSchema = SchemaFactory.createForClass(Node_);
