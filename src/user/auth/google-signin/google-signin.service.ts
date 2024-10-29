@@ -7,7 +7,7 @@ import { generateToken, hashPassword } from 'src/utils';
 import { generateRandomPassword } from 'src/utils/generatePassword';
 @Injectable()
 export class GoogleSigninService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async googleLogin(signinData: GoogleSignIn) {
     const hashedPassword = await hashPassword(generateRandomPassword());
@@ -16,7 +16,7 @@ export class GoogleSigninService {
         signinData;
 
       // Check if the user already exists
-      let user = await this.userModel.findOne({ email });
+      let user = await this.userModel.findOne({ email }).select("-password");
 
       // User exists, generate a token and send response
       const token = generateToken({ email }, '2hr');
@@ -53,11 +53,15 @@ export class GoogleSigninService {
           password: hashedPassword,
         });
         const token = generateToken({ email: newUser.email }, '5hr');
+
+        const sanitizedUser = JSON.parse(JSON.stringify(newUser));
+        delete sanitizedUser.password;
+
         return {
           success: true,
           message: 'login successful',
           token,
-          user: newUser,
+          user: sanitizedUser,
         };
       }
     } catch (error) {
