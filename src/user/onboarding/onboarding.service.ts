@@ -12,7 +12,6 @@ import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { OnboardingStage } from './dto/onboarding-stages.enum';
 import { UploadService } from 'src/shared/upload/upload.service';
 
-
 @Injectable()
 export class OnboardingService {
   private readonly stageOrder = [
@@ -108,7 +107,8 @@ export class OnboardingService {
       // Handle profile image upload
       if (imageFiles.profileImage) {
         const profileImageResult = await this.uploadService.uploadFile(
-          imageFiles.profileImage,
+          imageFiles.profileImage.buffer,
+          'user',
         );
 
         // Delete old profile image if it exists
@@ -130,7 +130,8 @@ export class OnboardingService {
       // Handle cover image upload
       if (imageFiles.coverImage) {
         const coverImageResult = await this.uploadService.uploadFile(
-          imageFiles.coverImage,
+          imageFiles.coverImage.buffer,
+          'user',
         );
 
         // Delete old cover image if it exists
