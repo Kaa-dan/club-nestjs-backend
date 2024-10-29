@@ -2,6 +2,9 @@ import { Body, Controller, HttpStatus, Post, Res } from '@nestjs/common';
 import { GoogleSigninService } from './google-signin.service';
 import { Response } from 'express';
 import { GoogleAuthDto } from '../google-signup/dto/google-auth';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
+
+@SkipAuth()
 @Controller()
 export class GoogleSigninController {
   constructor(private readonly googleSignInService: GoogleSigninService) {}

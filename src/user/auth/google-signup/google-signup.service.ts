@@ -5,7 +5,7 @@ import { User } from 'src/shared/entities/user.entity';
 import { GoogleAuthDto } from './dto/google-auth';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { generateToken, hashPassword } from 'src/utils';
-import { generateRandomPassword } from 'src/utils/generatePasswor';
+import { generateRandomPassword } from 'src/utils/generatePassword';
 
 @Injectable()
 export class GoogleSignupService {

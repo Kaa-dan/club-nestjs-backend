@@ -2,7 +2,9 @@
 import { Controller, Post, Headers, Res, HttpStatus } from '@nestjs/common';
 import { VerifyToken } from './verifytoken.service';
 import { Response } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller()
 export class VerifyTokenController {
   constructor(private readonly verify_Token: VerifyToken) {}
