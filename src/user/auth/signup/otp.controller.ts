@@ -14,7 +14,9 @@ import {
 import { OtpService } from './otp.service';
 import { Response } from 'express'; // Import Response type from Express
 import { SendOtpDto } from './dto/send-otp-dto';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller()
 export class OtpController {
   constructor(private readonly otpService: OtpService) {}

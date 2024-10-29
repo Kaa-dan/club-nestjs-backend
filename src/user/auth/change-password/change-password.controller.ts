@@ -11,6 +11,9 @@ import {
 import { TokenExpiredError } from 'jsonwebtoken';
 import { ChangePasswordService } from './change-password.service';
 import { Response } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
+
+@SkipAuth()
 @Controller()
 export class ChangePasswordController {
   constructor(private readonly changePasswordService: ChangePasswordService) {}

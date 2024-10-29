@@ -81,7 +81,7 @@ export class User extends Document {
   
   @Prop({
     type: String,
-    enum: ['details', 'image', 'interest', 'node'],
+    enum: ['details', 'image', 'interest', 'node', 'completed'],
     default: 'details',
     required: true,
   })

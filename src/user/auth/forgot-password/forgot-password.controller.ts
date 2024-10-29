@@ -3,7 +3,9 @@ import { ForgotPasswordService } from './forgot-password.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { Response } from 'express';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller()
 export class ForgotPasswordController {
   constructor(private readonly forgotPasswordService: ForgotPasswordService) {}

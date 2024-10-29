@@ -3,7 +3,9 @@ import { Response } from 'express'; // Import Express Response type
 import { LoginService } from './login.service'; // Import the LoginService
 import { LoginDto } from './dto/login.sto';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common'; // Import necessary exceptions
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller('login')
 export class LoginController {
   constructor(private readonly loginService: LoginService) {}
