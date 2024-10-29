@@ -54,6 +54,8 @@ export class GoogleSignupService {
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else {
+        console.log("hello");
+        
         const newUser = new this.userModel({
           email,
           signupThrough,
