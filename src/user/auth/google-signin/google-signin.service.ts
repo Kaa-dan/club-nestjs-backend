@@ -25,7 +25,7 @@ export class GoogleSigninService {
           success: true,
           message: 'login successful',
           token,
-          user,
+          data: user,
         };
       }
 
@@ -37,7 +37,7 @@ export class GoogleSigninService {
           success: true,
           message: 'login successful',
           token,
-          user,
+          data: user,
         };
       } else {
         const newUser = await this.userModel.create({
@@ -61,7 +61,7 @@ export class GoogleSigninService {
           success: true,
           message: 'login successful',
           token,
-          user: sanitizedUser,
+          data: sanitizedUser,
         };
       }
     } catch (error) {
