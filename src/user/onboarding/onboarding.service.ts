@@ -26,7 +26,7 @@ export class OnboardingService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(
@@ -99,11 +99,10 @@ export class OnboardingService {
       }
 
       const updateData: {
-        onBoardingStage: string;
         profileImage?: ImageData;
         coverImage?: ImageData;
       } = {
-        onBoardingStage: this.getNextStage(OnboardingStage.IMAGE),
+
       };
 
       // Handle profile image upload
@@ -154,7 +153,7 @@ export class OnboardingService {
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
-          { $set: updateData },
+          { $set: updateData,onBoardingStage: this.getNextStage(OnboardingStage.IMAGE), },
           { new: true, runValidators: true },
         )
         .select('-password');
@@ -194,7 +193,7 @@ export class OnboardingService {
           id,
           {
             $set: {
-              interests: updateInterestDto.interests,
+              ...updateInterestDto,
               onBoardingStage: this.getNextStage(OnboardingStage.INTEREST),
             },
           },

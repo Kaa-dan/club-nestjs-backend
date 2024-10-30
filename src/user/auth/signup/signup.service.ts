@@ -48,12 +48,16 @@ export class SignupService {
 
       await existingUser.save();
       const token = generateToken({ email }, '3hrs');
+
+      const sanitizedUser = JSON.parse(JSON.stringify(existingUser));
+      delete sanitizedUser.password;
+
       // Return a success response with a status and message
       return {
         status: true,
 
         message: 'User created successfully',
-        data: existingUser,
+        data: sanitizedUser,
         token,
       };
     } catch (error) {

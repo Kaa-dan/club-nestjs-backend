@@ -75,11 +75,14 @@ export class GoogleSignupService {
 
       // Save the new user to the database
 
+      const user = await this.userModel.findOne({ email }).select('-password');
+
       return {
         success: true,
         message: 'signup successful, please login',
         status: 200,
         token,
+        data: user,
       };
     } catch (error) {
       throw error;
