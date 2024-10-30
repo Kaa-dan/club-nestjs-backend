@@ -2,9 +2,19 @@ import { Module } from '@nestjs/common';
 import { NodeService } from './node.service';
 import { NodeController } from './node.controller';
 import { SharedModule } from 'src/shared/shared.module';
+import { MongooseModule } from '@nestjs/mongoose';
+import {
+  NodeJoinRequest,
+  NodeJoinRequestSchema,
+} from 'src/shared/entities/node-member-requests.entity';
 
 @Module({
-  imports: [SharedModule],
+  imports: [
+    SharedModule,
+    MongooseModule.forFeature([
+      { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
+    ]),
+  ],
   controllers: [NodeController],
   providers: [NodeService],
 })
