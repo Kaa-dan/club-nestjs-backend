@@ -21,13 +21,10 @@ export class Node_ extends Document {
   @Prop({ required: true })
   description: string;
 
-  @Prop()
-  coverPic?: string;
-
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'users', required: true },
+        user: { type: Types.ObjectId, ref: 'users', required: true },
         role: {
           type: String,
           enum: ['admin', 'moderator', 'member'],
@@ -47,14 +44,14 @@ export class Node_ extends Document {
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'users', required: true },
+        user: { type: Types.ObjectId, ref: 'users', required: true },
         date: { type: Date, required: true },
       },
     ],
     default: [],
   })
   blockedUsers: {
-    userId: Types.ObjectId;
+    user: Types.ObjectId;
     date: Date;
   }[];
 
