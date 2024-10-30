@@ -193,7 +193,7 @@ export class OnboardingService {
           id,
           {
             $set: {
-              interests: updateInterestDto.interests,
+              ...updateInterestDto,
               onBoardingStage: this.getNextStage(OnboardingStage.INTEREST),
             },
           },
