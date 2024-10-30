@@ -6,7 +6,7 @@ export class ImageData {
   public_id: string;
 }
 
-@Schema({ collection: 'users' })
+@Schema({ collection: 'users', timestamps: true })
 export class User extends Document {
   @Prop({ trim: true })
   userName: string;
@@ -81,7 +81,7 @@ export class User extends Document {
 
   @Prop({ default: false })
   isOnBoarded: boolean;
-  
+
   @Prop({
     type: String,
     enum: ['details', 'image', 'interest', 'node', 'completed'],

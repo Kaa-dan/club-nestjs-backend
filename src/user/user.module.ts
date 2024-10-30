@@ -2,18 +2,17 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtVerifyGuard } from './guards/jwt.verify.guard';
+import { UserAuthGuard } from './guards/user-auth.guard';
+import { SharedModule } from 'src/shared/shared.module';
+import { NodeModule } from './node/node.module';
 
 @Module({
-  imports: [
-    AuthModule,
-    OnboardingModule,
-  ],
+  imports: [AuthModule, OnboardingModule, SharedModule, NodeModule],
   providers: [
     {
       provide: APP_GUARD,
-      useClass: JwtVerifyGuard
-    }
-  ]
+      useClass: UserAuthGuard,
+    },
+  ],
 })
 export class UserModule {}
