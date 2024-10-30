@@ -59,6 +59,9 @@ export class User extends Document {
   })
   coverImage?: ImageData;
 
+  @Prop({required: false})
+  interests?: string[]
+
   @Prop({ default: false })
   isBlocked: boolean;
 
