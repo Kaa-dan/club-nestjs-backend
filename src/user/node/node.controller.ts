@@ -11,12 +11,15 @@ import {
   UsePipes,
   Put,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
 import { NodeService } from './node.service';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
+import { request } from 'http';
+import { User } from 'src/shared/entities/user.entity';
 
 @Controller('node')
 export class NodeController {
@@ -57,6 +60,7 @@ export class NodeController {
       profileImage?: Express.Multer.File[];
       coverImage?: Express.Multer.File[];
     },
+    @Req() request: Request & { user: User },
   ) {
     console.log('Files', files);
     if (!files.profileImage?.[0] || !files.coverImage?.[0]) {
@@ -65,11 +69,14 @@ export class NodeController {
       );
     }
 
-    return this.nodeService.create({
-      ...createNodeBody,
-      profileImage: files.profileImage[0],
-      coverImage: files.coverImage[0],
-    });
+    return this.nodeService.create(
+      {
+        ...createNodeBody,
+        profileImage: files.profileImage[0],
+        coverImage: files.coverImage[0],
+      },
+      request.user._id as string,
+    );
   }
 
   @Get()
@@ -80,6 +87,32 @@ export class NodeController {
   @Get(':nodeId')
   findOne(@Param('nodeId') id: string) {
     return this.nodeService.findOne(id);
+  }
+
+  @Post('/request-to-join/:nodeId')
+  requestToJoin(
+    @Param('nodeId') nodeId: string,
+    @Req() request: Request & { user: User },
+  ) {
+    return this.nodeService.requestToJoin(nodeId, request.user._id as string);
+  }
+
+  @Get('/join-requests/:nodeId')
+  getAllJoinRequests(@Param('nodeId') nodeId: string) {
+    return this.nodeService.getAllJoinRequests(nodeId);
+  }
+
+  @Patch('/member-request/:nodeId/:status')
+  updateJoinRequest(
+    @Param('nodeId') nodeId: string,
+    @Param('status') status: 'accepted' | 'rejected',
+    @Req() request: Request & { user: User },
+  ) {
+    return this.nodeService.updateNodeJoinRequest(
+      nodeId,
+      request.user._id as string,
+      status,
+    );
   }
 
   @Put(':nodeId')

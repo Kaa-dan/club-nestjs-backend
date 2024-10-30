@@ -3,13 +3,17 @@ import { Document, Types } from 'mongoose';
 
 @Schema({
   collection: 'nodes',
+  timestamps: true,
 })
 export class Node_ extends Document {
   @Prop({ required: true })
   name: string;
 
   @Prop()
-  profilePic?: string;
+  profileImage?: string;
+
+  @Prop()
+  coverImage?: string;
 
   @Prop({ required: true })
   about: string;
@@ -23,7 +27,7 @@ export class Node_ extends Document {
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
+        userId: { type: Types.ObjectId, ref: 'users', required: true },
         role: {
           type: String,
           enum: ['admin', 'moderator', 'member'],
@@ -35,7 +39,7 @@ export class Node_ extends Document {
     default: [],
   })
   members: {
-    userId: Types.ObjectId;
+    user: Types.ObjectId | string;
     role: 'admin' | 'moderator' | 'member';
     designation: string;
   }[];
@@ -43,7 +47,7 @@ export class Node_ extends Document {
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
+        userId: { type: Types.ObjectId, ref: 'users', required: true },
         date: { type: Date, required: true },
       },
     ],
@@ -54,8 +58,14 @@ export class Node_ extends Document {
     date: Date;
   }[];
 
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  creator: Types.ObjectId;
+
   @Prop({ default: false })
   isVerified?: boolean;
+
+  @Prop({ required: false })
+  location: string;
 
   @Prop({
     type: [
