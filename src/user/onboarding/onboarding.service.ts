@@ -47,9 +47,9 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== OnboardingStage.DETAILS) {
-        throw new BadRequestException('Invalid onboarding stage');
-      }
+      // if (user.onBoardingStage !== OnboardingStage.DETAILS) {
+      //   throw new BadRequestException('Invalid onboarding stage');
+      // }
 
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
@@ -93,9 +93,9 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== OnboardingStage.IMAGE) {
-        throw new BadRequestException('Invalid onboarding stage');
-      }
+      // if (user.onBoardingStage !== OnboardingStage.IMAGE) {
+      //   throw new BadRequestException('Invalid onboarding stage');
+      // }
 
       const updateData: {
         profileImage?: ImageData;
@@ -185,9 +185,9 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== OnboardingStage.INTEREST) {
-        throw new BadRequestException('Invalid onboarding stage');
-      }
+      // if (user.onBoardingStage !== OnboardingStage.INTEREST) {
+      //   throw new BadRequestException('Invalid onboarding stage');
+      // }
 
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
@@ -225,9 +225,9 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== OnboardingStage.NODE) {
-        throw new BadRequestException('Invalid onboarding stage');
-      }
+      // if (user.onBoardingStage !== OnboardingStage.NODE) {
+      //   throw new BadRequestException('Invalid onboarding stage');
+      // }
 
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
