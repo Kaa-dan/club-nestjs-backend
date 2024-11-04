@@ -62,7 +62,6 @@ export class NodeController {
     },
     @Req() request: Request & { user: User },
   ) {
-    console.log('Files', files);
     if (!files.profileImage?.[0] || !files.coverImage?.[0]) {
       throw new BadRequestException(
         'Both profile and cover images are required',

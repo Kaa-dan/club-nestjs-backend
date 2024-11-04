@@ -6,7 +6,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
-import { NodeJoinRequest } from 'src/shared/entities/node-member-requests.entity';
+import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 
 @Injectable()
 export class NodeService {
@@ -72,7 +72,11 @@ export class NodeService {
 
   async findOne(nodeId: string) {
     const node = await this.nodeModel.findById(nodeId);
-    return node;
+    return {
+      success: true,
+      message: 'Successfully fetched node',
+      data: node,
+    };
   }
 
   async requestToJoin(nodeId: string, userId: string) {

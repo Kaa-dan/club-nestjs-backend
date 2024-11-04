@@ -95,14 +95,10 @@ export class OnboardingController {
   }
 
   @Put('complete')
-  async completeOnboarding(
-    @Body() updateInterestDto: UpdateInterestDto,
-    @Req() req: Request,
-  ) {
+  async completeOnboarding(@Req() req: Request) {
     try {
-      return await this.onBoardingService.updateInterests(
+      return await this.onBoardingService.completeOnboarding(
         String(req.user._id),
-        updateInterestDto,
       );
     } catch (error) {
       throw new HttpException(

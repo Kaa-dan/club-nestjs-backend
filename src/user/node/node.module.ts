@@ -6,7 +6,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import {
   NodeJoinRequest,
   NodeJoinRequestSchema,
-} from 'src/shared/entities/node-member-requests.entity';
+} from 'src/shared/entities/node-join-requests.entity';
 
 @Module({
   imports: [
