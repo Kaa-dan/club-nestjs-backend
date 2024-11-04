@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import { OtpService } from './otp.service';
 import { Response } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller('resend-otp')
 export class ResendController {
   constructor(private readonly otpService: OtpService) {}

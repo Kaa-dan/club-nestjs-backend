@@ -7,7 +7,13 @@ import { GoogleAuthModule } from './google-signup/google-signup.module';
 import { GoogleSigninModule } from './google-signin/google-signin.module';
 
 @Module({
-  imports: [SignupModule, LoginModule, ForgotPasswordModule, ChangePasswordModule, GoogleAuthModule, GoogleSigninModule],
-  
+  imports: [
+    SignupModule,
+    LoginModule,
+    ForgotPasswordModule,
+    ChangePasswordModule,
+    GoogleAuthModule,
+    GoogleSigninModule,
+  ],
 })
 export class AuthModule {}

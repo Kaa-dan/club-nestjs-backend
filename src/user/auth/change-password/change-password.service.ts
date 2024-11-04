@@ -23,7 +23,6 @@ export class ChangePasswordService {
       if (!token) {
         throw new BadRequestException('Token is required');
       }
-console.log(token,"tooo");
 
       // Step 2: Verify the token
       const decoded = verifyToken(token) as { email: string };

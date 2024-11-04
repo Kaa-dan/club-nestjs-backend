@@ -11,6 +11,7 @@ import { CreateDetailsDto } from './dto/create-details.dto';
 
 import { OnboardingService } from './onboarding.service';
 import { UploadService } from 'src/shared/upload/upload.service';
+import { UpdateInterestDto } from './dto/update-interest.dto';
 
 
 
@@ -57,6 +58,25 @@ export class OnboardingController {
       };
 
       return await this.onBoardingService.updateImages(id, imageFiles);
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Internal Server Error',
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('interest/:id')
+  async updateInterest(
+    @Param('id') id: string,
+    @Body() updateInterestDto: UpdateInterestDto,
+  ){
+    try {
+      return await this.onBoardingService.updateInterests(id, updateInterestDto);
     } catch (error) {
       throw new HttpException(
         {

@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, ImageData } from '../auth/signup/entities/user.entity';
 import { CreateDetailsDto } from './dto/create-details.dto';
 import { UpdateInterestDto } from './dto/update-interest.dto';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { OnboardingStage } from './dto/onboarding-stages.enum';
 import { UploadService } from 'src/shared/upload/upload.service';
+import { ImageData, User } from 'src/shared/entities/user.entity';
 
 
 @Injectable()
@@ -20,12 +20,13 @@ export class OnboardingService {
     OnboardingStage.IMAGE,
     OnboardingStage.INTEREST,
     OnboardingStage.NODE,
+    OnboardingStage.COMPLETED,
   ];
 
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(
@@ -98,11 +99,10 @@ export class OnboardingService {
       }
 
       const updateData: {
-        onBoardingStage: string;
         profileImage?: ImageData;
         coverImage?: ImageData;
       } = {
-        onBoardingStage: this.getNextStage(OnboardingStage.IMAGE),
+
       };
 
       // Handle profile image upload
@@ -153,7 +153,7 @@ export class OnboardingService {
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
-          { $set: updateData },
+          { $set: updateData,onBoardingStage: this.getNextStage(OnboardingStage.IMAGE), },
           { new: true, runValidators: true },
         )
         .select('-password');
@@ -193,7 +193,7 @@ export class OnboardingService {
           id,
           {
             $set: {
-              interests: updateInterestDto.interests,
+              ...updateInterestDto,
               onBoardingStage: this.getNextStage(OnboardingStage.INTEREST),
             },
           },
@@ -234,6 +234,7 @@ export class OnboardingService {
           {
             $set: {
               isOnBoarded: true,
+              OnboardingStage: this.getNextStage(OnboardingStage.NODE),
             },
           },
           { new: true, runValidators: true },
