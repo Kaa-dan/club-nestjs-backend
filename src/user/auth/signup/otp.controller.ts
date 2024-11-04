@@ -64,7 +64,6 @@ export class OtpController {
   ) {
     try {
       const result = await this.otpService.verifyOtp(email, otp);
-      console.log(result, 'resss');
       return res.status(HttpStatus.OK).json({
         statusCode: HttpStatus.OK,
         message: 'Email verified successfully',
