@@ -7,6 +7,7 @@ export enum MemberRole {
   MEMBER = 'member',
 }
 
+// type for members
 export interface IMember {
   userId: Types.ObjectId;
   role: MemberRole;
@@ -14,18 +15,17 @@ export interface IMember {
   date: Date;
 }
 
+// type for blocked members
 export interface IBlockedUser {
   userId: Types.ObjectId;
   date: Date;
 }
 
-export type ClubDocument = Club & Document;
-
 @Schema({
   collection: 'clubs',
-  timestamps: true, // This will automatically add createdAt and updatedAt fields
+  timestamps: true,
 })
-export class Club {
+export class Club extends Document {
   @Prop({ required: true })
   name: string;
 
@@ -33,7 +33,7 @@ export class Club {
   about: string;
 
   @Prop({ required: true })
-  description: string; // Fixed typo in 'description'
+  description: string;
 
   @Prop({ required: true })
   profileImage: string;
