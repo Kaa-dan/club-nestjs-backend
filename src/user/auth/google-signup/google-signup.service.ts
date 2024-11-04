@@ -17,7 +17,7 @@ export class GoogleSignupService {
 
     try {
       let token: string;
-    const hashedPassword = await hashPassword(generateRandomPassword())
+      const hashedPassword = await hashPassword(generateRandomPassword());
       // Check if the user already exists by email
       const existingUser = await this.userModel.findOne({ email });
       if (
@@ -25,18 +25,14 @@ export class GoogleSignupService {
         existingUser.registered &&
         existingUser.emailVerified
       ) {
-
         throw new ConflictException('User with this email already exists');
       }
 
       if (existingUser && existingUser.emailVerified) {
         existingUser.registered = true;
-        existingUser.signupThrough = signupThrough
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id : ""
-        };
-        existingUser.password = hashedPassword
+        existingUser.signupThrough = signupThrough;
+        (existingUser.profileImage = imageUrl),
+          (existingUser.password = hashedPassword);
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else if (
@@ -47,11 +43,9 @@ export class GoogleSignupService {
         existingUser.registered = true;
         existingUser.emailVerified = true;
         existingUser.signupThrough = signupThrough;
-        existingUser.password = hashedPassword
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id : ""
-        }
+        existingUser.password = hashedPassword;
+        existingUser.profileImage = imageUrl;
+
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else {
@@ -60,12 +54,12 @@ export class GoogleSignupService {
           signupThrough,
           userName: userName.split(' ')[0],
           profileImage: {
-            url : imageUrl
+            url: imageUrl,
           },
           phoneNumber,
           emailVerified: true,
           registered: true,
-          password:hashedPassword
+          password: hashedPassword,
         });
         await newUser.save();
         token = generateToken({ email: newUser.email }, '3hr');

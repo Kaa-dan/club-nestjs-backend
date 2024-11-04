@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, BadRequestException, InternalServerErrorException,
+import {
+  Injectable,
+  ConflictException,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -6,10 +10,7 @@ import { Model } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 
 import { generateToken, hashPassword } from 'src/utils';
-import {
-  UpdateUserDto,
-  UpdateUserImagesDto,
-} from 'src/user/onboarding/dto/update-user.dto';
+import { UpdateUserDto } from 'src/user/onboarding/dto/update-user.dto';
 import { ImageData } from './entities/user.entity';
 import { User } from 'src/shared/entities/user.entity';
 
@@ -86,8 +87,8 @@ export class SignupService {
           await this.handleImageUpdate(
             user,
             data as {
-              profileImage?: UpdateUserImagesDto;
-              coverImage?: UpdateUserImagesDto;
+              profileImage?: string;
+              coverImage?: string;
             },
           );
           break;
@@ -133,16 +134,16 @@ export class SignupService {
   private async handleImageUpdate(
     user: User,
     data: {
-      profileImage?: UpdateUserImagesDto;
-      coverImage?: UpdateUserImagesDto;
+      profileImage?: string;
+      coverImage?: string;
     },
   ): Promise<void> {
     if (data.profileImage) {
-      user.profileImage = data.profileImage as ImageData;
+      user.profileImage = data.profileImage;
     }
 
     if (data.coverImage) {
-      user.coverImage = data.coverImage as ImageData;
+      user.coverImage = data.coverImage;
     }
 
     user.onBoardingStage = 'image';
