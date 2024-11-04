@@ -72,7 +72,11 @@ export class NodeService {
 
   async findOne(nodeId: string) {
     const node = await this.nodeModel.findById(nodeId);
-    return node;
+    return {
+      success: true,
+      message: 'Successfully fetched node',
+      data: node,
+    };
   }
 
   async requestToJoin(nodeId: string, userId: string) {
