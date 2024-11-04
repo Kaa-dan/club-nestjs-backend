@@ -12,13 +12,11 @@ import { comparePasswords, generateToken } from 'src/utils';
 
 @Injectable()
 export class LoginService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
-  ) { }
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async login(
     loginDto: LoginDto,
-  ): Promise<{ status: boolean; message: string; token?: string, data: any }> {
+  ): Promise<{ status: boolean; message: string; token?: string; data: any }> {
     const { email, password } = loginDto;
     try {
       // Check if the user exists
@@ -32,7 +30,9 @@ export class LoginService {
       // Check if the email is verified
       if (!user.emailVerified) {
         // If email is not verified, throw a 403 Forbidden
-        throw new ForbiddenException('Please verify your email address to log in');
+        throw new ForbiddenException(
+          'Please verify your email address to log in',
+        );
       }
 
       // Verify the password
@@ -64,10 +64,7 @@ export class LoginService {
     } catch (error) {
       console.log(error);
 
-      throw error
+      throw error;
     }
-
-
-
   }
 }
