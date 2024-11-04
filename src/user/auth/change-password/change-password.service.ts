@@ -23,12 +23,10 @@ export class ChangePasswordService {
       if (!token) {
         throw new BadRequestException('Token is required');
       }
-console.log(token,"tooo");
 
       // Step 2: Verify the token
       const decoded = verifyToken(token) as { email: string };
-      console.log(decoded,"deccc");
-      
+
       if (!decoded) {
         throw new BadRequestException('Invalid or expired token');
       }
@@ -37,7 +35,7 @@ console.log(token,"tooo");
       if (!user) {
         throw new NotFoundException('User not found');
       }
-const hashedPassword = await hashPassword(password)
+      const hashedPassword = await hashPassword(password);
       user.password = hashedPassword;
       await user.save();
 

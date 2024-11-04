@@ -1,24 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema()
+@Schema({ collection: 'users', timestamps: true })
 export class User extends Document {
-  @Prop()
+  @Prop({ trim: true })
   userName: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true, trim: true })
   email: string;
 
   @Prop()
   password: string;
 
-  @Prop({ required: false })
+  @Prop({ required: false, trim: true })
   firstName: string;
 
-  @Prop({ required: false })
+  @Prop({ required: false, trim: true })
   lastName: string;
 
-  @Prop({ required: false })
+  @Prop({ required: false, trim: true })
   phoneNumber: string;
 
   @Prop({
@@ -34,11 +34,21 @@ export class User extends Document {
   @Prop({ enum: ['male', 'female', 'other'] })
   gender: string;
 
-  @Prop({ required: false })
-  profileImage: string;
+  @Prop({
+    type: String,
+    required: false,
+  })
+  profileImage?: string;
+
+  @Prop({
+    type: String,
+    required: false,
+    _id: false,
+  })
+  coverImage?: string;
 
   @Prop({ required: false })
-  coverImage: string;
+  interests?: string[];
 
   @Prop({ default: false })
   isBlocked: boolean;
@@ -48,6 +58,7 @@ export class User extends Document {
 
   @Prop({ default: false })
   registered: boolean;
+
   @Prop({
     type: String,
     enum: ['google', 'apple', 'facebook', 'gmail'],
@@ -55,8 +66,17 @@ export class User extends Document {
     required: true,
   })
   signupThrough: string;
+
   @Prop({ default: false })
   isOnBoarded: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['details', 'image', 'interest', 'node', 'completed'],
+    default: 'details',
+    required: true,
+  })
+  onBoardingStage: 'details' | 'image' | 'interest' | 'node' | 'completed';
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

@@ -8,9 +8,12 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import {TokenExpiredError} from 'jsonwebtoken'
+import { TokenExpiredError } from 'jsonwebtoken';
 import { ChangePasswordService } from './change-password.service';
 import { Response } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
+
+@SkipAuth()
 @Controller()
 export class ChangePasswordController {
   constructor(private readonly changePasswordService: ChangePasswordService) {}
@@ -26,28 +29,24 @@ export class ChangePasswordController {
         password,
         authorization,
       );
-     return res.status(HttpStatus.OK).json(response);
+      return res.status(HttpStatus.OK).json(response);
     } catch (error) {
-      console.log(error,"errr");
       if (error instanceof TokenExpiredError) {
-      return   res.status(401).json(error)
+        return res.status(401).json(error);
       }
       if (error instanceof BadRequestException) {
-       return  res.status(HttpStatus.BAD_REQUEST).json(error);
+        return res.status(HttpStatus.BAD_REQUEST).json(error);
       }
 
       if (error instanceof NotFoundException) {
-      return   res.status(HttpStatus.NOT_FOUND).json(error);
+        return res.status(HttpStatus.NOT_FOUND).json(error);
       }
-      
-    return   res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+
+      return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         success: false,
         status: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Internal server error',
       });
     }
-   
-    
-  
   }
 }

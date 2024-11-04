@@ -8,7 +8,9 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller()
 export class SignupController {
   constructor(private readonly signupService: SignupService) {}
