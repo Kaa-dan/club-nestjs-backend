@@ -1,33 +1,31 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-
 import { Document, Types } from 'mongoose';
 
-enum MemberRole {
+export enum MemberRole {
   ADMIN = 'admin',
   MODERATOR = 'moderator',
   MEMBER = 'member',
 }
 
-//type for members
-interface IMember {
-  userID: Types.ObjectId;
+export interface IMember {
+  userId: Types.ObjectId;
   role: MemberRole;
   designation: string;
   date: Date;
 }
 
-//type for blocked members
-interface IBlockedUser {
+export interface IBlockedUser {
   userId: Types.ObjectId;
   date: Date;
 }
 
-//schema
+export type ClubDocument = Club & Document;
 
 @Schema({
   collection: 'clubs',
+  timestamps: true, // This will automatically add createdAt and updatedAt fields
 })
-export class Club extends Document {
+export class Club {
   @Prop({ required: true })
   name: string;
 
@@ -35,7 +33,7 @@ export class Club extends Document {
   about: string;
 
   @Prop({ required: true })
-  decription: string;
+  description: string; // Fixed typo in 'description'
 
   @Prop({ required: true })
   profileImage: string;
@@ -43,10 +41,9 @@ export class Club extends Document {
   @Prop({ required: true })
   coverImage: string;
 
-  @Prop({ required: true })
+  @Prop({ required: true, default: false })
   isPublic: boolean;
 
-  //group members
   @Prop({
     type: [
       {
@@ -57,18 +54,18 @@ export class Club extends Document {
           required: true,
         },
         designation: { type: String, required: true },
+        date: { type: Date, default: Date.now, required: true },
       },
     ],
     default: [],
   })
   members: IMember[];
 
-  //memebers who are blocked with  date
   @Prop({
     type: [
       {
         userId: { type: Types.ObjectId, ref: 'User', required: true },
-        date: { type: Date, required: true },
+        date: { type: Date, default: Date.now, required: true },
       },
     ],
     default: [],
