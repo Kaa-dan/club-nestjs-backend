@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Param,
   Put,
+  Req,
   UploadedFiles,
 } from '@nestjs/common';
 import { CreateDetailsDto } from './dto/create-details.dto';
@@ -12,23 +13,22 @@ import { CreateDetailsDto } from './dto/create-details.dto';
 import { OnboardingService } from './onboarding.service';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { UpdateInterestDto } from './dto/update-interest.dto';
-
-
+import { Request } from 'express';
 
 @Controller('onboarding')
 export class OnboardingController {
-  constructor(
-    private readonly onBoardingService: OnboardingService,
- 
-  ) {}
+  constructor(private readonly onBoardingService: OnboardingService) {}
 
-  @Put('details/:id')
+  @Put('details')
   async createDetails(
-    @Param('id') id: string,
     @Body() createDetailsDto: CreateDetailsDto,
+    @Req() req: Request,
   ) {
     try {
-      return await this.onBoardingService.createDetails(id, createDetailsDto);
+      return await this.onBoardingService.createDetails(
+        String(req.user._id),
+        createDetailsDto,
+      );
     } catch (error) {
       throw new HttpException(
         {
@@ -41,15 +41,14 @@ export class OnboardingController {
     }
   }
 
-  @Put('images/:id')
+  @Put('images')
   async updateImages(
-    @Param('id') id: string,
-
     @UploadedFiles()
     files: {
       profileImage?: Express.Multer.File[];
       coverImage?: Express.Multer.File[];
     },
+    @Req() req: Request,
   ) {
     try {
       const imageFiles = {
@@ -57,7 +56,10 @@ export class OnboardingController {
         coverImage: files?.coverImage?.[0],
       };
 
-      return await this.onBoardingService.updateImages(id, imageFiles);
+      return await this.onBoardingService.updateImages(
+        String(req.user._id),
+        imageFiles,
+      );
     } catch (error) {
       throw new HttpException(
         {
@@ -70,13 +72,34 @@ export class OnboardingController {
     }
   }
 
-  @Put('interest/:id')
+  @Put('interest')
   async updateInterest(
-    @Param('id') id: string,
     @Body() updateInterestDto: UpdateInterestDto,
-  ){
+    @Req() req: Request,
+  ) {
     try {
-      return await this.onBoardingService.updateInterests(id, updateInterestDto);
+      return await this.onBoardingService.updateInterests(
+        String(req.user._id),
+        updateInterestDto,
+      );
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Internal Server Error',
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Put('complete')
+  async completeOnboarding(@Req() req: Request) {
+    try {
+      return await this.onBoardingService.completeOnboarding(
+        String(req.user._id),
+      );
     } catch (error) {
       throw new HttpException(
         {

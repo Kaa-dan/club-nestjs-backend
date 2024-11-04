@@ -3,13 +3,17 @@ import { Document, Types } from 'mongoose';
 
 @Schema({
   collection: 'nodes',
+  timestamps: true,
 })
-export class Group extends Document {
+export class Node_ extends Document {
   @Prop({ required: true })
   name: string;
 
   @Prop()
-  profilePic?: string;
+  profileImage?: string;
+
+  @Prop()
+  coverImage?: string;
 
   @Prop({ required: true })
   about: string;
@@ -17,13 +21,10 @@ export class Group extends Document {
   @Prop({ required: true })
   description: string;
 
-  @Prop()
-  coverPic?: string;
-
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
+        user: { type: Types.ObjectId, ref: 'users', required: true },
         role: {
           type: String,
           enum: ['admin', 'moderator', 'member'],
@@ -35,7 +36,7 @@ export class Group extends Document {
     default: [],
   })
   members: {
-    userId: Types.ObjectId;
+    user: Types.ObjectId | string;
     role: 'admin' | 'moderator' | 'member';
     designation: string;
   }[];
@@ -43,19 +44,25 @@ export class Group extends Document {
   @Prop({
     type: [
       {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
+        user: { type: Types.ObjectId, ref: 'users', required: true },
         date: { type: Date, required: true },
       },
     ],
     default: [],
   })
   blockedUsers: {
-    userId: Types.ObjectId;
+    user: Types.ObjectId;
     date: Date;
   }[];
 
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  creator: Types.ObjectId;
+
   @Prop({ default: false })
   isVerified?: boolean;
+
+  @Prop({ required: false })
+  location: string;
 
   @Prop({
     type: [
@@ -64,10 +71,10 @@ export class Group extends Document {
         config: { type: Object, required: true },
       },
     ],
-    validate: {
-      validator: (modules) => modules.length > 0,
-      message: 'There must be at least one module',
-    },
+    // validate: {
+    //   validator: (modules) => modules.length > 0,
+    //   message: 'There must be at least one module',
+    // },
   })
   modules: {
     oid: Types.ObjectId;
@@ -75,4 +82,4 @@ export class Group extends Document {
   }[];
 }
 
-export const GroupSchema = SchemaFactory.createForClass(Group);
+export const NodeSchema = SchemaFactory.createForClass(Node_);
