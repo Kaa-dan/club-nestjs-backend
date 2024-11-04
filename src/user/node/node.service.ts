@@ -29,10 +29,14 @@ export class NodeService {
     } = createNodeDto;
     const profileImageUpload = this.uploadService.uploadFile(
       profileImage.buffer,
+      profileImage.filename,
+      profileImage.mimetype,
       'node',
     );
     const coverImageUpload = this.uploadService.uploadFile(
       coverImage.buffer,
+      coverImage.filename,
+      coverImage.mimetype,
       'node',
     );
     const [profileImageResult, coverImageResult] = await Promise.all([
@@ -162,6 +166,8 @@ export class NodeService {
     if (profileImage) {
       const profileImageUpload = this.uploadService.uploadFile(
         profileImage.buffer,
+        profileImage.filename,
+        profileImage.mimetype,
         'node',
       );
       const profileImageResult = await profileImageUpload;
@@ -170,6 +176,8 @@ export class NodeService {
     if (coverImage) {
       const coverImageUpload = this.uploadService.uploadFile(
         coverImage.buffer,
+        coverImage.filename,
+        coverImage.mimetype,
         'node',
       );
       const coverImageResult = await coverImageUpload;

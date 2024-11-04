@@ -31,11 +31,8 @@ export class GoogleSignupService {
       if (existingUser && existingUser.emailVerified) {
         existingUser.registered = true;
         existingUser.signupThrough = signupThrough;
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id: '',
-        };
-        existingUser.password = hashedPassword;
+        (existingUser.profileImage = imageUrl),
+          (existingUser.password = hashedPassword);
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else if (
@@ -47,10 +44,8 @@ export class GoogleSignupService {
         existingUser.emailVerified = true;
         existingUser.signupThrough = signupThrough;
         existingUser.password = hashedPassword;
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id: '',
-        };
+        existingUser.profileImage = imageUrl;
+
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else {
