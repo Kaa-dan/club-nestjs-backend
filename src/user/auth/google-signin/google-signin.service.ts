@@ -51,7 +51,7 @@ export class GoogleSigninService {
           registered: true,
           signupThrough,
           password: hashedPassword,
-        })
+        });
         const token = generateToken({ email: newUser.email }, '5hr');
 
         const sanitizedUser = JSON.parse(JSON.stringify(newUser));
