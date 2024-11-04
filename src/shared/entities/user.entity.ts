@@ -35,10 +35,7 @@ export class User extends Document {
   gender: string;
 
   @Prop({
-    type: {
-      url: String,
-      public_id: String,
-    },
+    type: String,
     required: false,
   })
   profileImage?: string;

@@ -2,6 +2,7 @@ import { Prop, SchemaFactory, Schema } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 @Schema({
+  collection: 'nodejoinrequests',
   timestamps: true,
 })
 export class NodeJoinRequest extends Document {

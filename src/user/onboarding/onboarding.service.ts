@@ -225,10 +225,6 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== 'completed') {
-        throw new BadRequestException('Invalid onboarding stage');
-      }
-
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
