@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { SchemaTypes } from 'mongoose';
 
 export enum MemberRole {
   ADMIN = 'admin',
@@ -7,7 +8,7 @@ export enum MemberRole {
   MEMBER = 'member',
 }
 
-// type for members
+// Interface for members
 export interface IMember {
   userId: Types.ObjectId;
   role: MemberRole;
@@ -15,7 +16,7 @@ export interface IMember {
   date: Date;
 }
 
-// type for blocked members
+// Interface for blocked members
 export interface IBlockedUser {
   userId: Types.ObjectId;
   date: Date;
@@ -35,11 +36,31 @@ export class Club extends Document {
   @Prop({ required: true })
   description: string;
 
-  @Prop({ required: true })
-  profileImage: string;
+  @Prop({
+    type: {
+      filename: { type: SchemaTypes.String, required: true },
+      url: { type: SchemaTypes.String, required: true },
+    },
+    _id: false,
+    required: true,
+  })
+  profileImage: {
+    filename: string;
+    url: string;
+  };
 
-  @Prop({ required: true })
-  coverImage: string;
+  @Prop({
+    type: {
+      filename: { type: SchemaTypes.String, required: true },
+      url: { type: SchemaTypes.String, required: true },
+    },
+    _id: false,
+    required: true,
+  })
+  coverImage: {
+    filename: string;
+    url: string;
+  };
 
   @Prop({ required: true, default: false })
   isPublic: boolean;

@@ -5,7 +5,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
-import path from 'path';
+import * as path from 'path';
 import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
@@ -41,11 +41,13 @@ export class UploadService {
     url: string;
   }> {
     try {
+      console.log({ file, filename, mimetype, folder });
       const fileExtension = path.extname(filename);
       const uniqueFileName = `${Date.now()}-${Math.round(
         Math.random() * 1e9,
       )}${fileExtension}`;
       const key = `${folder}/${uniqueFileName}`;
+      console.log('nithin');
 
       const command = new PutObjectCommand({
         Bucket: ENV.S3_BUCKET_NAME,
@@ -57,12 +59,12 @@ export class UploadService {
       await this.s3Client.send(command);
 
       const publicUrl = `https://s3.amazonaws.com/${ENV.S3_BUCKET_NAME}/${key}`;
-
       return {
         filename: key,
         url: publicUrl,
       };
     } catch (error) {
+      console.log(error);
       throw new Error(`Failed to upload file: ${error.message ?? error}`);
     }
   }
