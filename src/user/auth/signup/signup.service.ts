@@ -33,7 +33,7 @@ export class SignupService {
     const existingUser = await this.userModel.findOne({
       email,
     });
-    console.log(existingUser, 'exx');
+    console.log(existingUser);
 
     if (existingUser && existingUser?.registered) {
       throw new ConflictException('Email or username already exists');
