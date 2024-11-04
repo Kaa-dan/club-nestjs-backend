@@ -116,6 +116,8 @@ export class ClubService {
         (key) => updateData[key] === undefined && delete updateData[key],
       );
 
+      console.log({ updateData });
+
       const updatedClub = await this.clubModel
         .findByIdAndUpdate(id, updateData, { new: true })
         .exec();
@@ -136,7 +138,7 @@ export class ClubService {
   @Returns {Promise<Club>} - The deleted club 
   */
 
-  async deleteClub(id: string): Promise<void> {
+  async deleteClub(id: string) {
     try {
       const club = await this.clubModel.findById(id).exec();
       if (!club) {
@@ -147,7 +149,8 @@ export class ClubService {
       await this.cleanupFiles(club.profileImage.url, club.coverImage.url);
 
       // Then delete the club document
-      await this.clubModel.findByIdAndDelete(id).exec();
+      const responce = await this.clubModel.findByIdAndDelete(id).exec();
+      return responce;
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
