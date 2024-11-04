@@ -10,7 +10,8 @@ import { UpdateInterestDto } from './dto/update-interest.dto';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { OnboardingStage } from './dto/onboarding-stages.enum';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { ImageData, User } from 'src/shared/entities/user.entity';
+import { User } from 'src/shared/entities/user.entity';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class OnboardingService {
@@ -25,7 +26,7 @@ export class OnboardingService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(
@@ -80,7 +81,7 @@ export class OnboardingService {
   }
 
   async updateImages(
-    id: string,
+    id,
     imageFiles: {
       profileImage?: Express.Multer.File;
       coverImage?: Express.Multer.File;
@@ -98,63 +99,62 @@ export class OnboardingService {
       }
 
       const updateData: {
-        profileImage?: ImageData;
-        coverImage?: ImageData;
-      } = {
-
-      };
+        profileImage?: string;
+        coverImage?: string;
+      } = {};
 
       // Handle profile image upload
       if (imageFiles.profileImage) {
         const profileImageResult = await this.uploadService.uploadFile(
           imageFiles.profileImage.buffer,
+          imageFiles.profileImage.filename,
+          imageFiles.profileImage.mimetype,
           'user',
         );
 
         // Delete old profile image if it exists
-        if (user.profileImage?.public_id) {
+        if (user.profileImage) {
           try {
-            await this.uploadService.deleteFile(user.profileImage.public_id);
+            await this.uploadService.deleteFile(user.profileImage);
           } catch (error) {
             console.error('Error deleting old profile image:', error);
           }
         }
 
         // Create ImageData object with correct typing
-        updateData.profileImage = {
-          url: profileImageResult.url,
-          public_id: profileImageResult.public_id,
-        } as ImageData;
+        updateData.profileImage = profileImageResult.url;
       }
 
       // Handle cover image upload
       if (imageFiles.coverImage) {
         const coverImageResult = await this.uploadService.uploadFile(
           imageFiles.coverImage.buffer,
+          imageFiles.coverImage.filename,
+          imageFiles.coverImage.mimetype,
           'user',
         );
 
         // Delete old cover image if it exists
-        if (user.coverImage?.public_id) {
+        if (user.coverImage) {
           try {
-            await this.uploadService.deleteFile(user.coverImage.public_id);
+            await this.uploadService.deleteFile(user.coverImage);
           } catch (error) {
             console.error('Error deleting old cover image:', error);
           }
         }
 
         // Create ImageData object with correct typing
-        updateData.coverImage = {
-          url: coverImageResult.url,
-          public_id: coverImageResult.public_id,
-        } as ImageData;
+        updateData.coverImage = coverImageResult.url;
       }
 
       // Update user with new image data
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
           id,
-          { $set: updateData,onBoardingStage: this.getNextStage(OnboardingStage.IMAGE), },
+          {
+            $set: updateData,
+            onBoardingStage: this.getNextStage(OnboardingStage.IMAGE),
+          },
           { new: true, runValidators: true },
         )
         .select('-password');
@@ -225,7 +225,7 @@ export class OnboardingService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.onBoardingStage !== OnboardingStage.NODE) {
+      if (user.onBoardingStage !== 'completed') {
         throw new BadRequestException('Invalid onboarding stage');
       }
 
@@ -235,7 +235,7 @@ export class OnboardingService {
           {
             $set: {
               isOnBoarded: true,
-              OnboardingStage: this.getNextStage(OnboardingStage.NODE),
+              onBoardingStage: 'completed',
             },
           },
           { new: true, runValidators: true },

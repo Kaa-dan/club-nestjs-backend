@@ -27,7 +27,7 @@ import { MailerModule } from './mailer/mailer.module';
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(FileUploadMiddleware).forRoutes({
-      path: 'onboarding/images/:id',
+      path: 'onboarding/images',
       method: RequestMethod.PUT,
     });
   }
