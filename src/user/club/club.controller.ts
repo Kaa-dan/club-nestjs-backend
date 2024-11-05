@@ -124,6 +124,12 @@ export class ClubController {
     return await this.clubService.getAllClubs();
   }
 
+  /*
+  --------------------GETTING SINGLE CLUB----------------------------
+
+  @Returns {Promise<Club>} - SINGLE CLUB
+  */
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a club by id' })
   @ApiParam({ name: 'id', type: 'string' })

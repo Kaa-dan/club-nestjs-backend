@@ -50,10 +50,9 @@ export class ClubService {
   }
 
   /*
-  --------------------CREATING A CLUB----------------------------
+  --------------------GETTING ALL CLUBS----------------------------
 
-  parameter {CreateClubDto} createClubDto - The data to create a new club
-  @Returns {Promise<Club>} - The created club 
+  @Returns {Promise<Club>} - All clubs
   */
   async getAllClubs(): Promise<Club[]> {
     try {
@@ -65,9 +64,9 @@ export class ClubService {
     }
   }
   /*
-  --------------------GETTING ALL CLUBS----------------------------
+  --------------------GETTING SINGLE CLUB----------------------------
 
-  @Returns {Promise<Club>} - All clubs
+  @Returns {Promise<Club>} - SINGLE CLUB
   */
 
   async getClubById(id: string): Promise<Club> {
@@ -141,6 +140,7 @@ export class ClubService {
   async deleteClub(id: string) {
     try {
       const club = await this.clubModel.findById(id).exec();
+
       if (!club) {
         throw new NotFoundException('Club not found');
       }
@@ -160,6 +160,11 @@ export class ClubService {
       );
     }
   }
+
+
+
+  
+  // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
