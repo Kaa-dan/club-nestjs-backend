@@ -129,7 +129,24 @@ export class ClubController {
   async getAllClubs() {
     return await this.clubService.getAllClubs();
   }
+  /*
+  --------------------GETTING  CLUBS OF THE SPECIFIED USER----------------------------
+  @Param {string} id - The id of the user
 
+  @Returns {Promise<Club>} - The deleted club 
+  */
+  @Get('user-clubs')
+  @ApiOperation({ summary: 'Get all clubs of a user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all clubs of the user',
+    type: [Club],
+  })
+  async getAllClubsOfUser(@Req() req: Request) {
+  
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.getAllClubsOfUser(userId);
+  }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
 
