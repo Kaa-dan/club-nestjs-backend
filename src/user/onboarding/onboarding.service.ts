@@ -24,9 +24,9 @@ export class OnboardingService {
   ];
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('users') private userModel: Model<User>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(

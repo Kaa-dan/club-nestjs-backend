@@ -12,7 +12,7 @@ import {
   imports: [
     SharedModule,
     MongooseModule.forFeature([
-      { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
+      { name: 'nodejoinrequests', schema: NodeJoinRequestSchema },
     ]),
   ],
   controllers: [NodeController],

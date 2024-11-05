@@ -22,7 +22,7 @@ interface OnBoardingData {
 
 @Injectable()
 export class SignupService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async signUp(
     signupData: CreateUserDto,
