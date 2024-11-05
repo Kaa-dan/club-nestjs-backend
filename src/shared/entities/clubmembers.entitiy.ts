@@ -5,11 +5,11 @@ import { Document, Types, SchemaType } from 'mongoose';
 export class ClubMembers extends Document {
   //club reference
   @Prop({ type: Types.ObjectId, ref: 'Club', required: true })
-  clubId: Types.ObjectId;
+  club: Types.ObjectId;
 
   //user reference
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
-  userId: Types.ObjectId;
+  user: Types.ObjectId;
 
   @Prop({ required: true })
   role: string;

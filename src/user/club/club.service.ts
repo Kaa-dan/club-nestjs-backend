@@ -29,7 +29,6 @@ export class ClubService {
   @Returns {Promise<Club>} - The created club 
   */
   async createClub(createClubDto: CreateClubDto): Promise<Club> {
-    
     // Start a session for the transaction
     const session = await this.clubModel.db.startSession();
 
@@ -54,8 +53,8 @@ export class ClubService {
 
       // Create the club member document for admin
       const createClubMember = new this.clubMembersModel({
-        clubId: clubResponse._id,
-        userId: clubResponse.createdBy,
+        club: clubResponse._id,
+        user: clubResponse.createdBy,
         role: 'admin',
         status: 'ACCEPTED',
       });
