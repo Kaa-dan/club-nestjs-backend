@@ -11,6 +11,7 @@ import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
 
 @Injectable()
 export class ClubService {
@@ -19,6 +20,8 @@ export class ClubService {
     @InjectModel(Club.name) private readonly clubModel: Model<Club>,
     @InjectModel(ClubMembers.name)
     private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(ClubJoinRequests.name)
+    private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
   ) {}
 
@@ -56,7 +59,7 @@ export class ClubService {
         club: clubResponse._id,
         user: clubResponse.createdBy,
         role: 'admin',
-        status: 'ACCEPTED',
+        status: 'MEMBER',
       });
 
       // Save the club member within the transaction
@@ -203,84 +206,68 @@ export class ClubService {
   @Returns {Promise<Club>} - The deleted club 
   */
 
-  async getAllClubsOfUser(id: Types.ObjectId) {
+  async getAllClubsOfUser(userId: Types.ObjectId) {
     try {
-      //aggregation pipeline
-      const userClubs = await this.clubMembersModel
-        .aggregate([
-          {
-            $match: {
-              user: new Types.ObjectId(id),
-              status: 'ACCEPTED',
-            },
-          },
-          {
-            $lookup: {
-              from: 'clubs',
-              localField: 'club',
-              foreignField: '_id',
-              as: 'clubDetails',
-            },
-          },
-          {
-            $unwind: '$clubDetails',
-          },
-          {
-            $lookup: {
-              from: 'users', // club owner/creator
-              localField: 'clubDetails.creator',
-              foreignField: '_id',
-              as: 'creatorDetails',
-            },
-          },
-          {
-            $unwind: {
-              path: '$creatorDetails',
-              // Keep clubs even if creator isn't found
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $project: {
-              _id: 1,
-              role: 1,
-              status: 1,
-              createdAt: 1,
-              updatedAt: 1,
-              club: {
-                _id: '$clubDetails._id',
-                name: '$clubDetails.name',
-                description: '$clubDetails.description',
-                about: '$clubDetails.about',
-                profileImage: '$clubDetails.profileImage',
-                coverImage: '$clubDetails.coverImage',
-                creator: {
-                  _id: '$creatorDetails._id',
-                  name: '$creatorDetails.name',
-                  email: '$creatorDetails.email',
-                },
-              },
-            },
-          },
-          {
-            $sort: {
-              createdAt: -1,
-            },
-          },
-        ])
+      return await this.clubMembersModel
+        .find({ user: userId })
+        .populate('club')
+        .populate('user')
         .exec();
-
-      if (!userClubs || userClubs.length === 0) {
-        return [];
-      }
-      console.log({ userClubs });
-      return userClubs;
     } catch (error) {
+      console.log(error);
+    }
+  }
+
+  /*
+  --------------------REQUEST  CLUB TO JOIN----------------------------
+  @Param USERDATA AND CLUBID
+
+  @Returns {Promise<Club>} - REQUESTED OR JOINED CLUB 
+  */
+
+  async requestOrJoinClub(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      // Check if the user is already a member of the club
+      const existingClub = await this.clubModel.findOne({
+        _id: clubId,
+      });
+
+      console.log({ existingClub });
+
+      if (!existingClub) {
+        throw new NotFoundException('Club not found');
+      }
+
+      //if club is public joining the club
+      if (existingClub.isPublic) {
+        const responce = await this.clubMembersModel.create({
+          club: existingClub._id,
+          user: userId,
+          role: 'member',
+          status: 'MEMBER',
+        });
+        return responce;
+      } else {
+        //if club is private this will work
+        const responce = await this.clubJoinRequestsModel.create({
+          club: existingClub._id,
+          user: userId,
+          status: 'REQUESTED',
+          role: 'member',
+        });
+        return responce;
+      }
+    } catch (error) {
+      console.log(error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new BadRequestException(
-        'Failed to fetch clubs. Please try again later.',
+        'Failed to request to join club. Please try again later.',
       );
     }
   }
+
   // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
