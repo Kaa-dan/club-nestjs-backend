@@ -14,7 +14,7 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class ForgotPasswordService {
   constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('users') private userModel: Model<User>,
     private brevoService: MailerService,
   ) {}
 
@@ -317,11 +317,11 @@ export class ForgotPasswordService {
       );
       return {
         success: true,
-        message: 'A password reset link has been sent to your email. Please check your inbox to proceed.',
+        message:
+          'A password reset link has been sent to your email. Please check your inbox to proceed.',
         status: 200,
         data: changePasswordUrl,
       };
-      
     } catch (error) {
       console.log(error, 'err');
 

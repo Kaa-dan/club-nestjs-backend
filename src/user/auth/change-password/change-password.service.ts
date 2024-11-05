@@ -11,7 +11,7 @@ import { hashPassword, verifyToken } from 'src/utils'; // Assuming you have a ut
 
 @Injectable()
 export class ChangePasswordService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async changePassword(
     password: string,
@@ -26,8 +26,7 @@ export class ChangePasswordService {
 
       // Step 2: Verify the token
       const decoded = verifyToken(token) as { email: string };
-      console.log(decoded,"deccc");
-      
+
       if (!decoded) {
         throw new BadRequestException('Invalid or expired token');
       }
@@ -36,7 +35,7 @@ export class ChangePasswordService {
       if (!user) {
         throw new NotFoundException('User not found');
       }
-const hashedPassword = await hashPassword(password)
+      const hashedPassword = await hashPassword(password);
       user.password = hashedPassword;
       await user.save();
 

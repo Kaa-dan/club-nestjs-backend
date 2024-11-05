@@ -11,10 +11,11 @@ import { ResendController } from './resend.service.controller';
 import { VerifyToken } from './verifytoken.service';
 import { VerifyTokenController } from './verifytoken.controller';
 import { SharedModule } from 'src/shared/shared.module';
+import { MailerService } from 'src/mailer/mailer.service';
 @Module({
   imports: [
     SharedModule,
-    MongooseModule.forFeature([{ name: OTP.name, schema: OTPSchema }]),
+    MongooseModule.forFeature([{ name: 'otps', schema: OTPSchema }]),
   ],
   controllers: [
     SignupController,
