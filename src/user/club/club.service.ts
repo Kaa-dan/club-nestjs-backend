@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
@@ -196,6 +196,91 @@ export class ClubService {
     }
   }
 
+  /*
+  --------------------GETTING  CLUBS OF THE SPECIFIED USER----------------------------
+  @Param {string} id - The id of the user
+
+  @Returns {Promise<Club>} - The deleted club 
+  */
+
+  async getAllClubsOfUser(id: Types.ObjectId) {
+    try {
+      //aggregation pipeline
+      const userClubs = await this.clubMembersModel
+        .aggregate([
+          {
+            $match: {
+              user: new Types.ObjectId(id),
+              status: 'ACCEPTED',
+            },
+          },
+          {
+            $lookup: {
+              from: 'clubs',
+              localField: 'club',
+              foreignField: '_id',
+              as: 'clubDetails',
+            },
+          },
+          {
+            $unwind: '$clubDetails',
+          },
+          {
+            $lookup: {
+              from: 'users', // club owner/creator
+              localField: 'clubDetails.creator',
+              foreignField: '_id',
+              as: 'creatorDetails',
+            },
+          },
+          {
+            $unwind: {
+              path: '$creatorDetails',
+              // Keep clubs even if creator isn't found
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          {
+            $project: {
+              _id: 1,
+              role: 1,
+              status: 1,
+              createdAt: 1,
+              updatedAt: 1,
+              club: {
+                _id: '$clubDetails._id',
+                name: '$clubDetails.name',
+                description: '$clubDetails.description',
+                about: '$clubDetails.about',
+                profileImage: '$clubDetails.profileImage',
+                coverImage: '$clubDetails.coverImage',
+                creator: {
+                  _id: '$creatorDetails._id',
+                  name: '$creatorDetails.name',
+                  email: '$creatorDetails.email',
+                },
+              },
+            },
+          },
+          {
+            $sort: {
+              createdAt: -1,
+            },
+          },
+        ])
+        .exec();
+
+      if (!userClubs || userClubs.length === 0) {
+        return [];
+      }
+      console.log({ userClubs });
+      return userClubs;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to fetch clubs. Please try again later.',
+      );
+    }
+  }
   // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
