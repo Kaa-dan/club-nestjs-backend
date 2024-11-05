@@ -10,7 +10,7 @@ import { verify, JwtPayload } from 'jsonwebtoken';
 import { ENV } from 'src/utils/config/env.config';
 import { Reflector } from '@nestjs/core';
 import { SKIP_AUTH_KEY } from 'src/decorators/skip-auth.decorator';
-import { Model } from 'mongoose';
+import { Document, Model, Types } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
 import { InjectModel } from '@nestjs/mongoose';
 
@@ -51,7 +51,9 @@ export class UserAuthGuard implements CanActivate {
         throw new ForbiddenException('User does not exist');
       }
 
-      request['user'] = user; // Attach user information to the request
+      request['user'] = user as Document<unknown, {}, User> &
+        User & { _id: Types.ObjectId };
+
       return true; // Allow the request to proceed
     } catch (error) {
       throw new UnauthorizedException(

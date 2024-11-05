@@ -41,13 +41,13 @@ export class UploadService {
     url: string;
   }> {
     try {
-      console.log({ file, filename, mimetype, folder });
+      
       const fileExtension = path.extname(filename);
       const uniqueFileName = `${Date.now()}-${Math.round(
         Math.random() * 1e9,
       )}${fileExtension}`;
       const key = `${folder}/${uniqueFileName}`;
-      console.log('nithin');
+  
 
       const command = new PutObjectCommand({
         Bucket: ENV.S3_BUCKET_NAME,

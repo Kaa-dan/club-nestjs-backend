@@ -10,13 +10,16 @@ import { Model } from 'mongoose';
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 
 @Injectable()
 export class ClubService {
   //injecting club schema
   constructor(
-    @InjectModel(Club.name) private clubModel: Model<Club>,
-    public readonly s3FileUpload: UploadService,
+    @InjectModel(Club.name) private readonly clubModel: Model<Club>,
+    @InjectModel(ClubMembers.name)
+    private readonly clubMembersModel: Model<ClubMembers>,
+    private readonly s3FileUpload: UploadService,
   ) {}
 
   /*
@@ -26,26 +29,59 @@ export class ClubService {
   @Returns {Promise<Club>} - The created club 
   */
   async createClub(createClubDto: CreateClubDto): Promise<Club> {
+    
+    // Start a session for the transaction
+    const session = await this.clubModel.db.startSession();
+
     try {
-      //image uploads
-      const profileImageUrl = await this.uploadFile(createClubDto.profileImage);
-      const coverImageUrl = await this.uploadFile(createClubDto.coverImage);
-      console.log({ profileImageUrl, coverImageUrl });
-      //create club
+      session.startTransaction();
+
+      // Upload images first - outside transaction since it's  a separate service
+      const [profileImageUrl, coverImageUrl] = await Promise.all([
+        this.uploadFile(createClubDto.profileImage),
+        this.uploadFile(createClubDto.coverImage),
+      ]);
+
+      // Create the club document
       const createdClub = new this.clubModel({
         ...createClubDto,
         profileImage: profileImageUrl,
         coverImage: coverImageUrl,
       });
 
-      return await createdClub.save();
+      // Save the club within the transaction
+      const clubResponse = await createdClub.save({ session });
+
+      // Create the club member document for admin
+      const createClubMember = new this.clubMembersModel({
+        clubId: clubResponse._id,
+        userId: clubResponse.createdBy,
+        role: 'admin',
+        status: 'ACCEPTED',
+      });
+
+      // Save the club member within the transaction
+      await createClubMember.save({ session });
+
+      // If both operations succeed, commit the transaction
+      await session.commitTransaction();
+      return clubResponse;
     } catch (error) {
+      // If any operation fails, abort the transaction
+      await session.abortTransaction();
+
+      console.error('Error creating club:', error);
+
       if (error instanceof ConflictException) {
         throw error;
       }
+
       throw new BadRequestException(
         'Failed to create club. Please try again later.',
       );
+    } finally {
+      // End the session
+      await session.endSession();
     }
   }
 
@@ -161,9 +197,6 @@ export class ClubService {
     }
   }
 
-
-
-  
   // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {

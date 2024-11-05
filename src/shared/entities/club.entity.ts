@@ -92,6 +92,9 @@ export class Club extends Document {
     default: [],
   })
   blockedUsers: IBlockedUser[];
+  //reference of the user who created the club
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  createdBy: Types.ObjectId;
 }
 
 export const ClubSchema = SchemaFactory.createForClass(Club);

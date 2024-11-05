@@ -19,6 +19,7 @@ export class LoginService {
   ): Promise<{ status: boolean; message: string; token?: string; data: any }> {
     const { email, password } = loginDto;
     try {
+      console.log(email);
       // Check if the user exists
       const user = await this.userModel.findOne({ email });
 

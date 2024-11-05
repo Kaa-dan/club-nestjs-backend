@@ -28,6 +28,8 @@ import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
+import { Request } from 'express';
+import { Types } from 'mongoose';
 
 // @SkipAuth()
 @ApiTags('Clubs')
@@ -84,14 +86,12 @@ export class ClubController {
     },
     @Body() createClubDto: CreateClubDto,
   ) {
-    // Validate that we have both required fields
     if (!files?.profileImage?.[0] || !files?.coverImage?.[0]) {
       throw new BadRequestException(
         'Both profile and cover images are required',
       );
     }
 
-    // Validate other required fields from DTO
     if (
       !createClubDto.name ||
       !createClubDto.about ||
@@ -101,8 +101,10 @@ export class ClubController {
         'Name, about, and description are required fields',
       );
     }
-    // Access the user ID from the request
-    const userId = (req.user as any)._id;
+
+    // Convert string ID to ObjectId
+    const userId = new Types.ObjectId(req.user._id);
+
     return await this.clubService.createClub({
       ...createClubDto,
       profileImage: files?.profileImage[0],

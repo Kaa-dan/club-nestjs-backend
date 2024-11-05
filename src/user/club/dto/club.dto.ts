@@ -1,5 +1,6 @@
 import { IsString, IsBoolean, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Types } from 'mongoose';
 
 export class CreateClubDto {
   @ApiProperty()
@@ -23,7 +24,7 @@ export class CreateClubDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  readonly createdBy: string;
+  readonly createdBy: Types.ObjectId ;
 
   profileImage: Express.Multer.File;
   coverImage: Express.Multer.File;
