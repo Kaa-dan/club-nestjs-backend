@@ -4,6 +4,7 @@ import { User, UserSchema } from './entities/user.entity';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Node_, NodeSchema } from './entities/node.entity';
 import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -20,8 +21,9 @@ import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
         name: NodeMembers.name,
         schema: NodeMembersSchema    
       },
-    ])
+    ]),
+    SearchModule
   ],
-  exports: [MongooseModule, UploadModule], // Export MongooseModule to make User schema accessible
+  exports: [MongooseModule, UploadModule, SearchModule], // Export MongooseModule to make User schema accessible
 })
 export class SharedModule {}
