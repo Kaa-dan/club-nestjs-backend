@@ -11,8 +11,8 @@ import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 @Injectable()
 export class NodeService {
   constructor(
-    @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
-    @InjectModel(NodeJoinRequest.name)
+    @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
+    @InjectModel('nodejoinrequests')
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     private readonly uploadService: UploadService,
   ) {}
@@ -113,13 +113,17 @@ export class NodeService {
     const requests = await this.nodeJoinRequestModel
       .find({ node: nodeId })
       .populate(['user']);
-    return requests;
+    return {
+      success: true,
+      message: 'Successfully fetched requests',
+      data: requests,
+    };
   }
 
   async updateNodeJoinRequest(
     nodeId: string,
     userId: string,
-    status: 'accepted' | 'rejected',
+    status: 'accept' | 'reject',
   ) {
     const node = await this.nodeModel.findById(nodeId);
     const request = await this.nodeJoinRequestModel.findOne({
@@ -132,7 +136,7 @@ export class NodeService {
         message: 'Request not found',
       };
     }
-    if (status === 'accepted') {
+    if (status === 'accept') {
       node.members.push({
         role: 'member',
         user: userId,

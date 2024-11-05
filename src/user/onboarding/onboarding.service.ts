@@ -24,7 +24,7 @@ export class OnboardingService {
   ];
 
   constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('users') private userModel: Model<User>,
     private readonly uploadService: UploadService,
   ) { }
 

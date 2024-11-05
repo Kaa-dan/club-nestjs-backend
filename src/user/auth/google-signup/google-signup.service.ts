@@ -9,7 +9,7 @@ import { generateRandomPassword } from 'src/utils/generatePassword';
 
 @Injectable()
 export class GoogleSignupService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =

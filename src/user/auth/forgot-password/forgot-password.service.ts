@@ -14,7 +14,7 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class ForgotPasswordService {
   constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('users') private userModel: Model<User>,
     private brevoService: MailerService,
   ) {}
 
