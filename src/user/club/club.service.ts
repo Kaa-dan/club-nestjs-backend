@@ -227,43 +227,81 @@ export class ClubService {
 
   async requestOrJoinClub(clubId: Types.ObjectId, userId: Types.ObjectId) {
     try {
-      // Check if the user is already a member of the club
+      // Check if the club exists
       const existingClub = await this.clubModel.findOne({
         _id: clubId,
       });
-
-      console.log({ existingClub });
 
       if (!existingClub) {
         throw new NotFoundException('Club not found');
       }
 
-      //if club is public joining the club
+      // Check if the user is already a member or has a pending request
+      const existingMember = await this.clubMembersModel.findOne({
+        club: clubId,
+        user: userId,
+      });
+
+      // Handle existing member status checks
+      if (existingMember) {
+        switch (existingMember.status) {
+          case 'MEMBER':
+            throw new BadRequestException(
+              'You are already a member of this club',
+            );
+          case 'BLOCKED':
+            throw new BadRequestException(
+              'You have been blocked from this club',
+            );
+          // Add other status cases if needed
+        }
+      }
+
+      // Handle join process based on club privacy
       if (existingClub.isPublic) {
-        const responce = await this.clubMembersModel.create({
+        // Direct join for public clubs
+        const response = await this.clubMembersModel.create({
           club: existingClub._id,
           user: userId,
           role: 'member',
           status: 'MEMBER',
         });
-        return responce;
+        return response;
       } else {
-        //if club is private this will work
-        const responce = await this.clubJoinRequestsModel.create({
+        // Check if there's already a pending request
+        const existingRequest = await this.clubJoinRequestsModel.findOne({
+          club: clubId,
+          user: userId,
+          status: 'REQUESTED',
+        });
+
+        if (existingRequest) {
+          throw new BadRequestException(
+            'You already have a pending request for this club',
+          );
+        }
+
+        // Create join request for private clubs
+        const response = await this.clubJoinRequestsModel.create({
           club: existingClub._id,
           user: userId,
           status: 'REQUESTED',
           role: 'member',
         });
-        return responce;
+        return response;
       }
     } catch (error) {
-      console.log(error);
-      if (error instanceof NotFoundException) {
+      // Properly handle and propagate errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
         throw error;
       }
+
+      console.error('Club join error:', error);
       throw new BadRequestException(
-        'Failed to request to join club. Please try again later.',
+        'Failed to process club join request. Please try again later.',
       );
     }
   }
