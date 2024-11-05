@@ -11,6 +11,7 @@ import {
   UploadedFiles,
   BadRequestException,
   NotFoundException,
+  Req,
 } from '@nestjs/common';
 
 import { ClubService } from './club.service';
@@ -28,7 +29,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
-@SkipAuth()
+// @SkipAuth()
 @ApiTags('Clubs')
 @Controller('clubs')
 export class ClubController {
@@ -62,6 +63,7 @@ export class ClubController {
 
   //method for create club
   async createClub(
+    @Req() req: Request,
     @UploadedFiles(
       new FileValidationPipe({
         profileImage: {
@@ -99,11 +101,13 @@ export class ClubController {
         'Name, about, and description are required fields',
       );
     }
-
+    // Access the user ID from the request
+    const userId = (req.user as any)._id;
     return await this.clubService.createClub({
       ...createClubDto,
       profileImage: files?.profileImage[0],
       coverImage: files?.coverImage[0],
+      createdBy: userId,
     });
   }
   /*

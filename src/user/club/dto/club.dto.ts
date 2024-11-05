@@ -20,6 +20,10 @@ export class CreateClubDto {
   @ApiProperty()
   @IsBoolean()
   readonly isPublic: boolean;
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  readonly createdBy: string;
 
   profileImage: Express.Multer.File;
   coverImage: Express.Multer.File;
