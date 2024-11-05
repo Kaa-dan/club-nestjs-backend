@@ -19,17 +19,26 @@ interface FileValidationConfig {
 export class FileValidationPipe implements PipeTransform {
   constructor(private config: Record<string, FileValidationConfig>) {}
 
-  transform(
-    files: Express.Multer.File[] | Record<string, Express.Multer.File[]>,
-  ) {
-    if (!files) {
-      throw new BadRequestException('No files uploaded');
+  transform(value: any) {
+    // If the value is not an object or null/undefined, return it as is
+    if (!value || typeof value !== 'object') {
+      return value;
     }
 
-    console.log(files, 'dsiadsl');
+    // Check if we're dealing with files (they should have buffer property)
+    const hasFiles =
+      value.buffer ||
+      (Array.isArray(value) && value[0]?.buffer) ||
+      Object.values(value).some((v) => Array.isArray(v) && v[0]?.buffer);
 
+    if (!hasFiles) {
+      return value;
+    }
+
+    const files = value;
     const fileFields = Object.keys(this.config);
-    fileFields.forEach((field) => {
+
+    for (const field of fileFields) {
       const fieldFiles = files[field];
       const {
         maxSizeMB,
@@ -38,12 +47,14 @@ export class FileValidationPipe implements PipeTransform {
       } = this.config[field];
       const maxSizeBytes = maxSizeMB * 1024 * 1024;
 
-      console.log(fieldFiles);
-      if (required && (!fieldFiles || fieldFiles.length === 0)) {
+      if (
+        required &&
+        (!fieldFiles || !Array.isArray(fieldFiles) || fieldFiles.length === 0)
+      ) {
         throw new BadRequestException(`${field} is required`);
       }
 
-      if (fieldFiles && fieldFiles.length > 0) {
+      if (fieldFiles && Array.isArray(fieldFiles) && fieldFiles.length > 0) {
         fieldFiles.forEach((file) => {
           if (!file) return;
 
@@ -59,7 +70,7 @@ export class FileValidationPipe implements PipeTransform {
           }
         });
       }
-    });
+    }
 
     return files;
   }

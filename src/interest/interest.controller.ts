@@ -77,7 +77,6 @@ export class InterestController {
     }
   }
 
-
   /**
    * Update interest by ID
    * @param id - Interest ID

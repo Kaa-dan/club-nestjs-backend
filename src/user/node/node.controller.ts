@@ -62,7 +62,6 @@ export class NodeController {
     },
     @Req() request: Request & { user: User },
   ) {
-    console.log('Files', files);
     if (!files.profileImage?.[0] || !files.coverImage?.[0]) {
       throw new BadRequestException(
         'Both profile and cover images are required',
@@ -102,17 +101,13 @@ export class NodeController {
     return this.nodeService.getAllJoinRequests(nodeId);
   }
 
-  @Patch('/member-request/:nodeId/:status')
+  @Put(`/join-requests/status/:status`)
   updateJoinRequest(
-    @Param('nodeId') nodeId: string,
-    @Param('status') status: 'accepted' | 'rejected',
+    @Body() { nodeId, userId }: { nodeId: string; userId: string },
+    @Param('status') status: 'accept' | 'reject',
     @Req() request: Request & { user: User },
   ) {
-    return this.nodeService.updateNodeJoinRequest(
-      nodeId,
-      request.user._id as string,
-      status,
-    );
+    return this.nodeService.updateNodeJoinRequest(nodeId, userId, status);
   }
 
   @Put(':nodeId')

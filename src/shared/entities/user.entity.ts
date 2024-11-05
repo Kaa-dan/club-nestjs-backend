@@ -1,11 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export class ImageData {
-  url: string;
-  public_id: string;
-}
-
 @Schema({ collection: 'users', timestamps: true })
 export class User extends Document {
   @Prop({ trim: true })
@@ -40,27 +35,20 @@ export class User extends Document {
   gender: string;
 
   @Prop({
-    type: {
-      url: String,
-      public_id: String,
-    },
+    type: String,
     required: false,
-    _id: false,
   })
-  profileImage?: ImageData;
+  profileImage?: string;
 
   @Prop({
-    type: {
-      url: String,
-      public_id: String,
-    },
+    type: String,
     required: false,
     _id: false,
   })
-  coverImage?: ImageData;
+  coverImage?: string;
 
-  @Prop({required: false})
-  interests?: string[]
+  @Prop({ required: false })
+  interests?: string[];
 
   @Prop({ default: false })
   isBlocked: boolean;
@@ -88,7 +76,7 @@ export class User extends Document {
     default: 'details',
     required: true,
   })
-  onBoardingStage: string;
+  onBoardingStage: 'details' | 'image' | 'interest' | 'node' | 'completed';
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

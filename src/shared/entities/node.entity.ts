@@ -71,10 +71,10 @@ export class Node_ extends Document {
         config: { type: Object, required: true },
       },
     ],
-    validate: {
-      validator: (modules) => modules.length > 0,
-      message: 'There must be at least one module',
-    },
+    // validate: {
+    //   validator: (modules) => modules.length > 0,
+    //   message: 'There must be at least one module',
+    // },
   })
   modules: {
     oid: Types.ObjectId;

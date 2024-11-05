@@ -9,7 +9,7 @@ import { generateRandomPassword } from 'src/utils/generatePassword';
 
 @Injectable()
 export class GoogleSignupService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =
@@ -31,11 +31,8 @@ export class GoogleSignupService {
       if (existingUser && existingUser.emailVerified) {
         existingUser.registered = true;
         existingUser.signupThrough = signupThrough;
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id: '',
-        };
-        existingUser.password = hashedPassword;
+        (existingUser.profileImage = imageUrl),
+          (existingUser.password = hashedPassword);
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else if (
@@ -47,10 +44,8 @@ export class GoogleSignupService {
         existingUser.emailVerified = true;
         existingUser.signupThrough = signupThrough;
         existingUser.password = hashedPassword;
-        existingUser.profileImage = {
-          url: imageUrl,
-          public_id: '',
-        };
+        existingUser.profileImage = imageUrl;
+
         await existingUser.save();
         token = generateToken({ email: existingUser.email }, '3hr');
       } else {

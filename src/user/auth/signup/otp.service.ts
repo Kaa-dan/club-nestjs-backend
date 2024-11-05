@@ -14,14 +14,12 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class OtpService {
   constructor(
-    @InjectModel(OTP.name) private otpModel: Model<OTP>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('otps') private otpModel: Model<OTP>,
+    @InjectModel('users') private userModel: Model<User>,
     private brevoService: MailerService,
   ) {}
 
   async generateAndStoreOtp(emailDto: string): Promise<{ status: boolean }> {
-    // console.log(emailDto,"emm");
-
     const email = emailDto; // Extract email from DTO
     if (!email) {
       throw new BadRequestException('Email is required');
@@ -35,10 +33,9 @@ export class OtpService {
       if (user && user?.emailVerified) {
         throw new ConflictException('user with this email already exist!!');
       }
-      await this.userModel.deleteOne({email})
-        // If user doesn't exist, create a new user entry
-        user = await this.userModel.create({ email, emailVerified: false });
-      
+      await this.userModel.deleteOne({ email });
+      // If user doesn't exist, create a new user entry
+      user = await this.userModel.create({ email, emailVerified: false });
 
       // Delete any existing OTP for this email
       await this.otpModel.deleteOne({ email });
@@ -187,8 +184,8 @@ export class OtpService {
       const token = generateToken({ email }, '10min');
       return { status: true };
     } catch (error) {
-      console.log(error,"errrr");
-      
+      console.log(error, 'errrr');
+
       throw error;
     }
   }

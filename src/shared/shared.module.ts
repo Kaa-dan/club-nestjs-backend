@@ -7,10 +7,10 @@ import { Node_, NodeSchema } from './entities/node.entity';
 @Module({
   imports: [
     UploadModule,
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([{ name: 'users', schema: UserSchema }]),
     MongooseModule.forFeature([
       {
-        name: Node_.name,
+        name: 'nodes',
         schema: NodeSchema,
       },
     ]),

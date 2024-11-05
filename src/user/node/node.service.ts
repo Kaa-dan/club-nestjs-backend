@@ -6,13 +6,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
-import { NodeJoinRequest } from 'src/shared/entities/node-member-requests.entity';
+import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 
 @Injectable()
 export class NodeService {
   constructor(
-    @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
-    @InjectModel(NodeJoinRequest.name)
+    @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
+    @InjectModel('nodejoinrequests')
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     private readonly uploadService: UploadService,
   ) {}
@@ -29,10 +29,14 @@ export class NodeService {
     } = createNodeDto;
     const profileImageUpload = this.uploadService.uploadFile(
       profileImage.buffer,
+      profileImage.filename,
+      profileImage.mimetype,
       'node',
     );
     const coverImageUpload = this.uploadService.uploadFile(
       coverImage.buffer,
+      coverImage.filename,
+      coverImage.mimetype,
       'node',
     );
     const [profileImageResult, coverImageResult] = await Promise.all([
@@ -68,7 +72,11 @@ export class NodeService {
 
   async findOne(nodeId: string) {
     const node = await this.nodeModel.findById(nodeId);
-    return node;
+    return {
+      success: true,
+      message: 'Successfully fetched node',
+      data: node,
+    };
   }
 
   async requestToJoin(nodeId: string, userId: string) {
@@ -105,13 +113,17 @@ export class NodeService {
     const requests = await this.nodeJoinRequestModel
       .find({ node: nodeId })
       .populate(['user']);
-    return requests;
+    return {
+      success: true,
+      message: 'Successfully fetched requests',
+      data: requests,
+    };
   }
 
   async updateNodeJoinRequest(
     nodeId: string,
     userId: string,
-    status: 'accepted' | 'rejected',
+    status: 'accept' | 'reject',
   ) {
     const node = await this.nodeModel.findById(nodeId);
     const request = await this.nodeJoinRequestModel.findOne({
@@ -124,7 +136,7 @@ export class NodeService {
         message: 'Request not found',
       };
     }
-    if (status === 'accepted') {
+    if (status === 'accept') {
       node.members.push({
         role: 'member',
         user: userId,
@@ -162,6 +174,8 @@ export class NodeService {
     if (profileImage) {
       const profileImageUpload = this.uploadService.uploadFile(
         profileImage.buffer,
+        profileImage.filename,
+        profileImage.mimetype,
         'node',
       );
       const profileImageResult = await profileImageUpload;
@@ -170,6 +184,8 @@ export class NodeService {
     if (coverImage) {
       const coverImageUpload = this.uploadService.uploadFile(
         coverImage.buffer,
+        coverImage.filename,
+        coverImage.mimetype,
         'node',
       );
       const coverImageResult = await coverImageUpload;
