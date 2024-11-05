@@ -30,6 +30,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 import { Request } from 'express';
 import { Types } from 'mongoose';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 
 // @SkipAuth()
 @ApiTags('Clubs')
@@ -131,9 +132,9 @@ export class ClubController {
   }
   /*
   --------------------GETTING  CLUBS OF THE SPECIFIED USER----------------------------
-  @Param {string} id - The id of the user
+ 
 
-  @Returns {Promise<Club>} - The deleted club 
+ 
   */
   @Get('user-clubs')
   @ApiOperation({ summary: 'Get all clubs of a user' })
@@ -143,9 +144,33 @@ export class ClubController {
     type: [Club],
   })
   async getAllClubsOfUser(@Req() req: Request) {
-  
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.getAllClubsOfUser(userId);
+  }
+
+  /*----------------------REQUESTING OR JOINING THE CLUB---------------
+  @PARAM groupId @user :userId*/
+  @Put('request-join/:clubId')
+  @ApiOperation({ summary: 'Request or join a club' })
+  @ApiParam({ name: 'groupId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Request or join a club',
+    type: ClubMembers,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Club not found',
+  })
+  async requestOrJoinClub(
+    @Req() req: Request,
+    @Param('clubId') clubId: string,
+  ) {
+    //service
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    // retuning response
+    return await this.clubService.requestOrJoinClub(CLUBID, userId);
   }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
