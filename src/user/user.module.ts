@@ -6,9 +6,10 @@ import { UserAuthGuard } from './guards/user-auth.guard';
 import { SharedModule } from 'src/shared/shared.module';
 import { NodeModule } from './node/node.module';
 import { ClubModule } from './club/club.module';
+import { SearchModule } from 'src/shared/search/search.module';
 
 @Module({
-  imports: [AuthModule, OnboardingModule, SharedModule, NodeModule, ClubModule],
+  imports: [AuthModule, OnboardingModule, SharedModule, NodeModule, ClubModule, SearchModule],
   providers: [
     {
       provide: APP_GUARD,

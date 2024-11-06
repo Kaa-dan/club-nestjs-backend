@@ -107,14 +107,17 @@ export class ClubService {
   @Returns {Promise<Club>} - SINGLE CLUB
   */
 
-  async getClubById(id: string): Promise<Club> {
+  async getClubById(id: Types.ObjectId): Promise<Club> {
     try {
       const club = await this.clubModel.findById(id).exec();
+
       if (!club) {
         throw new NotFoundException('Club not found');
       }
+
       return club;
     } catch (error) {
+      console.log(error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -302,6 +305,61 @@ export class ClubService {
       console.error('Club join error:', error);
       throw new BadRequestException(
         'Failed to process club join request. Please try again later.',
+      );
+    }
+  }
+
+  /* -------------------------REQUEST FOR SINGLE CLUBS --------------------------- */
+  // async getAllRequestsOfClub(clubId: Types.ObjectId) {
+  //   try {
+  //     const requests = await this.clubJoinRequestsModel
+  //       .find({ club: clubId })
+
+  //       .populate('club')
+  //       .populate('user')
+  //       .exec();
+  //     return requests;
+  //   } catch (error) {
+  //     console.log(error);
+  //     throw new BadRequestException(
+  //       'Failed to fetch club join requests. Please try again later.',
+  //     );
+  //   }
+  // }
+
+  /*-------------------------CECKING THE STATUS OF THE USER OF A CLUB ---------------------------*/
+
+  async checkStatus(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      let status = 'VISITOR';
+      
+      const isMember = await this.clubMembersModel
+        .findOne({ club: clubId, user: userId })
+        .populate('club')
+        .populate('user')
+        .exec();
+
+      if (isMember) {
+        status = isMember.status;
+        return {
+          status,
+        };
+      }
+      const isRequested = await this.clubJoinRequestsModel.findOne({
+        club: clubId,
+        user: userId,
+      });
+      if (isRequested) {
+        status = isRequested.status;
+        return {
+          status,
+        };
+      }
+      return { status };
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to fetch club join requests. Please try again later.',
       );
     }
   }

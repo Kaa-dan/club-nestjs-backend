@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
@@ -7,15 +7,16 @@ import { Model } from 'mongoose';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
 
 @Injectable()
 export class NodeService {
   constructor(
     @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
-    @InjectModel('nodejoinrequests')
-    private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
+    @InjectModel('nodejoinrequests') private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
+    @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   async create(createNodeDto: CreateNodeDto, userId: string) {
     const {
@@ -206,4 +207,83 @@ export class NodeService {
   remove(id: number) {
     return `This action removes a #${id} node`;
   }
+
+  /**
+   * Pins a node, and shifts all nodes that were pinned after it one position up.
+   * If the user already has 3 pinned nodes, the oldest pinned node will be unpinned.
+   * @param nodeId The id of the node to pin
+   * @param userId The id of the user to pin the node for
+   * @returns The node that was pinned
+   * @throws `BadRequestException` if the node memeber is not found, or the node is already pinned
+   */
+  async pinNode(nodeId: string, userId: string) {
+    try {
+      const pinnedNodes = await this.nodeMembersModel.find({ user: userId, pinned: { $ne: null } }).sort({ pinned: 1 })
+
+      if (pinnedNodes.length >= 3) {
+        const oldestPinnedNode = pinnedNodes.pop();
+        if (oldestPinnedNode) {
+          oldestPinnedNode.pinned = null;
+          await oldestPinnedNode.save();
+        }
+      }
+
+      for (const node of pinnedNodes) {
+        node.pinned = (node.pinned + 1) as 1 | 2 | 3;
+        await node.save();
+      }
+
+      const nodeToPin = await this.nodeMembersModel.findOneAndUpdate(
+        { node: nodeId, user: userId },
+        { pinned: 1 },
+        { new: true }
+      );
+
+      if (!nodeToPin) {
+        throw new Error('node memeber not found');
+      }
+
+      return nodeToPin;
+
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to pin node. Please try again later.',
+      );
+    }
+  }
+
+  /**
+   * Unpin a node, and shift all nodes that were pinned after it one position up.
+   * @param nodeId The id of the node to unpin
+   * @param userId The id of the user to unpin the node for
+   * @returns The node that was unpinned
+   * @throws `BadRequestException` if the node memeber is not found, or the node is already unpinned
+   */
+  async unpinNode(nodeId: string, userId: string) {
+    try {
+      const nodeToUnpin = await this.nodeMembersModel.findOne({ node: nodeId, user: userId });
+      if (!nodeToUnpin || nodeToUnpin.pinned === null) {
+        throw new Error('node memeber not found or already unpinned');
+      }
+
+      const unpinnedPosition = nodeToUnpin.pinned;
+      nodeToUnpin.pinned = null;
+      await nodeToUnpin.save();
+
+      const nodeToUpdate = await this.nodeMembersModel.find({ user: userId, pinned: { $gt: unpinnedPosition } });
+
+      for (const node of nodeToUpdate) {
+        node.pinned = (node.pinned - 1) as 1 | 2 | 3;
+        await node.save();
+      }
+
+      return nodeToUnpin;
+
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to unpin node. Please try again later.',
+      );
+    }
+  }
+      
 }
