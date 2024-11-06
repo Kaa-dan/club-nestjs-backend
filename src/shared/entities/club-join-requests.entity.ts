@@ -15,9 +15,11 @@ export class ClubJoinRequests extends Document {
   role: 'admin' | 'moderator' | 'member';
 
   @Prop({ required: true })
-  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'LEFT';
 
   rejectedDate: Date;
+
+  leftDate: Date;
 }
 
 export const ClubJoinRequestsSchema =

@@ -312,6 +312,23 @@ export class ClubController {
     );
   }
 
+  /*--------------------LEAVING CLUB API ----------------------------*/
+  @Delete('leave-club/:clubId')
+  @ApiOperation({ summary: 'Leave a club' })
+  @ApiParam({ name: 'clubId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the status of the user in the club',
+    type: ClubMembers,
+  })
+  async leaveClub(
+    @Req() req: Request,
+    @Param('clubId') clubId: Types.ObjectId,
+  ) {
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.leaveClub(CLUBID, userId);
+  }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
 
