@@ -80,6 +80,11 @@ export class NodeService {
   async findOne(nodeId: string) {
     try {
       const node = await this.nodeModel.findById(nodeId);
+      if (!node) {
+        throw new BadRequestException(
+          'Failed to get node. Please try again later.',
+        );
+      }
       return {
         success: true,
         message: 'Successfully fetched node',
@@ -87,7 +92,7 @@ export class NodeService {
       };
     } catch (error) {
       throw new BadRequestException(
-        'Failed to get node. Please try again later.',
+        'Error while trying to get node. Please try again later.',
       );
     }
   }
