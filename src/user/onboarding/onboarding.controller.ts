@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpException,
   HttpStatus,
   Param,
@@ -14,10 +15,29 @@ import { OnboardingService } from './onboarding.service';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { UpdateInterestDto } from './dto/update-interest.dto';
 import { Request } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
 @Controller('onboarding')
 export class OnboardingController {
   constructor(private readonly onBoardingService: OnboardingService) {}
+
+  @Get()
+  async getOnboarding(@Req() req: Request) {
+    try {
+      return await this.onBoardingService.getOnboarding(
+        String(req.user._id),
+      );
+    } catch (error) {
+      throw new HttpException(
+        {
+          success: false,
+          status: error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+          message: error.message || 'Internal Server Error',
+        },
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Put('details')
   async createDetails(
@@ -55,6 +75,8 @@ export class OnboardingController {
         profileImage: files?.profileImage?.[0],
         coverImage: files?.coverImage?.[0],
       };
+
+      console.log(imageFiles, 'imageFiles');
 
       return await this.onBoardingService.updateImages(
         String(req.user._id),

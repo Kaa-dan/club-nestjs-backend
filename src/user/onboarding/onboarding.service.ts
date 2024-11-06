@@ -38,6 +38,36 @@ export class OnboardingService {
     return this.stageOrder[currentIndex + 1];
   }
 
+  
+  /**
+   * Retrieves the onboarding details of a user by their ID.
+   *
+   * @param id - The ID of the user whose onboarding details are to be fetched.
+   * @returns A promise that resolves to a ServiceResponse containing the user's onboarding
+   *          details if found, or an error message if the user is not found or an error occurs.
+   * @throws NotFoundException if the user is not found.
+   */
+  async getOnboarding(id: string): Promise<ServiceResponse> {
+    try {
+      const user = await this.userModel.findById(id);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return {
+        success: true,
+        data: user,
+        status: 200,
+        message: 'User onboarding details retrieved successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        status: error.status || 500,
+        message: error.message || 'Internal Server Error',
+      };
+    }
+  }
+
   async createDetails(
     id: string,
     createDetailsDto: CreateDetailsDto,
@@ -107,7 +137,7 @@ export class OnboardingService {
       if (imageFiles.profileImage) {
         const profileImageResult = await this.uploadService.uploadFile(
           imageFiles.profileImage.buffer,
-          imageFiles.profileImage.filename,
+          imageFiles.profileImage.originalname,
           imageFiles.profileImage.mimetype,
           'user',
         );
@@ -129,7 +159,7 @@ export class OnboardingService {
       if (imageFiles.coverImage) {
         const coverImageResult = await this.uploadService.uploadFile(
           imageFiles.coverImage.buffer,
-          imageFiles.coverImage.filename,
+          imageFiles.coverImage.originalname,
           imageFiles.coverImage.mimetype,
           'user',
         );

@@ -11,6 +11,9 @@ export class NodeJoinRequest extends Document {
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'nodes' })
   node: Types.ObjectId | string;
+
+  @Prop({ required: true })
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
 }
 
 export const NodeJoinRequestSchema =

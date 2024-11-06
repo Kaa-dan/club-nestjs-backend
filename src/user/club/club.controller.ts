@@ -63,8 +63,6 @@ export class ClubController {
       { name: 'coverImage', maxCount: 1 },
     ]),
   )
-
-  //method for create club
   async createClub(
     @Req() req: Request,
     @UploadedFiles(
@@ -126,7 +124,6 @@ export class ClubController {
     description: 'Returns all clubs',
     type: [Club],
   })
-  //   method to get all clubs
   async getAllClubs() {
     return await this.clubService.getAllClubs();
   }
@@ -144,73 +141,6 @@ export class ClubController {
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.getAllClubsOfUser(userId);
   }
-
-  /*
-  --------------------GETTING  ALL REQUESTS OF THE SPECIFIED CLUB----------------------------
-  */
-  @Get('club-requests/:clubId')
-  @ApiOperation({ summary: 'Get all requests of a club' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Returns all requests of the club',
-    type: [ClubMembers],
-  })
-  async getAllRequestsOfClub(@Param('clubId') clubId: string) {
-    const CLUBID = new Types.ObjectId(clubId);
-    return await this.clubService.getAllRequestsOfClub(CLUBID);
-  }
-
-  /*----------------------REQUESTING OR JOINING THE CLUB---------------
-  @PARAM groupId @user :userId*/
-  @Put('request-join/:clubId')
-  @ApiOperation({ summary: 'Request or join a club' })
-  @ApiParam({ name: 'groupId', type: 'string' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Request or join a club',
-    type: ClubMembers,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Club not found',
-  })
-  async requestOrJoinClub(
-    @Req() req: Request,
-    @Param('clubId') clubId: string,
-  ) {
-    //service
-    const userId = new Types.ObjectId(req.user._id);
-    const CLUBID = new Types.ObjectId(clubId);
-    // retuning response
-    return await this.clubService.requestOrJoinClub(CLUBID, userId);
-  }
-  /*
-  --------------------GETTING SINGLE CLUB----------------------------
-
-  @Returns {Promise<Club>} - SINGLE CLUB
-  */
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a club by id' })
-  @ApiParam({ name: 'id', type: 'string' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Returns the club',
-    type: Club,
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Club not found',
-  })
-
-  //method to  get one club
-  async getClub(@Param('id') id: string) {
-    const club = await this.clubService.getClubById(id);
-    if (!club) {
-      throw new NotFoundException('Club not found');
-    }
-    return club;
-  }
-
   /*
   --------------------UPDATING ONE CLUB----------------------------
 
@@ -281,5 +211,148 @@ export class ClubController {
   })
   async deleteClub(@Param('id') id: string) {
     return await this.clubService.deleteClub(id);
+  }
+
+  /*
+  --------------------GETTING  ALL REQUESTS OF THE SPECIFIED CLUB----------------------------
+  */
+  @Get('club-requests/:clubId')
+  @ApiOperation({ summary: 'Get all requests of a club' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all requests of the club',
+    type: [ClubMembers],
+  })
+  async getAllRequestsOfClub(@Param('clubId') clubId: string) {
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.getAllRequestsOfClub(CLUBID);
+  }
+
+  /*----------------------REQUESTING OR JOINING THE CLUB---------------
+  @PARAM groupId @user :userId*/
+  @Put('request-join/:clubId')
+  @ApiOperation({ summary: 'Request or join a club' })
+  @ApiParam({ name: 'groupId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Request or join a club',
+    type: ClubMembers,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Club not found',
+  })
+  async requestOrJoinClub(
+    @Req() req: Request,
+    @Param('clubId') clubId: string,
+  ) {
+    //service
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    // retuning response
+    return await this.clubService.requestOrJoinClub(CLUBID, userId);
+  }
+
+  /*----------------------------CHECKING THE STATUS OF THE USER OF A CLUB---------------------------- */
+
+  @Get('check-status/:clubId')
+  @ApiOperation({ summary: 'Check the status of the user in a club' })
+  @ApiParam({ name: 'clubId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the status of the user in the club',
+    type: ClubMembers,
+  })
+  async checkStatus(@Req() req: Request, @Param('clubId') clubId: string) {
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.checkStatus(CLUBID, userId);
+  }
+
+  /* ------------------GETTING ALL THE MEMBERS OF THE SINGLE CLUB------------------------- */
+  @Get('club-members/:clubId')
+  @ApiOperation({ summary: 'Get all members of a club' })
+  @ApiParam({ name: 'clubId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all members of the club',
+    type: [ClubMembers],
+  })
+  async getAllMembersOfClub(@Param('clubId') clubId: string) {
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.getAllMembersOfClub(CLUBID);
+  }
+
+  /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
+   */
+  @Post('handle-request')
+  async acceptOrRejectRequest(
+    @Body()
+    requestBody: {
+      clubId: string;
+      requestId: string;
+      status: 'ACCEPTED' | 'REJECTED';
+    },
+    @Req() req: any, // you might want to create a proper type for your request object
+  ) {
+    const { clubId, requestId, status } = requestBody;
+    const userId = req.user.id; // assuming the user id is stored in req.user.id
+
+    // Convert strings to ObjectIds
+    const REQUESTID = new Types.ObjectId(requestId);
+    const USERID = new Types.ObjectId(userId);
+    const CLUBID = new Types.ObjectId(clubId);
+
+    // returning response
+    return await this.clubService.acceptOrRejectRequest(
+      REQUESTID,
+      USERID,
+      CLUBID,
+      status,
+    );
+  }
+
+  /*--------------------LEAVING CLUB API ----------------------------*/
+  @Delete('leave-club/:clubId')
+  @ApiOperation({ summary: 'Leave a club' })
+  @ApiParam({ name: 'clubId', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the status of the user in the club',
+    type: ClubMembers,
+  })
+  async leaveClub(
+    @Req() req: Request,
+    @Param('clubId') clubId: Types.ObjectId,
+  ) {
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.leaveClub(CLUBID, userId);
+  }
+  /*
+  --------------------GETTING SINGLE CLUB----------------------------
+
+  @Returns {Promise<Club>} - SINGLE CLUB
+  */
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a club by id' })
+  @ApiParam({ name: 'id', type: 'string' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the club',
+    type: Club,
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Club not found',
+  })
+
+  //method to  get one club
+  async getClub(@Param('id') id: Types.ObjectId) {
+    const club = await this.clubService.getClubById(id);
+    if (!club) {
+      throw new NotFoundException('Club not found');
+    }
+    return club;
   }
 }
