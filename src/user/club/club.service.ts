@@ -402,7 +402,10 @@ export class ClubService {
         user: userId,
         $or: [{ role: 'admin' }, { role: 'moderator' }],
       });
-      if (!isAdminOrModerator) {
+      
+      if (isAdminOrModerator !== null) {
+        console.log("hmmm");
+        
         throw new BadRequestException(
           'You are not authorized to perform this action',
         );
