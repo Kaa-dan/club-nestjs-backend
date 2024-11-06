@@ -15,7 +15,7 @@ export class SearchService {
         try {
 
             if (tag === 'node') {
-                const nodes = await this.nodeModel.find({ $text: { $search: term, $caseSensitive: false } });
+                const nodes = await this.nodeModel.find({ name: { $regex: term, $options: 'i' } });
                 return {
                     data: {
                         nodes
@@ -24,7 +24,7 @@ export class SearchService {
             }
 
             if (tag === 'club') {
-                const clubs = await this.clubModel.find({ $text: { $search: term, $caseSensitive: false } });
+                const clubs = await this.clubModel.find({ name: { $regex: term, $options: 'i' } });
                 return {
                     data: {
                         clubs
@@ -33,8 +33,8 @@ export class SearchService {
             }
 
 
-            const nodes = await this.nodeModel.find({ $text: { $search: term, $caseSensitive: false } });
-            const clubs = await this.clubModel.find({ $text: { $search: term, $caseSensitive: false } });
+            const nodes = await this.nodeModel.find({ name: { $regex: term, $options: 'i' } });
+            const clubs = await this.clubModel.find({ name: { $regex: term, $options: 'i' } });
             return {
                 data: {
                     nodes,
