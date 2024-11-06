@@ -332,7 +332,7 @@ export class ClubService {
   async checkStatus(clubId: Types.ObjectId, userId: Types.ObjectId) {
     try {
       let status = 'VISITOR';
-      
+
       const isMember = await this.clubMembersModel
         .findOne({ club: clubId, user: userId })
         .populate('club')
@@ -364,6 +364,79 @@ export class ClubService {
     }
   }
 
+  /* ------------------GETTING ALL THE MEMBERS OF THE SINGLE CLUB------------------------- */
+  async getAllMembersOfClub(clubId: Types.ObjectId) {
+    try {
+      const members = await this.clubMembersModel
+        .find({ club: clubId })
+        .populate({
+          path: 'user',
+          select: '-password',
+        })
+        .exec();
+      return members;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to fetch club members. Please try again later.',
+      );
+    }
+  }
+
+  /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
+
+  @PARAM groupId @user :userId*/
+  async acceptOrRejectRequest(
+    requestId: Types.ObjectId,
+    userId: Types.ObjectId,
+    clubId: Types.ObjectId,
+    status: 'ACCEPTED' | 'REJECTED',
+  ) {
+    try {
+      //in here i need to check the user is a admin of this club
+
+      const isAdminOrModerator = await this.clubMembersModel.findOne({
+        club: clubId,
+        user: userId,
+        $or: [{ role: 'admin' }, { role: 'moderator' }],
+      });
+      if (!isAdminOrModerator) {
+        throw new BadRequestException(
+          'You are not authorized to perform this action',
+        );
+      }
+
+      // object based on status to query
+      const updateData: any = { status };
+      if (status === 'REJECTED') {
+        updateData.rejectedDate = new Date();
+      }
+
+      const response = await this.clubJoinRequestsModel.findOneAndUpdate(
+        { _id: requestId },
+        updateData,
+        { new: true },
+      );
+
+      // If accepted, create club member
+      if (response.status === 'ACCEPTED') {
+        const createClubMember = new this.clubMembersModel({
+          club: response.club,
+          user: response.user,
+          role: 'member',
+          status: 'MEMBER',
+        });
+        await createClubMember.save();
+      }
+
+      return response;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to process club join request. Please try again later.',
+      );
+    }
+  }
   // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
