@@ -4,6 +4,7 @@ import {
   IsEnum,
   IsOptional,
   IsBoolean,
+  IsDate,
 } from 'class-validator';
 
 export class CreateUserDto {

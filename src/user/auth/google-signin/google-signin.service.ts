@@ -3,47 +3,65 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from 'src/shared/entities/user.entity';
 import { GoogleSignIn } from './dto/google-signin-dto';
-import { generateToken } from 'src/utils';
-
+import { generateToken, hashPassword } from 'src/utils';
+import { generateRandomPassword } from 'src/utils/generatePassword';
 @Injectable()
 export class GoogleSigninService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async googleLogin(signinData: GoogleSignIn) {
+    const hashedPassword = await hashPassword(generateRandomPassword());
     try {
       const { email, userName, imageUrl, phoneNumber, signupThrough } =
         signinData;
 
       // Check if the user already exists
-      let user = await this.userModel.findOne({ email });
+      let user = await this.userModel.findOne({ email }).select('-password');
+
       // User exists, generate a token and send response
       const token = generateToken({ email }, '2hr');
-      if (user) {
+      if (user && user.registered && user.emailVerified) {
         return {
           success: true,
           message: 'login successful',
           token,
-          user,
+          data: user,
+        };
+      }
+
+      if (user && user.emailVerified) {
+        user.registered = true;
+        user = await user.save();
+        user.password = hashedPassword;
+        return {
+          success: true,
+          message: 'login successful',
+          token,
+          data: user,
         };
       } else {
-        // User does not exist, create new user
-        const newUser = new this.userModel({
+        const newUser = await this.userModel.create({
           email,
-          userName,
-          imageUrl,
+          userName: userName.split(' ')[0],
+          profileImage: {
+            url: imageUrl,
+          },
           phoneNumber,
-          signupThrough:"google",
-          registered:true,
-          emailVerified:true
-          
+          emailVerified: true,
+          registered: true,
+          signupThrough,
+          password: hashedPassword,
         });
-        user = await newUser.save();
+        const token = generateToken({ email: newUser.email }, '5hr');
+
+        const sanitizedUser = JSON.parse(JSON.stringify(newUser));
+        delete sanitizedUser.password;
 
         return {
           success: true,
-          message: 'User created successfully, login successful',
+          message: 'login successful',
           token,
-          user,
+          data: sanitizedUser,
         };
       }
     } catch (error) {

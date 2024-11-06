@@ -4,7 +4,9 @@ import {  GoogleSignupService } from './google-signup.service';
 import { GoogleAuthDto } from './dto/google-auth';
 import { User } from 'src/shared/entities/user.entity';
 import { ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
+@SkipAuth()
 @Controller() 
 export class GoogleSignupController {
   constructor(private readonly googleSignupService: GoogleSignupService) {}
@@ -12,6 +14,8 @@ export class GoogleSignupController {
   @Post('google-signup') 
   async googleSignUp(@Body() googleAuthDto: GoogleAuthDto, @Res() res: Response): Promise<Response> {
     try {
+      
+      
       const user = await this.googleSignupService.googleAuth(googleAuthDto);
       return res.status(HttpStatus.CREATED).json(user); 
     } catch (error) {
