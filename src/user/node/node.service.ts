@@ -71,13 +71,25 @@ export class NodeService {
     return nodes;
   }
 
+  /**
+   * Retrieves a single node by its id
+   * @param nodeId The id of the node to retrieve
+   * @returns The retrieved node
+   * @throws `BadRequestException` if the node is not found
+   */
   async findOne(nodeId: string) {
-    const node = await this.nodeModel.findById(nodeId);
-    return {
-      success: true,
-      message: 'Successfully fetched node',
-      data: node,
-    };
+    try {
+      const node = await this.nodeModel.findById(nodeId);
+      return {
+        success: true,
+        message: 'Successfully fetched node',
+        data: node,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get node. Please try again later.',
+      );
+    }
   }
 
   async requestToJoin(nodeId: string, userId: string) {
