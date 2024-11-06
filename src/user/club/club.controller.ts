@@ -308,7 +308,10 @@ export class ClubController {
     @Query('search') search: string = '',
   ) {
     console.log({ clubId, search });
-    return await this.clubService.searchMemberOfClub(new Types.ObjectId(clubId), search);
+    return await this.clubService.searchMemberOfClub(
+      new Types.ObjectId(clubId),
+      search,
+    );
   }
   /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
    */
@@ -355,6 +358,14 @@ export class ClubController {
     const userId = new Types.ObjectId(req.user._id);
     const CLUBID = new Types.ObjectId(clubId);
     return await this.clubService.leaveClub(CLUBID, userId);
+  }
+
+  /*----------------------------PINNING CLUB-------------------------- */
+  @Put('pin-club/:clubId')
+  async pinNode(@Param('clubId') clubId: string, @Req() req: Request) {
+    const CLUBID = new Types.ObjectId(clubId);
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.pinNode(CLUBID, userId);
   }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
