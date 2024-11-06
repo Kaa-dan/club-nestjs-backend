@@ -384,6 +384,65 @@ export class ClubService {
       );
     }
   }
+  /*----------------SEARCHING FOR MEMBER OF THE SINGLE CLUB ------------------------*/
+  async searchMemberOfClub(clubId: Types.ObjectId, search: string) {
+    // Create a case-insensitive search regex
+    const searchRegex = new RegExp(search, 'i');
+
+    // Aggregate pipeline to search club members and their user information
+    const members = await this.clubMembersModel.aggregate([
+      // Match documents with the specified clubId
+      {
+        $match: {
+          club: clubId,
+        },
+      },
+      // Lookup to join with users collection
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      // Unwind the userDetails array (converts array to object)
+      {
+        $unwind: '$userDetails',
+      },
+      // Match documents where any of the specified user fields match the search string
+      {
+        $match: {
+          $or: [
+            { 'userDetails.userName': { $regex: searchRegex } },
+            { 'userDetails.email': { $regex: searchRegex } },
+            { 'userDetails.firstName': { $regex: searchRegex } },
+            { 'userDetails.lastName': { $regex: searchRegex } },
+          ],
+        },
+      },
+      // Project only the needed fields
+      {
+        $project: {
+          _id: 1,
+          role: 1,
+          status: 1,
+          pinned: 1,
+          user: {
+            _id: '$userDetails._id',
+            userName: '$userDetails.userName',
+            email: '$userDetails.email',
+            firstName: '$userDetails.firstName',
+            lastName: '$userDetails.lastName',
+            profileImage: '$userDetails.profileImage',
+            isBlocked: '$userDetails.isBlocked',
+          },
+        },
+      },
+    ]);
+
+    return members;
+  }
 
   /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
 
