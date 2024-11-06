@@ -4,8 +4,8 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
@@ -17,7 +17,9 @@ import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity'
 export class ClubService {
   //injecting club schema
   constructor(
+    @InjectConnection() private readonly connection: Connection,
     @InjectModel(Club.name) private readonly clubModel: Model<Club>,
+
     @InjectModel(ClubMembers.name)
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(ClubJoinRequests.name)
@@ -435,6 +437,67 @@ export class ClubService {
       throw new BadRequestException(
         'Failed to process club join request. Please try again later.',
       );
+    }
+  }
+
+  /*--------------------LEAVING CLUB API ----------------------------*/
+  async leaveClub(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    // Starting a session for transaction
+    const session = await this.connection.startSession();
+
+    try {
+      // Starting transaction
+      session.startTransaction();
+
+      // Performing both operations within the transaction
+      const membershipResponse = await this.clubMembersModel.findOneAndDelete(
+        {
+          club: clubId,
+          user: userId,
+        },
+        { session },
+      );
+
+      const joinRequestResponse =
+        await this.clubJoinRequestsModel.findOneAndUpdate(
+          {
+            club: clubId,
+            user: userId,
+          },
+          { status: 'LEFT', leftDate: new Date() },
+          { session },
+        );
+
+      // If user was neither a member nor had a join request
+      if (!membershipResponse && !joinRequestResponse) {
+        await session.abortTransaction();
+        throw new BadRequestException('You are not a member of this club');
+      }
+
+      // commiting transaction
+      await session.commitTransaction();
+
+      return {
+        membershipResponse,
+        joinRequestResponse,
+        message: 'Successfully left the club',
+      };
+    } catch (error) {
+      // If any error occurs, transaction is aborted
+      await session.abortTransaction();
+
+      console.error('Leave club error:', error);
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        'Failed to process club leave request. Please try again later.',
+      );
+    } finally {
+      // session ended
+      await session.endSession();
     }
   }
   // --------------------------UTIL FUNCTIONS------------------------------
