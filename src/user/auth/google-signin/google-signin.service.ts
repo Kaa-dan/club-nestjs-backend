@@ -40,13 +40,10 @@ export class GoogleSigninService {
           user,
         };
       } else if (user && !user.emailVerified && !user.registered) {
-        user.registered = true
-        user.emailVerified = true
+        user.registered = true;
+        user.emailVerified = true;
         user.password = hashedPassword;
-        user.profileImage = {
-          url : imageUrl,
-          public_id : ""
-        }
+        user.profileImage = imageUrl;
         user = await user.save();
         return {
           success: true,
