@@ -132,9 +132,6 @@ export class ClubController {
   }
   /*
   --------------------GETTING  CLUBS OF THE SPECIFIED USER----------------------------
- 
-
- 
   */
   @Get('user-clubs')
   @ApiOperation({ summary: 'Get all clubs of a user' })
@@ -146,6 +143,21 @@ export class ClubController {
   async getAllClubsOfUser(@Req() req: Request) {
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.getAllClubsOfUser(userId);
+  }
+
+  /*
+  --------------------GETTING  ALL REQUESTS OF THE SPECIFIED CLUB----------------------------
+  */
+  @Get('club-requests/:clubId')
+  @ApiOperation({ summary: 'Get all requests of a club' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all requests of the club',
+    type: [ClubMembers],
+  })
+  async getAllRequestsOfClub(@Param('clubId') clubId: string) {
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.getAllRequestsOfClub(CLUBID);
   }
 
   /*----------------------REQUESTING OR JOINING THE CLUB---------------
@@ -177,7 +189,6 @@ export class ClubController {
 
   @Returns {Promise<Club>} - SINGLE CLUB
   */
-
   @Get(':id')
   @ApiOperation({ summary: 'Get a club by id' })
   @ApiParam({ name: 'id', type: 'string' })
@@ -190,6 +201,7 @@ export class ClubController {
     status: HttpStatus.NOT_FOUND,
     description: 'Club not found',
   })
+
   //method to  get one club
   async getClub(@Param('id') id: string) {
     const club = await this.clubService.getClubById(id);

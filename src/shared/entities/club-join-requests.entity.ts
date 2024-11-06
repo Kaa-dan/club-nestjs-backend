@@ -8,7 +8,7 @@ export class ClubJoinRequests extends Document {
   club: Types.ObjectId;
 
   //user reference
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
   user: Types.ObjectId;
 
   @Prop({ required: true })
