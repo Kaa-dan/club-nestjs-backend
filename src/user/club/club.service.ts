@@ -109,15 +109,22 @@ export class ClubService {
   @Returns {Promise<Club>} - SINGLE CLUB
   */
 
-  async getClubById(id: Types.ObjectId): Promise<Club> {
+  async getClubById(id: Types.ObjectId) {
     try {
       const club = await this.clubModel.findById(id).exec();
+      const members = await this.clubMembersModel
+        .find({ club: new Types.ObjectId(id) })
+        .populate({
+          path: 'user',
+          select: '-password',
+        });
 
+      console.log({ members });
       if (!club) {
         throw new NotFoundException('Club not found');
       }
 
-      return club;
+      return { club, members };
     } catch (error) {
       console.log(error);
       if (error instanceof NotFoundException) {
@@ -397,7 +404,7 @@ export class ClubService {
           club: clubId,
         },
       },
-      // Lookup to join with users collection
+      // Lookup to join with memmbers collection
       {
         $lookup: {
           from: 'users',
