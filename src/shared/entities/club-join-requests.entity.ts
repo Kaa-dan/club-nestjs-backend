@@ -15,7 +15,9 @@ export class ClubJoinRequests extends Document {
   role: string;
 
   @Prop({ required: true })
-  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'BLOCKED';
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+
+  regectedDate: Date;
 }
 
 export const ClubJoinRequestsSchema =
