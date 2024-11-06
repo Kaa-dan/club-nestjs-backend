@@ -306,23 +306,6 @@ export class ClubService {
     }
   }
 
-  /* -------------------------REQUEST FOR SINGLE CLUBS --------------------------- */
-  async getAllRequestsOfClub(clubId: Types.ObjectId) {
-    try {
-      const requests = await this.clubJoinRequestsModel
-        .find({ club: clubId })
-
-        .populate('club')
-        .populate('user')
-        .exec();
-      return requests;
-    } catch (error) {
-      console.log(error);
-      throw new BadRequestException(
-        'Failed to fetch club join requests. Please try again later.',
-      );
-    }
-  }
   // --------------------------UTIL FUNCTIONS------------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
@@ -355,4 +338,21 @@ export class ClubService {
       console.error('Error cleaning up files:', error);
     }
   }
-}
+  /* -------------------------REQUEST FOR SINGLE CLUBS --------------------------- */
+  async getAllRequestsOfClub(clubId: Types.ObjectId) {
+    try {
+      const requests = await this.clubJoinRequestsModel
+        .find({ club: clubId })
+
+        .populate('club')
+        .populate('user')
+        .exec();
+      return requests;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to fetch club join requests. Please try again later.',
+      );
+    }
+  }
+}   
