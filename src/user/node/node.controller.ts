@@ -158,4 +158,14 @@ export class NodeController {
   remove(@Param('id') id: string) {
     return this.nodeService.remove(+id);
   }
+
+  @Put('pin-node/:nodeId')
+  async pinNode(@Param('nodeId') nodeId: string, @Req() request: Request & { user: User }){
+    return await this.nodeService.pinNode(nodeId, request.user._id as string)
+  }
+
+  @Put('unpin-node/:nodeId')
+  async unpinNode(@Param('nodeId') nodeId: string, @Req() request: Request & { user: User }){
+    return await this.nodeService.unpinNode(nodeId, request.user._id as string)
+  }
 }
