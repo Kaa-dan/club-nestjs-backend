@@ -11,13 +11,15 @@ export class ClubJoinRequests extends Document {
   @Prop({ type: Types.ObjectId, ref: 'users', required: true })
   user: Types.ObjectId;
 
-  @Prop({ required: true })
-  role: string;
+  @Prop({ required: true, enum: ['admin', 'moderator', 'member'] })
+  role: 'admin' | 'moderator' | 'member';
 
   @Prop({ required: true })
-  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+  status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED' | 'LEFT';
 
-  regectedDate: Date;
+  rejectedDate: Date;
+
+  leftDate: Date;
 }
 
 export const ClubJoinRequestsSchema =
