@@ -6,6 +6,7 @@ import { Node_, NodeSchema } from './entities/node.entity';
 import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
 import { SearchModule } from './search/search.module';
 import { Club, ClubSchema } from './entities/club.entity';
+import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 
 @Module({
   imports: [
@@ -28,6 +29,9 @@ import { Club, ClubSchema } from './entities/club.entity';
         name: Club.name,
         schema: ClubSchema
       }
+    ]),
+    MongooseModule.forFeature([
+      { name: ClubMembers.name, schema: ClubMembersSchema },
     ]),
     forwardRef(() => SearchModule)
   ],
