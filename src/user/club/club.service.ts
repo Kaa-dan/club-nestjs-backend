@@ -12,6 +12,7 @@ import { Club } from 'src/shared/entities/club.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class ClubService {
@@ -34,6 +35,7 @@ export class ClubService {
   @Returns {Promise<Club>} - The created club 
   */
   async createClub(createClubDto: CreateClubDto): Promise<Club> {
+    console.log({ createClubDto });
     // Start a session for the transaction
     const session = await this.clubModel.db.startSession();
 
@@ -45,20 +47,18 @@ export class ClubService {
         this.uploadFile(createClubDto.profileImage),
         this.uploadFile(createClubDto.coverImage),
       ]);
-      const { nanoid } = await import('nanoid');
-
-      const link = `${createClubDto.name.toLowerCase().replace(/\s/g, '-')}-${nanoid(6)}`;
-
+      const link = randomUUID();
       // Create the club document
       const createdClub = new this.clubModel({
         ...createClubDto,
         profileImage: profileImageUrl,
         coverImage: coverImageUrl,
+        link,
       });
 
       // Save the club within the transaction
       const clubResponse = await createdClub.save({ session });
-
+      console.log({ clubResponse });
       // Create the club member document for admin
       const createClubMember = new this.clubMembersModel({
         club: clubResponse._id,

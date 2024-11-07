@@ -65,33 +65,8 @@ export class Club extends Document {
   @Prop({ required: true, default: false })
   isPublic: boolean;
 
-  @Prop({
-    type: [
-      {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
-        role: {
-          type: String,
-          enum: Object.values(MemberRole),
-          required: true,
-        },
-        designation: { type: String, required: true },
-        date: { type: Date, default: Date.now, required: true },
-      },
-    ],
-    default: [],
-  })
-  @Prop({
-    type: [
-      {
-        userId: { type: Types.ObjectId, ref: 'User', required: true },
-        date: { type: Date, default: Date.now, required: true },
-      },
-    ],
-    default: [],
-  })
-
   //link for joining the club
-  @Prop({ required: true })
+  @Prop({ required: true, unique: true, type: String })
   link: string;
 
   //reference of the user who created the club
