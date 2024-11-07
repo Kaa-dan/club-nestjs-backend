@@ -296,6 +296,7 @@ export class ClubController {
     @Req() req: any, // you might want to create a proper type for your request object
   ) {
     const { clubId, requestId, status } = requestBody;
+    
     const userId = req.user.id; // assuming the user id is stored in req.user.id
 
     // Convert strings to ObjectIds
