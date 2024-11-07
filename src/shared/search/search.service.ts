@@ -14,7 +14,7 @@ export class SearchService {
     async search(term: string, tag?: string) {
         try {
 
-            if (tag === 'node') {
+            if (tag === 'Node') {
                 const nodes = await this.nodeModel.find({ name: { $regex: term, $options: 'i' } });
                 return {
                     data: {
@@ -23,7 +23,7 @@ export class SearchService {
                 }
             }
 
-            if (tag === 'club') {
+            if (tag === 'Club') {
                 const clubs = await this.clubModel.find({ name: { $regex: term, $options: 'i' } });
                 return {
                     data: {

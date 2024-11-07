@@ -3,7 +3,7 @@ import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
@@ -13,10 +13,11 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 export class NodeService {
   constructor(
     @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
-    @InjectModel('nodejoinrequests') private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
+    @InjectModel('nodejoinrequests')
+    private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   async create(createNodeDto: CreateNodeDto, userId: string) {
     const {
@@ -71,13 +72,30 @@ export class NodeService {
     return nodes;
   }
 
+  /**
+   * Retrieves a single node by its id
+   * @param nodeId The id of the node to retrieve
+   * @returns The retrieved node
+   * @throws `BadRequestException` if the node is not found
+   */
   async findOne(nodeId: string) {
-    const node = await this.nodeModel.findById(nodeId);
-    return {
-      success: true,
-      message: 'Successfully fetched node',
-      data: node,
-    };
+    try {
+      const node = await this.nodeModel.findById(nodeId);
+      if (!node) {
+        throw new BadRequestException(
+          'Failed to get node. Please try again later.',
+        );
+      }
+      return {
+        success: true,
+        message: 'Successfully fetched node',
+        data: node,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Error while trying to get node. Please try again later.',
+      );
+    }
   }
 
   async requestToJoin(nodeId: string, userId: string) {
@@ -207,7 +225,41 @@ export class NodeService {
   remove(id: number) {
     return `This action removes a #${id} node`;
   }
+  // ------------------------Get user status for the specified club ------------------------------
+  async getUserStatus(userId: Types.ObjectId, nodeId: Types.ObjectId) {
+    try {
+      let status = 'VISITOR';
 
+      const isMember = await this.nodeMembersModel
+        .findOne({ club: nodeId, user: userId })
+        .populate('club')
+        .populate('user')
+        .exec();
+
+      if (isMember) {
+        status = isMember.status;
+        return {
+          status,
+        };
+      }
+      const isRequested = await this.nodeJoinRequestModel.findOne({
+        club: nodeId,
+        user: userId,
+      });
+      if (isRequested) {
+        status = isRequested.status;
+        return {
+          status,
+        };
+      }
+      return { status };
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to fetch club join requests. Please try again later.',
+      );
+    }
+  }
   /**
    * Pins a node, and shifts all nodes that were pinned after it one position up.
    * If the user already has 3 pinned nodes, the oldest pinned node will be unpinned.
@@ -218,7 +270,9 @@ export class NodeService {
    */
   async pinNode(nodeId: string, userId: string) {
     try {
-      const pinnedNodes = await this.nodeMembersModel.find({ user: userId, pinned: { $ne: null } }).sort({ pinned: 1 })
+      const pinnedNodes = await this.nodeMembersModel
+        .find({ user: userId, pinned: { $ne: null } })
+        .sort({ pinned: 1 });
 
       if (pinnedNodes.length >= 3) {
         const oldestPinnedNode = pinnedNodes.pop();
@@ -236,7 +290,7 @@ export class NodeService {
       const nodeToPin = await this.nodeMembersModel.findOneAndUpdate(
         { node: nodeId, user: userId },
         { pinned: 1 },
-        { new: true }
+        { new: true },
       );
 
       if (!nodeToPin) {
@@ -244,7 +298,6 @@ export class NodeService {
       }
 
       return nodeToPin;
-
     } catch (error) {
       throw new BadRequestException(
         'Failed to pin node. Please try again later.',
@@ -261,7 +314,10 @@ export class NodeService {
    */
   async unpinNode(nodeId: string, userId: string) {
     try {
-      const nodeToUnpin = await this.nodeMembersModel.findOne({ node: nodeId, user: userId });
+      const nodeToUnpin = await this.nodeMembersModel.findOne({
+        node: nodeId,
+        user: userId,
+      });
       if (!nodeToUnpin || nodeToUnpin.pinned === null) {
         throw new Error('node memeber not found or already unpinned');
       }
@@ -270,7 +326,10 @@ export class NodeService {
       nodeToUnpin.pinned = null;
       await nodeToUnpin.save();
 
-      const nodeToUpdate = await this.nodeMembersModel.find({ user: userId, pinned: { $gt: unpinnedPosition } });
+      const nodeToUpdate = await this.nodeMembersModel.find({
+        user: userId,
+        pinned: { $gt: unpinnedPosition },
+      });
 
       for (const node of nodeToUpdate) {
         node.pinned = (node.pinned - 1) as 1 | 2 | 3;
@@ -278,12 +337,12 @@ export class NodeService {
       }
 
       return nodeToUnpin;
-
     } catch (error) {
       throw new BadRequestException(
         'Failed to unpin node. Please try again later.',
       );
     }
   }
-      
+
+  
 }
