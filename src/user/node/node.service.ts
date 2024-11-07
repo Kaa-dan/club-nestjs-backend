@@ -1,9 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { Connection, Model, Types } from 'mongoose';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
@@ -12,6 +12,7 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 @Injectable()
 export class NodeService {
   constructor(
+    @InjectConnection() private readonly connection: Connection,
     @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
     @InjectModel('nodejoinrequests')
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
@@ -19,57 +20,84 @@ export class NodeService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async create(createNodeDto: CreateNodeDto, userId: string) {
-    const {
-      name,
-      about,
-      description,
-      location,
-      profileImage,
-      coverImage,
-      modules,
-    } = createNodeDto;
-    const profileImageUpload = this.uploadService.uploadFile(
-      profileImage.buffer,
-      profileImage.filename,
-      profileImage.mimetype,
-      'node',
-    );
-    const coverImageUpload = this.uploadService.uploadFile(
-      coverImage.buffer,
-      coverImage.filename,
-      coverImage.mimetype,
-      'node',
-    );
-    const [profileImageResult, coverImageResult] = await Promise.all([
-      profileImageUpload,
-      coverImageUpload,
-    ]);
-    const node = new this.nodeModel({
-      name,
-      about,
-      description,
-      location,
-      profileImage: profileImageResult.url,
-      coverImage: coverImageResult.url,
-      creator: userId,
-      modules,
-      members: [
-        {
-          role: 'admin',
-          user: userId,
-          designation: 'demo',
-        },
-      ],
-    });
-    await node.save();
-    return 'Successfully added node';
+  /**
+   * Creates a new node in the database.
+   * @param createNodeDto Node data to be created.
+   * @param userId The id of the user who is creating the node.
+   * @returns The created node object.
+   * @throws BadRequestException if there is an error while creating the node.
+   * @throws ConflictException if there is an error with the database.
+   */
+  async createNode(createNodeDto: CreateNodeDto, userId: Types.ObjectId) {
+    const session = await this.nodeModel.db.startSession();
+    try {
+      session.startTransaction();
+      const {
+        name,
+        about,
+        description,
+        location,
+        profileImage,
+        coverImage,
+      } = createNodeDto;
+      const profileImageUpload = this.uploadService.uploadFile(
+        profileImage.buffer,
+        profileImage.originalname,
+        profileImage.mimetype,
+        'node',
+      );
+      const coverImageUpload = this.uploadService.uploadFile(
+        coverImage.buffer,
+        coverImage.originalname,
+        coverImage.mimetype,
+        'node',
+      );
+      const [profileImageResult, coverImageResult] = await Promise.all([
+        profileImageUpload,
+        coverImageUpload,
+      ]);
+      const createdNode = new this.nodeModel({
+        name,
+        about,
+        description,
+        location,
+        profileImage: profileImageResult,
+        coverImage: coverImageResult,
+        createdBy: userId,
+      });
+      const nodeResponse = await createdNode.save({ session });
+
+      const createNodeMember = new this.nodeMembersModel({
+        node: nodeResponse._id,
+        user: nodeResponse.createdBy,
+        role: "admin",
+        status: "MEMBER"
+      })
+
+      await createNodeMember.save({ session });
+
+      await session.commitTransaction();
+      return nodeResponse;
+    } catch (error) {
+      await session.abortTransaction();
+      console.log(error,"error")
+
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error while trying to add node. Please try again later.');
+    }finally{
+      await session.endSession();
+    }
   }
 
-  @SkipAuth()
-  async findAll() {
-    const nodes = await this.nodeModel.find();
-    return nodes;
+  async findAllNode() {
+    try {
+      return await this.nodeModel.find().exec();
+    } catch (error) {
+      throw new BadRequestException('Error while trying to get nodes. Please try again later.');
+    }
   }
 
   /**
@@ -98,141 +126,269 @@ export class NodeService {
     }
   }
 
-  async requestToJoin(nodeId: string, userId: string) {
-    const node = await this.nodeModel.findById(nodeId);
-    if (node.members.find((member) => member.user === userId)) {
-      return {
-        success: false,
-        message: 'You are already a member of this node',
-      };
+  /**
+   * Retrieves all nodes that a user is a member of.
+   * @param userId The id of the user to retrieve nodes for
+   * @returns An array of nodes that the user is a member of, with the node and user populated
+   * @throws `BadRequestException` if there is an error while trying to get nodes
+   */
+  async getAllNodesOfUser(userId: Types.ObjectId) {
+    try {
+      return await this.nodeMembersModel
+        .find({ user: userId })
+        .populate('node')
+        .populate('user')
+        .exec();
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to get nodes. Please try again later.');
     }
-    const existingRequest = await this.nodeJoinRequestModel.findOne({
-      node: nodeId,
-      user: userId,
-    });
-    if (existingRequest) {
-      return {
-        success: false,
-        message: 'You have already requested to join this node',
-      };
-    }
-    const request = new this.nodeJoinRequestModel({
-      node: nodeId,
-      user: userId,
-    });
-    await request.save();
-    await node.save();
-    return {
-      success: true,
-      message: 'Successfully requested to join node',
-    };
   }
 
-  async getAllJoinRequests(nodeId: string) {
-    const requests = await this.nodeJoinRequestModel
-      .find({ node: nodeId })
-      .populate(['user']);
-    return {
-      success: true,
-      message: 'Successfully fetched requests',
-      data: requests,
-    };
-  }
+  /**
+   * Requests to join a node.
+   * @param nodeId The id of the node to request to join
+   * @param userId The id of the user making the request
+   * @returns The newly created node join request
+   * @throws `BadRequestException` if the node is not found,
+   * or if the user is already a member of the node,
+   * or if the user has been blocked from the node,
+   * or if the user has already requested to join the node.
+   * @throws `NotFoundException` if the node is not found.
+   */
+  async requestToJoin(nodeId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      const existingNode = await this.nodeModel.findById(nodeId);
 
-  async updateNodeJoinRequest(
-    nodeId: string,
-    userId: string,
-    status: 'accept' | 'reject',
-  ) {
-    const node = await this.nodeModel.findById(nodeId);
-    const request = await this.nodeJoinRequestModel.findOne({
-      node: nodeId,
-      user: userId,
-    });
-    if (!request) {
-      return {
-        success: false,
-        message: 'Request not found',
-      };
-    }
-    if (status === 'accept') {
-      node.members.push({
-        role: 'member',
+      if(!existingNode){
+        throw new NotFoundException("Node not found");
+      }
+
+      const existingMember = await this.nodeMembersModel.findOne({
+        node: nodeId,
         user: userId,
-        designation: 'demo',
       });
+
+      if (existingMember) {
+        switch (existingMember.status) {
+          case 'MEMBER':
+            throw new BadRequestException('You are already a member of this node');
+          case 'BLOCKED':
+            throw new BadRequestException('You have been blocked from this node');
+        }
+      }
+
+      const existingRequest = await this.nodeJoinRequestModel.findOne({
+        node: nodeId,
+        user: userId,
+        status: 'REQUESTED'
+      });
+
+      if(existingRequest){
+        throw new BadRequestException('You have already requested to join this node');
+      }
+
+      const response = await this.nodeJoinRequestModel.create({
+        node: existingNode._id,
+        user: userId,
+        status: 'REQUESTED'
+      });
+      
+      return response;
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to request to join. Please try again later.');
     }
-    await this.nodeJoinRequestModel.deleteOne({
-      node: nodeId,
-      user: userId,
-    });
-    await node.save();
-    return {
-      success: true,
-      message: 'Successfully updated request',
-    };
   }
 
-  async update(id: string, updateNodeDto: UpdateNodeDto) {
-    const node = await this.nodeModel.findById(id);
-    if (!node) {
+/**
+ * Retrieves all join requests for a specific node.
+ * @param nodeId - The ID of the node for which to retrieve join requests.
+ * @returns A promise that resolves to an array of join requests, populated with node and user details.
+ * @throws BadRequestException if there is an error while trying to get join requests.
+ */
+  async getAllJoinRequestsOfNode(nodeId: Types.ObjectId) {
+    try {
+      const requests = await this.nodeJoinRequestModel
+        .find({ node: nodeId })
+        .populate('node')
+        .populate('user')
+        .exec();
+      return requests;
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to get join requests. Please try again later.');
+    }
+  }
+
+  /**
+   * Accepts or rejects a node join request.
+   * @param nodeId - The ID of the node for which the request was made.
+   * @param userId - The ID of the user who is accepting or rejecting the request.
+   * @param requestId - The ID of the request to accept or reject.
+   * @param status - The status to set the request to - either 'ACCEPTED' or 'REJECTED'.
+   * @returns A promise that resolves to the updated join request.
+   * @throws BadRequestException if there is an error while trying to accept or reject the request.
+   */
+  async acceptOrRejectRequest(
+    nodeId: Types.ObjectId,
+    userId: Types.ObjectId,
+    requestId: Types.ObjectId,
+    status: 'ACCEPTED' | 'REJECTED',
+  ) {
+    try {
+
+      const updateData: any = { status };
+      if(status === 'REJECTED'){
+        updateData.rejectedDate = new Date();
+      }
+
+      const response = await this.nodeJoinRequestModel.findOneAndUpdate(
+        { _id: requestId },
+        updateData,
+        {new: true},
+      )
+
+      console.log(response,"response")
+
+      if(response.status === 'ACCEPTED'){
+        const createNodeMember = new this.nodeMembersModel({
+          node: response.node,
+          user: response.user,
+          role: 'member',
+          status: 'MEMBER'
+        });
+
+        await createNodeMember.save();
+      }
+
+      return response;
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to accept or reject request. Please try again later.');
+    }
+  }
+
+  /**
+   * Updates a node with the given data.
+   * @param id - The ID of the node to update.
+   * @param updateNodeDto - The data to update the node with.
+   * @returns A promise that resolves to the updated node.
+   * @throws BadRequestException if there is an error while trying to update the node.
+   * @throws NotFoundException if the node is not found.
+   */
+  async updateNode(id: Types.ObjectId, updateNodeDto: UpdateNodeDto) {
+    try {
+      const node = await this.nodeModel.findById(id);
+      if (!node) {
+        throw new NotFoundException('Node not found');
+      }
+  
+      const {
+        name,
+        about,
+        description,
+        location,
+        profileImage,
+        coverImage,
+      } = updateNodeDto;
+  
+      if (profileImage) {
+        const profileImageUpload = this.uploadService.uploadFile(
+          profileImage.buffer,
+          profileImage.originalname,
+          profileImage.mimetype,
+          'node',
+        );
+        const profileImageResult = await profileImageUpload;
+        node.profileImage = profileImageResult;
+      }
+      
+      if (coverImage) {
+        const coverImageUpload = this.uploadService.uploadFile(
+          coverImage.buffer,
+          coverImage.originalname,
+          coverImage.mimetype,
+          'node',
+        );
+        const coverImageResult = await coverImageUpload;
+        node.coverImage = coverImageResult;
+      }
+  
+      if (name !== undefined) node.name = name;
+      if (about !== undefined) node.about = about;
+      if (description !== undefined) node.description = description;
+      if (location !== undefined) node.location = location;
+      
+      // node.modules = modules.map((module));
+      const updatedNode = await node.save();
+      return updatedNode;
+    } catch (error) {
+      console.log(error, "error");
+      throw new BadRequestException('Error while trying to update node. Please try again later.');
+    }
+  }
+
+/**
+ * Allows a user to leave a node by deleting their membership and any join requests.
+ * Initiates a database transaction to ensure both operations are atomic.
+ * @param nodeId - The ID of the node to leave.
+ * @param userId - The ID of the user leaving the node.
+ * @returns An object containing the responses of the membership and join request deletions, along with a success message.
+ * @throws `BadRequestException` if the user is not a member of the node or if an error occurs during the transaction.
+ */
+  async leaveNode(nodeId: Types.ObjectId, userId: Types.ObjectId) {
+    const session = await this.connection.startSession()
+    try {
+      session.startTransaction()
+
+      const membershipResponse = await this.nodeMembersModel.findOneAndDelete({
+        node: nodeId,
+        user: userId,
+      },{session});
+
+      const joinRequestResponse = await this.nodeJoinRequestModel.findOneAndDelete({
+        node: nodeId,
+        user: userId,
+      },{session});
+
+      if(!membershipResponse && !joinRequestResponse){
+        throw new BadRequestException('You are not a member of this node');
+      }
+
+      await session.commitTransaction();
+
       return {
-        success: false,
-        message: 'Node not found',
-      };
+        membershipResponse,
+        joinRequestResponse,
+        message: "Successfully left node"
+      }
+    } catch (error) {
+      console.log(error,"error");
+      await session.abortTransaction();
+      throw new BadRequestException('Error while trying to leave node. Please try again later.');
+    }finally{
+      await session.endSession();
     }
-    const {
-      name,
-      about,
-      description,
-      location,
-      profileImage,
-      coverImage,
-      modules,
-    } = updateNodeDto;
-    if (profileImage) {
-      const profileImageUpload = this.uploadService.uploadFile(
-        profileImage.buffer,
-        profileImage.filename,
-        profileImage.mimetype,
-        'node',
-      );
-      const profileImageResult = await profileImageUpload;
-      node.profileImage = profileImageResult.url;
-    }
-    if (coverImage) {
-      const coverImageUpload = this.uploadService.uploadFile(
-        coverImage.buffer,
-        coverImage.filename,
-        coverImage.mimetype,
-        'node',
-      );
-      const coverImageResult = await coverImageUpload;
-      node.coverImage = coverImageResult.url;
-    }
-    node.name = name;
-    node.about = about;
-    node.description = description;
-    node.location = location;
-    // node.modules = modules.map((module));
-    await node.save();
-    return {
-      success: true,
-      message: 'Successfully updated node',
-    };
   }
-
-  remove(id: number) {
-    return `This action removes a #${id} node`;
-  }
-  // ------------------------Get user status for the specified club ------------------------------
-  async getUserStatus(userId: Types.ObjectId, nodeId: Types.ObjectId) {
+  
+  /**
+   * Checks the status of the given user in the given node.
+   * The status can be one of the following:
+   * - 'VISITOR': The user is not a member of the node.
+   * - 'MEMBER': The user is a member of the node.
+   * - 'REQUESTED': The user has requested to join the node, but has not yet been accepted.
+   * @param userId The ID of the user to check the status of.
+   * @param nodeId The ID of the node to check the status of.
+   * @returns A promise that resolves to an object with a single property, `status`, which is a string indicating the status of the user in the node.
+   */
+  async checkStatus(userId: Types.ObjectId, nodeId: Types.ObjectId) {
     try {
       let status = 'VISITOR';
 
       const isMember = await this.nodeMembersModel
-        .findOne({ club: nodeId, user: userId })
-        .populate('club')
+        .findOne({ node: nodeId, user: userId })
+        .populate('node')
         .populate('user')
         .exec();
 
@@ -256,7 +412,7 @@ export class NodeService {
     } catch (error) {
       console.log(error);
       throw new BadRequestException(
-        'Failed to fetch club join requests. Please try again later.',
+        'Failed to fetch node join requests. Please try again later.',
       );
     }
   }
