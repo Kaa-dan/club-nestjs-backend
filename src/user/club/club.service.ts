@@ -45,6 +45,9 @@ export class ClubService {
         this.uploadFile(createClubDto.profileImage),
         this.uploadFile(createClubDto.coverImage),
       ]);
+      const { nanoid } = await import('nanoid');
+
+      const link = `${createClubDto.name.toLowerCase().replace(/\s/g, '-')}-${nanoid(6)}`;
 
       // Create the club document
       const createdClub = new this.clubModel({
@@ -551,6 +554,7 @@ export class ClubService {
       );
     }
   }
+
   /*------------------------UNPINNING CLUB------------------------------ */
   async unpinNode(clubId: Types.ObjectId, userId: Types.ObjectId) {
     try {

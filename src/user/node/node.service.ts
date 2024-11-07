@@ -208,7 +208,7 @@ export class NodeService {
   remove(id: number) {
     return `This action removes a #${id} node`;
   }
-// ------------------------Get user status for the specified club ------------------------------
+  // ------------------------Get user status for the specified club ------------------------------
   async getUserStatus(userId: Types.ObjectId, nodeId: Types.ObjectId) {
     try {
       let status = 'VISITOR';
@@ -326,4 +326,6 @@ export class NodeService {
       );
     }
   }
+
+  
 }
