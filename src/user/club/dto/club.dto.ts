@@ -24,10 +24,11 @@ export class CreateClubDto {
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
-  readonly createdBy: Types.ObjectId ;
-
+  readonly createdBy: Types.ObjectId;
   profileImage: Express.Multer.File;
   coverImage: Express.Multer.File;
+
+  link?: string;
 }
 
 export class UpdateClubDto {

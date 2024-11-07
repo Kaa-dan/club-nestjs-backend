@@ -5,6 +5,7 @@ import { User } from 'src/shared/entities/user.entity';
 import { GoogleSignIn } from './dto/google-signin-dto';
 import { generateToken, hashPassword } from 'src/utils';
 import { generateRandomPassword } from 'src/utils/generatePassword';
+import { ENV } from 'src/utils/config/env.config';
 @Injectable()
 export class GoogleSigninService {
   constructor(@InjectModel('users') private userModel: Model<User>) {}
@@ -19,7 +20,10 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      const token = generateToken({ email }, '2hr');
+      const token = generateToken(
+        { email, id: user._id },
+        ENV.TOKEN_EXPIRY_TIME,
+      );
       if (user && user.registered && user.emailVerified) {
         return {
           success: true,
@@ -31,8 +35,20 @@ export class GoogleSigninService {
 
       if (user && user.emailVerified) {
         user.registered = true;
-        user = await user.save();
         user.password = hashedPassword;
+        user = await user.save();
+        return {
+          success: true,
+          message: 'login successful',
+          token,
+          user,
+        };
+      } else if (user && !user.emailVerified && !user.registered) {
+        user.registered = true;
+        user.emailVerified = true;
+        user.password = hashedPassword;
+        user.profileImage = imageUrl;
+        user = await user.save();
         return {
           success: true,
           message: 'login successful',
@@ -52,7 +68,10 @@ export class GoogleSigninService {
           signupThrough,
           password: hashedPassword,
         });
-        const token = generateToken({ email: newUser.email }, '5hr');
+        const token = generateToken(
+          { email: newUser.email },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
 
         const sanitizedUser = JSON.parse(JSON.stringify(newUser));
         delete sanitizedUser.password;
