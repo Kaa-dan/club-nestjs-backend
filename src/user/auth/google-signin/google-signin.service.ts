@@ -19,7 +19,7 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      const token = generateToken({ email }, '7d');
+      const token = generateToken({ email, id: user._id }, '7d');
       if (user && user.registered && user.emailVerified) {
         return {
           success: true,
@@ -31,8 +31,9 @@ export class GoogleSigninService {
 
       if (user && user.emailVerified) {
         user.registered = true;
-        user = await user.save();
         user.password = hashedPassword;
+        user.profileImage = imageUrl
+        user = await user.save();
         return {
           success: true,
           message: 'login successful',
@@ -43,16 +44,14 @@ export class GoogleSigninService {
         const newUser = await this.userModel.create({
           email,
           userName: userName.split(' ')[0],
-          profileImage: {
-            url: imageUrl,
-          },
+          profileImag:imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
           signupThrough,
           password: hashedPassword,
         });
-        const token = generateToken({ email: newUser.email }, '7d');
+        const token = generateToken({ email: newUser.email, id: newUser._id }, '7d');
 
         const sanitizedUser = JSON.parse(JSON.stringify(newUser));
         delete sanitizedUser.password;

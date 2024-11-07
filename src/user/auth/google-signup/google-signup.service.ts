@@ -47,7 +47,7 @@ export class GoogleSignupService {
         existingUser.profileImage = imageUrl;
 
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '7d');
+        token = generateToken({ email: existingUser.email, id: existingUser._id }, '7d');
       } else {
         const newUser = new this.userModel({
           email,
@@ -62,7 +62,7 @@ export class GoogleSignupService {
           password: hashedPassword,
         });
         await newUser.save();
-        token = generateToken({ email: newUser.email }, '3hr');
+        token = generateToken({ email: newUser.email, id: newUser._id }, '3hr');
       }
 
       // Create a new user if they don't exist
