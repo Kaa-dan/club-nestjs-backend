@@ -105,7 +105,7 @@ export class ClubController {
 
     // Convert string ID to ObjectId
     const userId = new Types.ObjectId(req.user._id);
-
+    console.log({ userId });
     return await this.clubService.createClub({
       ...createClubDto,
       profileImage: files?.profileImage[0],

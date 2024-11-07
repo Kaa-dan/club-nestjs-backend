@@ -48,6 +48,6 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
     ]),
     forwardRef(() => SearchModule),
   ],
-  exports: [MongooseModule, UploadModule, SearchModule], // Export MongooseModule to make User schema accessible
+  exports: [MongooseModule, UploadModule, SearchModule],
 })
 export class SharedModule {}
