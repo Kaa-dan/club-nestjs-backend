@@ -5,5 +5,4 @@ export class CreateNodeDto {
   about: string;
   description: string;
   location: string;
-  modules: string[];
 }
