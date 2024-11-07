@@ -21,5 +21,5 @@ export class ClubMembers extends Document {
   @Prop({ default: null, enum: [1, 2, 3, null] })
   pinned: 1 | 2 | 3 | null;
 }
-
+  
 export const ClubMembersSchema = SchemaFactory.createForClass(ClubMembers);

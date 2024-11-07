@@ -551,6 +551,35 @@ export class ClubService {
       );
     }
   }
+  /*------------------------UNPINNING CLUB------------------------------ */
+  async unpinNode(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      const clubToUnpin = await this.clubMembersModel.findOneAndUpdate(
+        { club: clubId, user: userId },
+        { pinned: null },
+        { new: true },
+      );
+
+      if (!clubToUnpin) {
+        throw new Error('node memeber not found');
+      }
+
+      const pinnedClubs = await this.clubMembersModel
+        .find({ user: userId, pinned: { $ne: null } })
+        .sort({ pinned: 1 });
+
+      for (const club of pinnedClubs) {
+        club.pinned = (club.pinned - 1) as 1 | 2 | 3;
+        await club.save();
+      }
+
+      return clubToUnpin;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to unpin node. Please try again later.',
+      );
+    }
+  }
   /*--------------------LEAVING CLUB API ----------------------------*/
   async leaveClub(clubId: Types.ObjectId, userId: Types.ObjectId) {
     // Starting a session for transaction

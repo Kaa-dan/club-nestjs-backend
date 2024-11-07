@@ -367,6 +367,14 @@ export class ClubController {
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.pinNode(CLUBID, userId);
   }
+
+  /*----------------------------UNPINNING CLUB-------------------------- */
+  @Put('unpin-club/:clubId')
+  async unpinNode(@Param('clubId') clubId: string, @Req() req: Request) {
+    const CLUBID = new Types.ObjectId(clubId);
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.unpinNode(CLUBID, userId);
+  }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
 
