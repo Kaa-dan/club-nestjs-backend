@@ -6,6 +6,10 @@ import { Node_, NodeSchema } from './entities/node.entity';
 import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
 import { SearchModule } from './search/search.module';
 import { Club, ClubSchema } from './entities/club.entity';
+import {
+  ClubInvitation,
+  ClubInvitationSchema,
+} from './entities/club-invitation.entity';
 import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 
 @Module({
@@ -21,19 +25,28 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
     MongooseModule.forFeature([
       {
         name: NodeMembers.name,
-        schema: NodeMembersSchema    
+        schema: NodeMembersSchema,
       },
     ]),
     MongooseModule.forFeature([
       {
         name: Club.name,
-        schema: ClubSchema
-      }
+        schema: ClubSchema,
+      },
     ]),
     MongooseModule.forFeature([
-      { name: ClubMembers.name, schema: ClubMembersSchema },
+      {
+        name: ClubInvitation.name,
+        schema: ClubInvitationSchema,
+      },
     ]),
-    forwardRef(() => SearchModule)
+    MongooseModule.forFeature([
+      {
+        name: ClubMembers.name,
+        schema: ClubMembersSchema,
+      },
+    ]),
+    forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule], // Export MongooseModule to make User schema accessible
 })

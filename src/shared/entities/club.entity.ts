@@ -80,8 +80,6 @@ export class Club extends Document {
     ],
     default: [],
   })
-  members: IMember[];
-
   @Prop({
     type: [
       {
@@ -91,7 +89,11 @@ export class Club extends Document {
     ],
     default: [],
   })
-  blockedUsers: IBlockedUser[];
+
+  //link for joining the club
+  @Prop({ required: true })
+  link: string;
+
   //reference of the user who created the club
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   createdBy: Types.ObjectId;
