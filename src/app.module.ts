@@ -23,6 +23,7 @@ import { MailerModule } from './mailer/mailer.module';
     InterestModule,
     MailerModule,
   ],
+  providers: [],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
