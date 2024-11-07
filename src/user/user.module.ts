@@ -11,6 +11,7 @@ import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/shared/entities/user.entity';
+import { InvitationModule } from './invitation/invitation.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { User, UserSchema } from 'src/shared/entities/user.entity';
     NodeModule,
     ClubModule,
     SearchModule,
+    InvitationModule,
   ],
   providers: [
     {
