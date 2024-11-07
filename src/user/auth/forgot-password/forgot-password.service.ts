@@ -10,6 +10,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { generateToken } from 'src/utils';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { MailerService } from 'src/mailer/mailer.service';
+import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class ForgotPasswordService {
@@ -35,7 +36,7 @@ export class ForgotPasswordService {
 
       // Generate token and URL
       const token = generateToken({ email }, '10min');
-      const changePasswordUrl = `http://localhost:3000/forgot-password/change-password?token=${token}`;
+      const changePasswordUrl = `${ENV.UI_URL}/forgot-password/change-password?token=${token}`;
       this.brevoService.sendEmail(
         email,
         'Forgot password',
