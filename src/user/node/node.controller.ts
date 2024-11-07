@@ -20,10 +20,11 @@ import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
-import { request } from 'http';
 import { User } from 'src/shared/entities/user.entity';
 import { Types } from 'mongoose';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Request } from 'express';
+import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
 @Controller('node')
 export class NodeController {
@@ -57,7 +58,6 @@ export class NodeController {
       about: string;
       description: string;
       location: string;
-      modules: string[];
     },
     @UploadedFiles()
     files: {
@@ -72,32 +72,37 @@ export class NodeController {
       );
     }
 
+
     return this.nodeService.create(
       {
         ...createNodeBody,
         profileImage: files.profileImage[0],
         coverImage: files.coverImage[0],
       },
-      request.user._id as string,
+      request.user._id,
     );
   }
 
+  @SkipAuth()
   @Get()
   findAll() {
     return this.nodeService.findAll();
   }
 
-  @Get(':nodeId')
-  findOne(@Param('nodeId') id: string) {
-    return this.nodeService.findOne(id);
+
+  @Get('user-nodes')
+  async getAllNodesOfUser(@Req() req: Request) {
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.nodeService.getAllNodesOfUser(userId);
   }
 
   @Post('/request-to-join/:nodeId')
-  requestToJoin(
+  async requestToJoin(
     @Param('nodeId') nodeId: string,
     @Req() request: Request & { user: User },
   ) {
-    return this.nodeService.requestToJoin(nodeId, request.user._id as string);
+    const userId = new Types.ObjectId(request.user._id);
+    return await this.nodeService.requestToJoin(new Types.ObjectId(nodeId), userId);
   }
 
   @Get('/join-requests/:nodeId')
@@ -106,56 +111,12 @@ export class NodeController {
   }
 
   @Put(`/join-requests/status/:status`)
-  updateJoinRequest(
+  async updateJoinRequest(
     @Body() { nodeId, userId }: { nodeId: string; userId: string },
     @Param('status') status: 'accept' | 'reject',
     @Req() request: Request & { user: User },
   ) {
-    return this.nodeService.updateNodeJoinRequest(nodeId, userId, status);
-  }
-
-  @Put(':nodeId')
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'profileImage', maxCount: 1 },
-      { name: 'coverImage', maxCount: 1 },
-    ]),
-  )
-  @UsePipes(
-    new FileValidationPipe({
-      profileImage: {
-        maxSizeMB: 2,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        required: true,
-      },
-      coverImage: {
-        maxSizeMB: 2,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        required: true,
-      },
-    }),
-  )
-  update(
-    @Param('nodeId') id: string,
-    @Body()
-    updateNodeBody: {
-      name: string;
-      about: string;
-      description: string;
-      location: string;
-      modules: string[];
-    },
-    @UploadedFiles()
-    files: {
-      profileImage?: Express.Multer.File[];
-      coverImage?: Express.Multer.File[];
-    },
-  ) {
-    return this.nodeService.update(id, {
-      ...updateNodeBody,
-      profileImage: files.profileImage?.[0],
-      coverImage: files.coverImage?.[0],
-    });
+    return await this.nodeService.updateNodeJoinRequest(nodeId, userId, status);
   }
 
   @Delete(':id')
@@ -212,4 +173,53 @@ export class NodeController {
   ) {
     return await this.nodeService.unpinNode(nodeId, request.user._id as string);
   }
+  @Get(':nodeId')
+  findOne(@Param('nodeId') id: string) {
+    return this.nodeService.findOne(id);
+  }
+
+  @Put(':nodeId')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'profileImage', maxCount: 1 },
+      { name: 'coverImage', maxCount: 1 },
+    ]),
+  )
+  @UsePipes(
+    new FileValidationPipe({
+      profileImage: {
+        maxSizeMB: 2,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+        required: true,
+      },
+      coverImage: {
+        maxSizeMB: 2,
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+        required: true,
+      },
+    }),
+  )
+  update(
+    @Param('nodeId') id: string,
+    @Body()
+    updateNodeBody: {
+      name: string;
+      about: string;
+      description: string;
+      location: string;
+      modules: string[];
+    },
+    @UploadedFiles()
+    files: {
+      profileImage?: Express.Multer.File[];
+      coverImage?: Express.Multer.File[];
+    },
+  ) {
+    return this.nodeService.update(id, {
+      ...updateNodeBody,
+      profileImage: files.profileImage?.[0],
+      coverImage: files.coverImage?.[0],
+    });
+  }
+
 }

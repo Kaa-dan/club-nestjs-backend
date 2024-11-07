@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
@@ -19,54 +19,78 @@ export class NodeService {
     private readonly uploadService: UploadService,
   ) {}
 
-  async create(createNodeDto: CreateNodeDto, userId: string) {
-    const {
-      name,
-      about,
-      description,
-      location,
-      profileImage,
-      coverImage,
-      modules,
-    } = createNodeDto;
-    const profileImageUpload = this.uploadService.uploadFile(
-      profileImage.buffer,
-      profileImage.filename,
-      profileImage.mimetype,
-      'node',
-    );
-    const coverImageUpload = this.uploadService.uploadFile(
-      coverImage.buffer,
-      coverImage.filename,
-      coverImage.mimetype,
-      'node',
-    );
-    const [profileImageResult, coverImageResult] = await Promise.all([
-      profileImageUpload,
-      coverImageUpload,
-    ]);
-    const node = new this.nodeModel({
-      name,
-      about,
-      description,
-      location,
-      profileImage: profileImageResult.url,
-      coverImage: coverImageResult.url,
-      creator: userId,
-      modules,
-      members: [
-        {
-          role: 'admin',
-          user: userId,
-          designation: 'demo',
-        },
-      ],
-    });
-    await node.save();
-    return 'Successfully added node';
+  /**
+   * Creates a new node in the database.
+   * @param createNodeDto Node data to be created.
+   * @param userId The id of the user who is creating the node.
+   * @returns The created node object.
+   * @throws BadRequestException if there is an error while creating the node.
+   * @throws ConflictException if there is an error with the database.
+   */
+  async create(createNodeDto: CreateNodeDto, userId: Types.ObjectId) {
+    const session = await this.nodeModel.db.startSession();
+    try {
+      session.startTransaction();
+      const {
+        name,
+        about,
+        description,
+        location,
+        profileImage,
+        coverImage,
+      } = createNodeDto;
+      const profileImageUpload = this.uploadService.uploadFile(
+        profileImage.buffer,
+        profileImage.originalname,
+        profileImage.mimetype,
+        'node',
+      );
+      const coverImageUpload = this.uploadService.uploadFile(
+        coverImage.buffer,
+        coverImage.originalname,
+        coverImage.mimetype,
+        'node',
+      );
+      const [profileImageResult, coverImageResult] = await Promise.all([
+        profileImageUpload,
+        coverImageUpload,
+      ]);
+      const createdNode = new this.nodeModel({
+        name,
+        about,
+        description,
+        location,
+        profileImage: profileImageResult,
+        coverImage: coverImageResult,
+        createdBy: userId,
+      });
+      const nodeResponse = await createdNode.save({ session });
+
+      const createNodeMember = new this.nodeMembersModel({
+        node: nodeResponse._id,
+        user: nodeResponse.createdBy,
+        role: "admin",
+        status: "MEMBER"
+      })
+
+      await createNodeMember.save({ session });
+
+      await session.commitTransaction();
+      return nodeResponse;
+    } catch (error) {
+      await session.abortTransaction();
+      console.log(error,"error")
+
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Error while trying to add node. Please try again later.');
+    }finally{
+      await session.endSession();
+    }
   }
 
-  @SkipAuth()
   async findAll() {
     const nodes = await this.nodeModel.find();
     return nodes;
@@ -98,34 +122,62 @@ export class NodeService {
     }
   }
 
-  async requestToJoin(nodeId: string, userId: string) {
-    const node = await this.nodeModel.findById(nodeId);
-    if (node.members.find((member) => member.user === userId)) {
-      return {
-        success: false,
-        message: 'You are already a member of this node',
-      };
+  async getAllNodesOfUser(userId: Types.ObjectId) {
+    try {
+      return await this.nodeMembersModel
+        .find({ user: userId })
+        .populate('node')
+        .populate('user')
+        .exec();
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to get nodes. Please try again later.');
     }
-    const existingRequest = await this.nodeJoinRequestModel.findOne({
-      node: nodeId,
-      user: userId,
-    });
-    if (existingRequest) {
-      return {
-        success: false,
-        message: 'You have already requested to join this node',
-      };
+  }
+
+  async requestToJoin(nodeId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      const existingNode = await this.nodeModel.findById(nodeId);
+
+      if(!existingNode){
+        throw new NotFoundException("Node not found");
+      }
+
+      const existingMember = await this.nodeMembersModel.findOne({
+        node: nodeId,
+        user: userId,
+      });
+
+      if (existingMember) {
+        switch (existingMember.status) {
+          case 'MEMBER':
+            throw new BadRequestException('You are already a member of this node');
+          case 'BLOCKED':
+            throw new BadRequestException('You have been blocked from this node');
+        }
+      }
+
+      const existingRequest = await this.nodeJoinRequestModel.findOne({
+        node: nodeId,
+        user: userId,
+        status: 'REQUESTED'
+      });
+
+      if(existingRequest){
+        throw new BadRequestException('You have already requested to join this node');
+      }
+
+      const response = await this.nodeJoinRequestModel.create({
+        node: existingNode._id,
+        user: userId,
+        status: 'REQUESTED'
+      });
+      
+      return response;
+    } catch (error) {
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to request to join. Please try again later.');
     }
-    const request = new this.nodeJoinRequestModel({
-      node: nodeId,
-      user: userId,
-    });
-    await request.save();
-    await node.save();
-    return {
-      success: true,
-      message: 'Successfully requested to join node',
-    };
   }
 
   async getAllJoinRequests(nodeId: string) {
@@ -144,33 +196,37 @@ export class NodeService {
     userId: string,
     status: 'accept' | 'reject',
   ) {
-    const node = await this.nodeModel.findById(nodeId);
-    const request = await this.nodeJoinRequestModel.findOne({
-      node: nodeId,
-      user: userId,
-    });
-    if (!request) {
-      return {
-        success: false,
-        message: 'Request not found',
-      };
-    }
-    if (status === 'accept') {
-      node.members.push({
-        role: 'member',
-        user: userId,
-        designation: 'demo',
-      });
-    }
-    await this.nodeJoinRequestModel.deleteOne({
-      node: nodeId,
-      user: userId,
-    });
-    await node.save();
-    return {
-      success: true,
-      message: 'Successfully updated request',
-    };
+    // try {
+    //   const node = await this.nodeModel.findById(nodeId);
+    //   const request = await this.nodeJoinRequestModel.findOne({
+    //     node: nodeId,
+    //     user: userId,
+    //   });
+    //   if (!request) {
+    //     return {
+    //       success: false,
+    //       message: 'Request not found',
+    //     };
+    //   }
+    //   if (status === 'accept') {
+    //     node.members.push({
+    //       role: 'member',
+    //       user: userId,
+    //       designation: 'demo',
+    //     });
+    //   }
+    //   await this.nodeJoinRequestModel.deleteOne({
+    //     node: nodeId,
+    //     user: userId,
+    //   });
+    //   await node.save();
+    //   return {
+    //     success: true,
+    //     message: 'Successfully updated request',
+    //   };
+    // } catch (error) {
+    //   throw new BadRequestException('Error while trying to update request. Please try again later.');
+    // }
   }
 
   async update(id: string, updateNodeDto: UpdateNodeDto) {
@@ -188,7 +244,6 @@ export class NodeService {
       location,
       profileImage,
       coverImage,
-      modules,
     } = updateNodeDto;
     if (profileImage) {
       const profileImageUpload = this.uploadService.uploadFile(
@@ -198,7 +253,7 @@ export class NodeService {
         'node',
       );
       const profileImageResult = await profileImageUpload;
-      node.profileImage = profileImageResult.url;
+      node.profileImage = profileImageResult;
     }
     if (coverImage) {
       const coverImageUpload = this.uploadService.uploadFile(
@@ -208,7 +263,7 @@ export class NodeService {
         'node',
       );
       const coverImageResult = await coverImageUpload;
-      node.coverImage = coverImageResult.url;
+      node.coverImage = coverImageResult;
     }
     node.name = name;
     node.about = about;

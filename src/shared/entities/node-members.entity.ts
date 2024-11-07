@@ -14,7 +14,7 @@ export class NodeMembers extends Document {
   @Prop({ required: true })
   status: 'MEMBER' | 'BLOCKED';
 
-  @Prop({ required: true, enum: [1, 2, 3, null] })
+  @Prop({ default: null, enum: [1, 2, 3, null] })
   pinned: 1 | 2 | 3 | null;
 }
 
