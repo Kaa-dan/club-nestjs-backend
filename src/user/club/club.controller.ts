@@ -12,6 +12,7 @@ import {
   BadRequestException,
   NotFoundException,
   Req,
+  Query,
 } from '@nestjs/common';
 
 import { ClubService } from './club.service';
@@ -22,6 +23,7 @@ import {
   ApiResponse,
   ApiTags,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
@@ -283,6 +285,34 @@ export class ClubController {
     return await this.clubService.getAllMembersOfClub(CLUBID);
   }
 
+  /*----------------SEARCHING FOR MEMBER OF THE SINGLE CLUB ------------------------*/
+  @Get('search-member/:clubId')
+  @ApiParam({
+    name: 'clubId',
+    type: 'string',
+    description: 'The ID of the club to search in',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: 'string',
+    description: 'Search term for filtering members',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the members of the club matching the search criteria',
+    type: [ClubMembers],
+  })
+  async searchMemberOfClub(
+    @Param('clubId') clubId: Types.ObjectId,
+    @Query('search') search: string = '',
+  ) {
+    console.log({ clubId, search });
+    return await this.clubService.searchMemberOfClub(
+      new Types.ObjectId(clubId),
+      search,
+    );
+  }
   /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
    */
   @Post('handle-request')
@@ -293,11 +323,10 @@ export class ClubController {
       requestId: string;
       status: 'ACCEPTED' | 'REJECTED';
     },
-    @Req() req: any, // you might want to create a proper type for your request object
+    @Req() req: any,
   ) {
     const { clubId, requestId, status } = requestBody;
-    
-    const userId = req.user.id; // assuming the user id is stored in req.user.id
+    const userId = req.user.id;
 
     // Convert strings to ObjectIds
     const REQUESTID = new Types.ObjectId(requestId);
@@ -329,6 +358,22 @@ export class ClubController {
     const userId = new Types.ObjectId(req.user._id);
     const CLUBID = new Types.ObjectId(clubId);
     return await this.clubService.leaveClub(CLUBID, userId);
+  }
+
+  /*----------------------------PINNING CLUB-------------------------- */
+  @Put('pin-club/:clubId')
+  async pinNode(@Param('clubId') clubId: string, @Req() req: Request) {
+    const CLUBID = new Types.ObjectId(clubId);
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.pinNode(CLUBID, userId);
+  }
+
+  /*----------------------------UNPINNING CLUB-------------------------- */
+  @Put('unpin-club/:clubId')
+  async unpinNode(@Param('clubId') clubId: string, @Req() req: Request) {
+    const CLUBID = new Types.ObjectId(clubId);
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.unpinNode(CLUBID, userId);
   }
   /*
   --------------------GETTING SINGLE CLUB----------------------------

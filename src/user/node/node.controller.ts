@@ -12,6 +12,8 @@ import {
   Put,
   BadRequestException,
   Req,
+  Query,
+  HttpStatus,
 } from '@nestjs/common';
 import { NodeService } from './node.service';
 import { CreateNodeDto } from './dto/create-node.dto';
@@ -20,6 +22,8 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { request } from 'http';
 import { User } from 'src/shared/entities/user.entity';
+import { Types } from 'mongoose';
+import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 
 @Controller('node')
 export class NodeController {
@@ -159,13 +163,53 @@ export class NodeController {
     return this.nodeService.remove(+id);
   }
 
+  // -----------------------------user status ---------------------------
+  @Post('user-status/:clubId')
+  @ApiOperation({ summary: 'Get user status for a specific club' })
+  @ApiParam({
+    name: 'clubId',
+    type: 'string',
+    description: 'The ID of the club',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: {
+          type: 'string',
+          description: 'The ID of the user',
+        },
+      },
+      required: ['userId'],
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns the user status for the specified club',
+  })
+  getUserStatus(
+    @Body('userId') userId: string,
+    @Param('clubId') clubId: string,
+  ) {
+    return this.nodeService.getUserStatus(
+      new Types.ObjectId(userId),
+      new Types.ObjectId(clubId),
+    );
+  }
+
   @Put('pin-node/:nodeId')
-  async pinNode(@Param('nodeId') nodeId: string, @Req() request: Request & { user: User }){
-    return await this.nodeService.pinNode(nodeId, request.user._id as string)
+  async pinNode(
+    @Param('nodeId') nodeId: string,
+    @Req() request: Request & { user: User },
+  ) {
+    return await this.nodeService.pinNode(nodeId, request.user._id as string);
   }
 
   @Put('unpin-node/:nodeId')
-  async unpinNode(@Param('nodeId') nodeId: string, @Req() request: Request & { user: User }){
-    return await this.nodeService.unpinNode(nodeId, request.user._id as string)
+  async unpinNode(
+    @Param('nodeId') nodeId: string,
+    @Req() request: Request & { user: User },
+  ) {
+    return await this.nodeService.unpinNode(nodeId, request.user._id as string);
   }
 }

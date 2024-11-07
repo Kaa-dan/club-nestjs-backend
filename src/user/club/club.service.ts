@@ -109,15 +109,22 @@ export class ClubService {
   @Returns {Promise<Club>} - SINGLE CLUB
   */
 
-  async getClubById(id: Types.ObjectId): Promise<Club> {
+  async getClubById(id: Types.ObjectId) {
     try {
       const club = await this.clubModel.findById(id).exec();
+      const members = await this.clubMembersModel
+        .find({ club: new Types.ObjectId(id) })
+        .populate({
+          path: 'user',
+          select: '-password',
+        });
 
+      console.log({ members });
       if (!club) {
         throw new NotFoundException('Club not found');
       }
 
-      return club;
+      return { club, members };
     } catch (error) {
       console.log(error);
       if (error instanceof NotFoundException) {
@@ -384,6 +391,65 @@ export class ClubService {
       );
     }
   }
+  /*----------------SEARCHING FOR MEMBER OF THE SINGLE CLUB ------------------------*/
+  async searchMemberOfClub(clubId: Types.ObjectId, search: string) {
+    // Create a case-insensitive search regex
+    const searchRegex = new RegExp(search, 'i');
+
+    // Aggregate pipeline to search club members and their user information
+    const members = await this.clubMembersModel.aggregate([
+      // Match documents with the specified clubId
+      {
+        $match: {
+          club: clubId,
+        },
+      },
+      // Lookup to join with memmbers collection
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      // Unwind the userDetails array (converts array to object)
+      {
+        $unwind: '$userDetails',
+      },
+      // Match documents where any of the specified user fields match the search string
+      {
+        $match: {
+          $or: [
+            { 'userDetails.userName': { $regex: searchRegex } },
+            { 'userDetails.email': { $regex: searchRegex } },
+            { 'userDetails.firstName': { $regex: searchRegex } },
+            { 'userDetails.lastName': { $regex: searchRegex } },
+          ],
+        },
+      },
+      // Project only the needed fields
+      {
+        $project: {
+          _id: 1,
+          role: 1,
+          status: 1,
+          pinned: 1,
+          user: {
+            _id: '$userDetails._id',
+            userName: '$userDetails.userName',
+            email: '$userDetails.email',
+            firstName: '$userDetails.firstName',
+            lastName: '$userDetails.lastName',
+            profileImage: '$userDetails.profileImage',
+            isBlocked: '$userDetails.isBlocked',
+          },
+        },
+      },
+    ]);
+
+    return members;
+  }
 
   /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
 
@@ -442,6 +508,80 @@ export class ClubService {
     }
   }
 
+  /*------------------------PINNING CLUB------------------------------ */
+  /**
+   * Pins a node, and shifts all nodes that were pinned after it one position up.
+   * If the user already has 3 pinned nodes, the oldest pinned node will be unpinned.
+   * @param clubId The id of the node to pin
+   * @param userId The id of the user to pin the node for
+   * @returns The node that was pinned
+   * @throws `BadRequestException` if the node memeber is not found, or the node is already pinned
+   */
+  async pinNode(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      const pinnedClubs = await this.clubMembersModel
+        .find({ user: userId, pinned: { $ne: null } })
+        .sort({ pinned: 1 });
+
+      if (pinnedClubs.length >= 3) {
+        const oldestPinnedClub = pinnedClubs.pop();
+        if (oldestPinnedClub) {
+          oldestPinnedClub.pinned = null;
+          await oldestPinnedClub.save();
+        }
+      }
+
+      for (const club of pinnedClubs) {
+        club.pinned = (club.pinned + 1) as 1 | 2 | 3;
+        await club.save();
+      }
+
+      const clubTopin = await this.clubMembersModel.findOneAndUpdate(
+        { club: clubId, user: userId },
+        { pinned: 1 },
+        { new: true },
+      );
+
+      if (!clubTopin) {
+        throw new Error('node memeber not found');
+      }
+
+      return clubTopin;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to pin node. Please try again later.',
+      );
+    }
+  }
+  /*------------------------UNPINNING CLUB------------------------------ */
+  async unpinNode(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      const clubToUnpin = await this.clubMembersModel.findOneAndUpdate(
+        { club: clubId, user: userId },
+        { pinned: null },
+        { new: true },
+      );
+
+      if (!clubToUnpin) {
+        throw new Error('node memeber not found');
+      }
+
+      const pinnedClubs = await this.clubMembersModel
+        .find({ user: userId, pinned: { $ne: null } })
+        .sort({ pinned: 1 });
+
+      for (const club of pinnedClubs) {
+        club.pinned = (club.pinned - 1) as 1 | 2 | 3;
+        await club.save();
+      }
+
+      return clubToUnpin;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to unpin node. Please try again later.',
+      );
+    }
+  }
   /*--------------------LEAVING CLUB API ----------------------------*/
   async leaveClub(clubId: Types.ObjectId, userId: Types.ObjectId) {
     // Starting a session for transaction

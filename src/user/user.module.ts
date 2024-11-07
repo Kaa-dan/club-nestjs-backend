@@ -7,14 +7,27 @@ import { SharedModule } from 'src/shared/shared.module';
 import { NodeModule } from './node/node.module';
 import { ClubModule } from './club/club.module';
 import { SearchModule } from 'src/shared/search/search.module';
+import { UserController } from './user.controller';
+import { UserService } from './user.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from 'src/shared/entities/user.entity';
 
 @Module({
-  imports: [AuthModule, OnboardingModule, SharedModule, NodeModule, ClubModule, SearchModule],
+  imports: [
+    AuthModule,
+    OnboardingModule,
+    SharedModule,
+    NodeModule,
+    ClubModule,
+    SearchModule,
+  ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: UserAuthGuard,
     },
+    UserService,
   ],
+  controllers: [UserController],
 })
 export class UserModule {}
