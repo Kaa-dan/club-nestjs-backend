@@ -34,7 +34,7 @@ export class GoogleSignupService {
         (existingUser.profileImage = imageUrl),
           (existingUser.password = hashedPassword);
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '3hr');
+        token = generateToken({ email: existingUser.email }, '7d');
       } else if (
         existingUser &&
         !existingUser.registered &&
@@ -47,7 +47,7 @@ export class GoogleSignupService {
         existingUser.profileImage = imageUrl;
 
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '3hr');
+        token = generateToken({ email: existingUser.email }, '7d');
       } else {
         const newUser = new this.userModel({
           email,

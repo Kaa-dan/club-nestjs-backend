@@ -19,7 +19,7 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      const token = generateToken({ email }, '2hr');
+      const token = generateToken({ email }, '7d');
       if (user && user.registered && user.emailVerified) {
         return {
           success: true,
@@ -52,7 +52,7 @@ export class GoogleSigninService {
           signupThrough,
           password: hashedPassword,
         });
-        const token = generateToken({ email: newUser.email }, '5hr');
+        const token = generateToken({ email: newUser.email }, '7d');
 
         const sanitizedUser = JSON.parse(JSON.stringify(newUser));
         delete sanitizedUser.password;
