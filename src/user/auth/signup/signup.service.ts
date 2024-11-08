@@ -49,7 +49,7 @@ export class SignupService {
       // existingUser.isOnBoarded = 1;
 
       await existingUser.save();
-      const token = generateToken({ email }, ENV.TOKEN_EXPIRY_TIME);
+      const token = generateToken({ email, id: existingUser._id  }, ENV.TOKEN_EXPIRY_TIME);
 
       const sanitizedUser = JSON.parse(JSON.stringify(existingUser));
       delete sanitizedUser.password;
