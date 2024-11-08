@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateNodeDto } from './dto/create-node.dto';
 import { UpdateNodeDto } from './dto/update-node.dto';
 import { Node_, NodeSchema } from 'src/shared/entities/node.entity';
@@ -32,14 +37,8 @@ export class NodeService {
     const session = await this.nodeModel.db.startSession();
     try {
       session.startTransaction();
-      const {
-        name,
-        about,
-        description,
-        location,
-        profileImage,
-        coverImage,
-      } = createNodeDto;
+      const { name, about, description, location, profileImage, coverImage } =
+        createNodeDto;
       const profileImageUpload = this.uploadService.uploadFile(
         profileImage.buffer,
         profileImage.originalname,
@@ -70,9 +69,9 @@ export class NodeService {
       const createNodeMember = new this.nodeMembersModel({
         node: nodeResponse._id,
         user: nodeResponse.createdBy,
-        role: "admin",
-        status: "MEMBER"
-      })
+        role: 'admin',
+        status: 'MEMBER',
+      });
 
       await createNodeMember.save({ session });
 
@@ -80,14 +79,16 @@ export class NodeService {
       return nodeResponse;
     } catch (error) {
       await session.abortTransaction();
-      console.log(error,"error")
+      console.log(error, 'error');
 
       if (error instanceof ConflictException) {
         throw error;
       }
 
-      throw new BadRequestException('Error while trying to add node. Please try again later.');
-    }finally{
+      throw new BadRequestException(
+        'Error while trying to add node. Please try again later.',
+      );
+    } finally {
       await session.endSession();
     }
   }
@@ -96,7 +97,9 @@ export class NodeService {
     try {
       return await this.nodeModel.find().exec();
     } catch (error) {
-      throw new BadRequestException('Error while trying to get nodes. Please try again later.');
+      throw new BadRequestException(
+        'Error while trying to get nodes. Please try again later.',
+      );
     }
   }
 
@@ -108,16 +111,25 @@ export class NodeService {
    */
   async findOne(nodeId: string) {
     try {
+      console.log({ nodeId });
       const node = await this.nodeModel.findById(nodeId);
+
       if (!node) {
         throw new BadRequestException(
           'Failed to get node. Please try again later.',
         );
       }
+      const members = await this.nodeMembersModel
+        .find({
+          node: new Types.ObjectId(nodeId),
+        })
+        .populate('user')
+        .exec();
+
       return {
         success: true,
         message: 'Successfully fetched node',
-        data: node,
+        data: { node, members },
       };
     } catch (error) {
       throw new BadRequestException(
@@ -140,8 +152,10 @@ export class NodeService {
         .populate('user')
         .exec();
     } catch (error) {
-      console.log(error,"error")
-      throw new BadRequestException('Error while trying to get nodes. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to get nodes. Please try again later.',
+      );
     }
   }
 
@@ -160,8 +174,8 @@ export class NodeService {
     try {
       const existingNode = await this.nodeModel.findById(nodeId);
 
-      if(!existingNode){
-        throw new NotFoundException("Node not found");
+      if (!existingNode) {
+        throw new NotFoundException('Node not found');
       }
 
       const existingMember = await this.nodeMembersModel.findOne({
@@ -172,41 +186,49 @@ export class NodeService {
       if (existingMember) {
         switch (existingMember.status) {
           case 'MEMBER':
-            throw new BadRequestException('You are already a member of this node');
+            throw new BadRequestException(
+              'You are already a member of this node',
+            );
           case 'BLOCKED':
-            throw new BadRequestException('You have been blocked from this node');
+            throw new BadRequestException(
+              'You have been blocked from this node',
+            );
         }
       }
 
       const existingRequest = await this.nodeJoinRequestModel.findOne({
         node: nodeId,
         user: userId,
-        status: 'REQUESTED'
+        status: 'REQUESTED',
       });
 
-      if(existingRequest){
-        throw new BadRequestException('You have already requested to join this node');
+      if (existingRequest) {
+        throw new BadRequestException(
+          'You have already requested to join this node',
+        );
       }
 
       const response = await this.nodeJoinRequestModel.create({
         node: existingNode._id,
         user: userId,
-        status: 'REQUESTED'
+        status: 'REQUESTED',
       });
-      
+
       return response;
     } catch (error) {
-      console.log(error,"error")
-      throw new BadRequestException('Error while trying to request to join. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to request to join. Please try again later.',
+      );
     }
   }
 
-/**
- * Retrieves all join requests for a specific node.
- * @param nodeId - The ID of the node for which to retrieve join requests.
- * @returns A promise that resolves to an array of join requests, populated with node and user details.
- * @throws BadRequestException if there is an error while trying to get join requests.
- */
+  /**
+   * Retrieves all join requests for a specific node.
+   * @param nodeId - The ID of the node for which to retrieve join requests.
+   * @returns A promise that resolves to an array of join requests, populated with node and user details.
+   * @throws BadRequestException if there is an error while trying to get join requests.
+   */
   async getAllJoinRequestsOfNode(nodeId: Types.ObjectId) {
     try {
       const requests = await this.nodeJoinRequestModel
@@ -216,8 +238,10 @@ export class NodeService {
         .exec();
       return requests;
     } catch (error) {
-      console.log(error,"error")
-      throw new BadRequestException('Error while trying to get join requests. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to get join requests. Please try again later.',
+      );
     }
   }
 
@@ -237,26 +261,25 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
-
       const updateData: any = { status };
-      if(status === 'REJECTED'){
+      if (status === 'REJECTED') {
         updateData.rejectedDate = new Date();
       }
 
       const response = await this.nodeJoinRequestModel.findOneAndUpdate(
         { _id: requestId },
         updateData,
-        {new: true},
-      )
+        { new: true },
+      );
 
-      console.log(response,"response")
+      console.log(response, 'response');
 
-      if(response.status === 'ACCEPTED'){
+      if (response.status === 'ACCEPTED') {
         const createNodeMember = new this.nodeMembersModel({
           node: response.node,
           user: response.user,
           role: 'member',
-          status: 'MEMBER'
+          status: 'MEMBER',
         });
 
         await createNodeMember.save();
@@ -264,8 +287,10 @@ export class NodeService {
 
       return response;
     } catch (error) {
-      console.log(error,"error")
-      throw new BadRequestException('Error while trying to accept or reject request. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to accept or reject request. Please try again later.',
+      );
     }
   }
 
@@ -283,16 +308,10 @@ export class NodeService {
       if (!node) {
         throw new NotFoundException('Node not found');
       }
-  
-      const {
-        name,
-        about,
-        description,
-        location,
-        profileImage,
-        coverImage,
-      } = updateNodeDto;
-  
+
+      const { name, about, description, location, profileImage, coverImage } =
+        updateNodeDto;
+
       if (profileImage) {
         const profileImageUpload = this.uploadService.uploadFile(
           profileImage.buffer,
@@ -303,7 +322,7 @@ export class NodeService {
         const profileImageResult = await profileImageUpload;
         node.profileImage = profileImageResult;
       }
-      
+
       if (coverImage) {
         const coverImageUpload = this.uploadService.uploadFile(
           coverImage.buffer,
@@ -314,45 +333,54 @@ export class NodeService {
         const coverImageResult = await coverImageUpload;
         node.coverImage = coverImageResult;
       }
-  
+
       if (name !== undefined) node.name = name;
       if (about !== undefined) node.about = about;
       if (description !== undefined) node.description = description;
       if (location !== undefined) node.location = location;
-      
+
       // node.modules = modules.map((module));
       const updatedNode = await node.save();
       return updatedNode;
     } catch (error) {
-      console.log(error, "error");
-      throw new BadRequestException('Error while trying to update node. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to update node. Please try again later.',
+      );
     }
   }
 
-/**
- * Allows a user to leave a node by deleting their membership and any join requests.
- * Initiates a database transaction to ensure both operations are atomic.
- * @param nodeId - The ID of the node to leave.
- * @param userId - The ID of the user leaving the node.
- * @returns An object containing the responses of the membership and join request deletions, along with a success message.
- * @throws `BadRequestException` if the user is not a member of the node or if an error occurs during the transaction.
- */
+  /**
+   * Allows a user to leave a node by deleting their membership and any join requests.
+   * Initiates a database transaction to ensure both operations are atomic.
+   * @param nodeId - The ID of the node to leave.
+   * @param userId - The ID of the user leaving the node.
+   * @returns An object containing the responses of the membership and join request deletions, along with a success message.
+   * @throws `BadRequestException` if the user is not a member of the node or if an error occurs during the transaction.
+   */
   async leaveNode(nodeId: Types.ObjectId, userId: Types.ObjectId) {
-    const session = await this.connection.startSession()
+    const session = await this.connection.startSession();
     try {
-      session.startTransaction()
+      session.startTransaction();
 
-      const membershipResponse = await this.nodeMembersModel.findOneAndDelete({
-        node: nodeId,
-        user: userId,
-      },{session});
+      const membershipResponse = await this.nodeMembersModel.findOneAndDelete(
+        {
+          node: nodeId,
+          user: userId,
+        },
+        { session },
+      );
 
-      const joinRequestResponse = await this.nodeJoinRequestModel.findOneAndDelete({
-        node: nodeId,
-        user: userId,
-      },{session});
+      const joinRequestResponse =
+        await this.nodeJoinRequestModel.findOneAndDelete(
+          {
+            node: nodeId,
+            user: userId,
+          },
+          { session },
+        );
 
-      if(!membershipResponse && !joinRequestResponse){
+      if (!membershipResponse && !joinRequestResponse) {
         throw new BadRequestException('You are not a member of this node');
       }
 
@@ -361,17 +389,19 @@ export class NodeService {
       return {
         membershipResponse,
         joinRequestResponse,
-        message: "Successfully left node"
-      }
+        message: 'Successfully left node',
+      };
     } catch (error) {
-      console.log(error,"error");
+      console.log(error, 'error');
       await session.abortTransaction();
-      throw new BadRequestException('Error while trying to leave node. Please try again later.');
-    }finally{
+      throw new BadRequestException(
+        'Error while trying to leave node. Please try again later.',
+      );
+    } finally {
       await session.endSession();
     }
   }
-  
+
   /**
    * Checks the status of the given user in the given node.
    * The status can be one of the following:
@@ -499,6 +529,4 @@ export class NodeService {
       );
     }
   }
-
-  
 }

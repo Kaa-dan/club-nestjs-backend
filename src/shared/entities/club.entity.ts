@@ -49,8 +49,6 @@ export class Club extends Document {
     url: string;
   };
 
-
-
   @Prop({
     type: {
       filename: { type: SchemaTypes.String, required: true },
@@ -59,13 +57,10 @@ export class Club extends Document {
     _id: false,
     required: true,
   })
-  
   coverImage: {
     filename: string;
     url: string;
   };
-
-
 
   @Prop({ required: true, default: false })
   isPublic: boolean;
