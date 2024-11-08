@@ -20,11 +20,12 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      const token = generateToken(
-        { email, id: user._id },
-        ENV.TOKEN_EXPIRY_TIME,
-      );
+      let token;
       if (user && user.registered && user.emailVerified) {
+        token = generateToken(
+          { email, id: user._id },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
         return {
           success: true,
           message: 'login successful',
@@ -82,6 +83,7 @@ export class GoogleSigninService {
         };
       }
     } catch (error) {
+      console.log(error)
       throw error;
     }
   }
