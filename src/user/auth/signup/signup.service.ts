@@ -13,6 +13,7 @@ import { generateToken, hashPassword } from 'src/utils';
 import { UpdateUserDto } from 'src/user/onboarding/dto/update-user.dto';
 import { ImageData } from './entities/user.entity';
 import { User } from 'src/shared/entities/user.entity';
+import { ENV } from 'src/utils/config/env.config';
 
 interface OnBoardingData {
   userId: string;
@@ -48,7 +49,7 @@ export class SignupService {
       // existingUser.isOnBoarded = 1;
 
       await existingUser.save();
-      const token = generateToken({ email }, '3hrs');
+      const token = generateToken({ email }, ENV.TOKEN_EXPIRY_TIME);
 
       const sanitizedUser = JSON.parse(JSON.stringify(existingUser));
       delete sanitizedUser.password;

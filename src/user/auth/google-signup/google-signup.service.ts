@@ -6,6 +6,7 @@ import { GoogleAuthDto } from './dto/google-auth';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { generateToken, hashPassword } from 'src/utils';
 import { generateRandomPassword } from 'src/utils/generatePassword';
+import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class GoogleSignupService {
@@ -34,7 +35,10 @@ export class GoogleSignupService {
         (existingUser.profileImage = imageUrl),
           (existingUser.password = hashedPassword);
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '7d');
+        token = generateToken(
+          { email: existingUser.email },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
       } else if (
         existingUser &&
         !existingUser.registered &&
@@ -47,8 +51,13 @@ export class GoogleSignupService {
         existingUser.profileImage = imageUrl;
 
         await existingUser.save();
-        token = generateToken({ email: existingUser.email, id: existingUser._id }, '7d');
+        token = generateToken(
+          { email: existingUser.email },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
       } else {
+        console.log('hello');
+
         const newUser = new this.userModel({
           email,
           signupThrough,
@@ -62,7 +71,7 @@ export class GoogleSignupService {
           password: hashedPassword,
         });
         await newUser.save();
-        token = generateToken({ email: newUser.email, id: newUser._id }, '3hr');
+        token = generateToken({ email: newUser.email }, ENV.TOKEN_EXPIRY_TIME);
       }
 
       // Create a new user if they don't exist

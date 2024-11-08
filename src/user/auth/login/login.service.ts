@@ -9,6 +9,7 @@ import { Model } from 'mongoose';
 import { LoginDto } from './dto/login.sto';
 import { User } from 'src/shared/entities/user.entity';
 import { comparePasswords, generateToken } from 'src/utils';
+import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class LoginService {
@@ -50,7 +51,10 @@ export class LoginService {
       }
 
       // Generate JWT token
-      const token = generateToken({ email: user.email, id: user._id }, '3hrs');
+      const token = generateToken(
+        { email: user.email, id: user._id },
+        ENV.TOKEN_EXPIRY_TIME,
+      );
 
       const sanitizedUser = JSON.parse(JSON.stringify(user));
       delete sanitizedUser.password;
