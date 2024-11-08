@@ -15,18 +15,25 @@ export class GoogleSignupService {
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =
       googleAuthData;
+console.log({googleAuthData })
 
     try {
+
+
+      
       let token: string;
       const hashedPassword = await hashPassword(generateRandomPassword());
       // Check if the user already exists by email
       const existingUser = await this.userModel.findOne({ email });
+
       if (
         existingUser &&
         existingUser.registered &&
         existingUser.emailVerified
       ) {
+
         throw new ConflictException('User with this email already exists');
+
       }
 
       if (existingUser && existingUser.emailVerified) {
@@ -56,22 +63,19 @@ export class GoogleSignupService {
           ENV.TOKEN_EXPIRY_TIME,
         );
       } else {
-        console.log('hello');
 
         const newUser = new this.userModel({
           email,
           signupThrough,
           userName: userName.split(' ')[0],
-          profileImage: {
-            url: imageUrl,
-          },
+          profileImage:imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
           password: hashedPassword,
         });
         await newUser.save();
-        token = generateToken({ email: newUser.email }, ENV.TOKEN_EXPIRY_TIME);
+        token = generateToken({ email: newUser.email,id:newUser._id }, ENV.TOKEN_EXPIRY_TIME);
       }
 
       // Create a new user if they don't exist
@@ -88,6 +92,7 @@ export class GoogleSignupService {
         data: user,
       };
     } catch (error) {
+      console.log({error })
       throw error;
     }
   }

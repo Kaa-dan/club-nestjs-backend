@@ -59,7 +59,7 @@ export class GoogleSigninService {
         const newUser = await this.userModel.create({
           email,
           userName: userName.split(' ')[0],
-          profileImag:imageUrl,
+          profileImage:imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
