@@ -43,7 +43,7 @@ console.log({googleAuthData })
           (existingUser.password = hashedPassword);
         await existingUser.save();
         token = generateToken(
-          { email: existingUser.email },
+          { email: existingUser.email, id: existingUser._id },
           ENV.TOKEN_EXPIRY_TIME,
         );
       } else if (
@@ -59,7 +59,7 @@ console.log({googleAuthData })
 
         await existingUser.save();
         token = generateToken(
-          { email: existingUser.email },
+          { email: existingUser.email, id: existingUser._id },
           ENV.TOKEN_EXPIRY_TIME,
         );
       } else {
@@ -75,7 +75,7 @@ console.log({googleAuthData })
           password: hashedPassword,
         });
         await newUser.save();
-        token = generateToken({ email: newUser.email,id:newUser._id }, ENV.TOKEN_EXPIRY_TIME);
+        token = generateToken({ email: newUser.email }, ENV.TOKEN_EXPIRY_TIME);
       }
 
       // Create a new user if they don't exist
