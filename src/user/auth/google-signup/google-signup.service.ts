@@ -62,9 +62,7 @@ export class GoogleSignupService {
           email,
           signupThrough,
           userName: userName.split(' ')[0],
-          profileImage: {
-            url: imageUrl,
-          },
+          profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
