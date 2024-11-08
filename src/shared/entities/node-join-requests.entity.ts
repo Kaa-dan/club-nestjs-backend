@@ -14,6 +14,9 @@ export class NodeJoinRequest extends Document {
 
   @Prop({ required: true })
   status: 'REQUESTED' | 'ACCEPTED' | 'REJECTED';
+
+  rejectedDate: Date;
+
 }
 
 export const NodeJoinRequestSchema =
