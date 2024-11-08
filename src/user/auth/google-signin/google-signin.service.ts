@@ -20,7 +20,7 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      let token;
+      let token:any;
       if (user && user.registered && user.emailVerified) {
         token = generateToken(
           { email, id: user._id },
