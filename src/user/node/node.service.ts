@@ -202,10 +202,8 @@ export class NodeService {
         status: 'REQUESTED',
       });
 
-      if (existingRequest) {
-        throw new BadRequestException(
-          'You have already requested to join this node',
-        );
+      if(existingRequest){
+        throw new ConflictException('You have already requested to join this node');
       }
 
       const response = await this.nodeJoinRequestModel.create({
@@ -216,10 +214,11 @@ export class NodeService {
 
       return response;
     } catch (error) {
-      console.log(error, 'error');
-      throw new BadRequestException(
-        'Error while trying to request to join. Please try again later.',
-      );
+      if(error instanceof ConflictException){
+        throw new ConflictException('You have already requested to join this node')
+      }
+      console.log(error,"error")
+      throw new BadRequestException('Error while trying to request to join. Please try again later.');
     }
   }
 
@@ -429,9 +428,10 @@ export class NodeService {
         };
       }
       const isRequested = await this.nodeJoinRequestModel.findOne({
-        club: nodeId,
+        node: nodeId,
         user: userId,
       });
+
       if (isRequested) {
         status = isRequested.status;
         return {
