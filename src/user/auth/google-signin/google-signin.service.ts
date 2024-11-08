@@ -67,7 +67,7 @@ export class GoogleSigninService {
           password: hashedPassword,
         });
         const token = generateToken(
-          { email: newUser.email },
+          { email: newUser.email, id: newUser._id },
           ENV.TOKEN_EXPIRY_TIME,
         );
 
