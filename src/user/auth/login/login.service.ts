@@ -9,18 +9,18 @@ import { Model } from 'mongoose';
 import { LoginDto } from './dto/login.sto';
 import { User } from 'src/shared/entities/user.entity';
 import { comparePasswords, generateToken } from 'src/utils';
+import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class LoginService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<User>,
-  ) { }
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async login(
     loginDto: LoginDto,
-  ): Promise<{ status: boolean; message: string; token?: string, data: any }> {
+  ): Promise<{ status: boolean; message: string; token?: string; data: any }> {
     const { email, password } = loginDto;
     try {
+      console.log(email);
       // Check if the user exists
       const user = await this.userModel.findOne({ email });
 
@@ -32,7 +32,9 @@ export class LoginService {
       // Check if the email is verified
       if (!user.emailVerified) {
         // If email is not verified, throw a 403 Forbidden
-        throw new ForbiddenException('Please verify your email address to log in');
+        throw new ForbiddenException(
+          'Please verify your email address to log in',
+        );
       }
 
       // Verify the password
@@ -49,7 +51,10 @@ export class LoginService {
       }
 
       // Generate JWT token
-      const token = generateToken({ email: user.email, id: user._id }, '3hrs');
+      const token = generateToken(
+        { email: user.email, id: user._id },
+        ENV.TOKEN_EXPIRY_TIME,
+      );
 
       const sanitizedUser = JSON.parse(JSON.stringify(user));
       delete sanitizedUser.password;
@@ -64,10 +69,7 @@ export class LoginService {
     } catch (error) {
       console.log(error);
 
-      throw error
+      throw error;
     }
-
-
-
   }
 }

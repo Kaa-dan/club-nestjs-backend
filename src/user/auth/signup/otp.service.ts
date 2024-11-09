@@ -14,8 +14,8 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class OtpService {
   constructor(
-    @InjectModel(OTP.name) private otpModel: Model<OTP>,
-    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel('otps') private otpModel: Model<OTP>,
+    @InjectModel('users') private userModel: Model<User>,
     private brevoService: MailerService,
   ) {}
 

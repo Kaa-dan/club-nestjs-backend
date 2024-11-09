@@ -6,10 +6,11 @@ import { GoogleAuthDto } from './dto/google-auth';
 import { ServiceResponse } from 'src/shared/types/service.response.type';
 import { generateToken, hashPassword } from 'src/utils';
 import { generateRandomPassword } from 'src/utils/generatePassword';
+import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class GoogleSignupService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel('users') private userModel: Model<User>) {}
 
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =
@@ -34,7 +35,10 @@ export class GoogleSignupService {
         (existingUser.profileImage = imageUrl),
           (existingUser.password = hashedPassword);
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '3hr');
+        token = generateToken(
+          { email: existingUser.email, id: existingUser._id },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
       } else if (
         existingUser &&
         !existingUser.registered &&
@@ -47,22 +51,25 @@ export class GoogleSignupService {
         existingUser.profileImage = imageUrl;
 
         await existingUser.save();
-        token = generateToken({ email: existingUser.email }, '3hr');
+        token = generateToken(
+          { email: existingUser.email, id: existingUser._id },
+          ENV.TOKEN_EXPIRY_TIME,
+        );
       } else {
+        console.log('hello');
+
         const newUser = new this.userModel({
           email,
           signupThrough,
           userName: userName.split(' ')[0],
-          profileImage: {
-            url: imageUrl,
-          },
+          profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
           password: hashedPassword,
         });
         await newUser.save();
-        token = generateToken({ email: newUser.email }, '3hr');
+        token = generateToken({ email: newUser.email, id: newUser._id }, ENV.TOKEN_EXPIRY_TIME);
       }
 
       // Create a new user if they don't exist
