@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 import { UploadService } from 'src/shared/upload/upload.service';
@@ -80,6 +80,69 @@ export class RulesRegulationsService {
     }
   }
 
+  /* ---------------------CREATE RULES AND REGULATIONS
+  @Params :updateRulesRegulationDto
+  @return :UpdatedRulesRegulations */
+
+  async updateRulesRegulations(dataToSave: any) {
+    // 1. Find the current version
+    const currentVersion = await this.rulesregulationModel.findById(
+      dataToSave._id,
+    );
+
+    if (!currentVersion) {
+      throw new Error('Document not found');
+    }
+
+    // 2. Handle file uploads
+    const { file, olderFile = [], ...restData } = dataToSave;
+    const uploadedFiles = await Promise.all(
+      file.map((singlefile) => this.uploadFile(singlefile)),
+    );
+
+    // 3. Create file objects
+    const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+      url: uploadedFile.url,
+      originalname: file[index].originalname,
+      mimetype: file[index].mimetype,
+      size: file[index].size,
+    }));
+
+    try {
+      // 4. Create a version object from the current document
+      const versionObject = {
+        ...currentVersion.toObject(),
+        uniqid: new Types.ObjectId(),
+        updatedAt: new Date(),
+        version: currentVersion.version || 1,
+      };
+
+      // 5. Update the current document with new data
+      const updatedDocument = await this.rulesregulationModel.findByIdAndUpdate(
+        dataToSave._id,
+        {
+          $set: {
+            ...restData,
+            file: [...(olderFile || []), ...fileObjects],
+            version: (currentVersion.version || 1) + 1,
+            updatedAt: new Date(),
+          },
+          $push: {
+            olderVersions: versionObject,
+          },
+        },
+        { new: true, runValidators: true },
+      );
+
+      return updatedDocument;
+    } catch (error) {
+      console.error('Error updating rules and regulations:', error);
+      throw new InternalServerErrorException(
+        'Error while updating rules-regulations',
+        error,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
