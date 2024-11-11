@@ -10,12 +10,34 @@ export class RulesRegulationsService {
     private readonly rulesregulationModel: Model<RulesRegulations>,
   ) {}
 
+  /*
+  
+  */
   async getAllRulesRegulations() {
     try {
       return await this.rulesregulationModel.find().exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /* -----------------CREATE RULES AND REGULATIONS
+  @Params :createRulesRegulationsDto
+  @return :RulesRegulations */
+
+  async createRulesRegulations(createRulesRegulationsDto) {
+    try {
+      const newRulesRegulations = new this.rulesregulationModel(
+        createRulesRegulationsDto,
+      );
+
+      return await newRulesRegulations.save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while creating rules-regulations',
         error,
       );
     }

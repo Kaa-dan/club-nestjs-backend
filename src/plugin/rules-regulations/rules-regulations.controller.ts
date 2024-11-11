@@ -6,9 +6,11 @@ import {
   Post,
 } from '@nestjs/common';
 import { RulesRegulationsService } from './rules-regulations.service';
+import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 
 @Controller('rules-regulations')
 export class RulesRegulationsController {
+  //@inject
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
   ) {}
@@ -22,6 +24,7 @@ export class RulesRegulationsController {
   }
 
   /* -----------------------------CREATE RULES AND REGULATIONS
+  
   @Param :createRulesRegulationsDto
   @Res :RulesRegulations
   @description :Create a new rules-regulations
@@ -32,7 +35,9 @@ export class RulesRegulationsController {
     @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
     try {
-      return await this.rulesRegulationsService.createRulesRegulations();
+      return await this.rulesRegulationsService.createRulesRegulations(
+        createRulesRegulationsDto,
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',

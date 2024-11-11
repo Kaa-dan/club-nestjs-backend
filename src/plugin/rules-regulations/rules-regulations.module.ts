@@ -6,7 +6,9 @@ import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
   imports: [SharedModule],
+
   controllers: [RulesRegulationsController],
+
   providers: [RulesRegulationsService],
 })
 export class RulesRegulationsModule {}
