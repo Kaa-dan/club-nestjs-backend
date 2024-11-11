@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 
 @Injectable()
 export class RulesRegulationsService {
@@ -28,7 +29,10 @@ export class RulesRegulationsService {
   @Params :createRulesRegulationsDto
   @return :RulesRegulations */
 
-  async createRulesRegulations(createRulesRegulationsDto) {
+  async createRulesRegulations(
+    createRulesRegulationsDto: CreateRulesRegulationsDto,
+  ) {
+    console.log({ createRulesRegulationsDto });
     try {
       const newRulesRegulations = new this.rulesregulationModel(
         createRulesRegulationsDto,

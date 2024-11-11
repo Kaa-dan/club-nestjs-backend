@@ -6,8 +6,10 @@ import {
   IsMongoId,
   IsNumber,
   IsDate,
-  ValidateNested,
   ArrayMinSize,
+  ArrayMaxSize,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Types } from 'mongoose';
@@ -38,9 +40,12 @@ export class CreateRulesRegulationsDto {
   isPublic: boolean;
 
   @IsArray()
-  @IsString({ each: true })
   @ArrayMinSize(1)
-  file: string[];
+  @ArrayMaxSize(10)
+  @IsNumber({}, { each: true })
+  @Min(1, { each: true })
+  @Max(10, { each: true })
+  numbers: number[];
 
   @IsOptional()
   @IsArray()
