@@ -26,7 +26,7 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
-  ) {}
+  ) { }
 
   /*
   --------------------CREATING A CLUB----------------------------
@@ -510,9 +510,8 @@ export class ClubService {
         user: userId,
         $or: [{ role: 'admin' }, { role: 'moderator' }],
       });
-      
-      if (!isAdminOrModerator) {
 
+      if (!isAdminOrModerator) {
         throw new BadRequestException(
           'You are not authorized to perform this action',
         );
@@ -744,10 +743,10 @@ export class ClubService {
   async getAllRequestsOfUser(userId: Types.ObjectId) {
     try {
       const requests = await this.clubJoinRequestsModel
-      .find({ user: userId }) 
-      .populate('club')
-      .populate('user', '-password')
-      .exec();
+        .find({ user: userId })
+        .populate('club')
+        .populate('user', '-password')
+        .exec();
       return requests;
     } catch (error) {
       console.log(error);

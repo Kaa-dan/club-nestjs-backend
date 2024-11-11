@@ -1,4 +1,9 @@
-import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import {
+  PipeTransform,
+  Injectable,
+  BadRequestException,
+  ArgumentMetadata,
+} from '@nestjs/common';
 
 type AllowedMimeType =
   | 'image/jpeg'
@@ -18,59 +23,79 @@ interface FileValidationConfig {
 @Injectable()
 export class FileValidationPipe implements PipeTransform {
   constructor(private config: Record<string, FileValidationConfig>) {}
+  transform(value: any, metadata: ArgumentMetadata) {
+    console.log('Received value:', value);
 
-  transform(value: any) {
-    // If the value is not an object or null/undefined, return it as is
+    // Handle array of files directly
+    if (Array.isArray(value)) {
+      console.log('Processing array of files');
+      const fieldName = Object.keys(this.config)[0];
+      return this.validateFiles(value, fieldName);
+    }
+
+    // If the value is not an object or null/undefined, return
     if (!value || typeof value !== 'object') {
+      console.log('Value is not an object:', value);
       return value;
     }
 
-    // Check if we're dealing with files (they should have buffer property)
-    const hasFiles =
-      value.buffer ||
-      (Array.isArray(value) && value[0]?.buffer) ||
-      Object.values(value).some((v) => Array.isArray(v) && v[0]?.buffer);
-
-    if (!hasFiles) {
-      return value;
-    }
-
-    const files = value;
+    console.log('Config:', this.config);
     const fileFields = Object.keys(this.config);
 
     for (const field of fileFields) {
-      const fieldFiles = files[field];
-      const {
-        maxSizeMB,
-        allowedMimeTypes,
-        required = false,
-      } = this.config[field];
-      const maxSizeBytes = maxSizeMB * 1024 * 1024;
+      console.log(`Validating field: ${field}`);
+      const fieldConfig = this.config[field];
 
-      if (
-        required &&
-        (!fieldFiles || !Array.isArray(fieldFiles) || fieldFiles.length === 0)
-      ) {
+      // For single file or array of files
+      if (value[field]) {
+        const files = Array.isArray(value[field])
+          ? value[field]
+          : [value[field]];
+        this.validateFiles(files, field);
+      } else if (fieldConfig.required) {
         throw new BadRequestException(`${field} is required`);
       }
-
-      if (fieldFiles && Array.isArray(fieldFiles) && fieldFiles.length > 0) {
-        fieldFiles.forEach((file) => {
-          if (!file) return;
-
-          if (file.size > maxSizeBytes) {
-            throw new BadRequestException(
-              `File size for ${field} exceeds ${maxSizeMB} MB`,
-            );
-          }
-          if (!allowedMimeTypes.includes(file.mimetype as AllowedMimeType)) {
-            throw new BadRequestException(
-              `File type ${file.mimetype} for ${field} is not allowed. Allowed types: ${allowedMimeTypes.join(', ')}`,
-            );
-          }
-        });
-      }
     }
+
+    return value;
+  }
+
+  private validateFiles(files: Express.Multer.File[], fieldName: string) {
+    console.log(`Validating files for field ${fieldName}:`, files);
+
+    const config = this.config[fieldName];
+    if (!config) {
+      throw new BadRequestException(
+        `No configuration found for field ${fieldName}`,
+      );
+    }
+
+    const { maxSizeMB, allowedMimeTypes, required = false } = config;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    // Check if files are required
+    if (required && (!files || files.length === 0)) {
+      throw new BadRequestException(`${fieldName} is required`);
+    }
+
+    // Validate each file
+    files.forEach((file, index) => {
+      if (!file) {
+        throw new BadRequestException(`Invalid file at index ${index}`);
+      }
+
+      if (file.size > maxSizeBytes) {
+        throw new BadRequestException(
+          `File size for ${fieldName} exceeds ${maxSizeMB} MB`,
+        );
+      }
+
+      if (!allowedMimeTypes.includes(file.mimetype as AllowedMimeType)) {
+        throw new BadRequestException(
+          `File type ${file.mimetype} for ${fieldName} is not allowed. Allowed types: ${allowedMimeTypes.join(', ')}`,
+        );
+      }
+    });
 
     return files;
   }
