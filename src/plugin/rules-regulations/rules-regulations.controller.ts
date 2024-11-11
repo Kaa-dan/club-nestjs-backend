@@ -72,6 +72,8 @@ export class RulesRegulationsController {
   ) {
     try {
       console.log('nithin');
+      console.log(file);
+
       // Validate number of file
       if (!file || file.length < 1 || file.length > 10) {
         throw new BadRequestException('Must provide between 1 and 10 file');
