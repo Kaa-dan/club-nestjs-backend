@@ -33,14 +33,16 @@ export class RulesRegulations extends Document {
 
   @Prop({
     required: true,
-    validate: {
-      validator: (files: string[]) => {
-        return files.length >= 1 && files.length <= 10;
+    type: [
+      {
+        url: String,
+        originalname: String,
+        mimetype: String,
+        size: Number,
       },
-      message: 'Must provide between 1 and 10 files',
-    },
+    ],
   })
-  file: string[];
+  file: any;
 
   @Prop([
     {

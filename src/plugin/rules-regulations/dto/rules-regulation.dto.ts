@@ -58,6 +58,12 @@ export class CreateRulesRegulationsDto {
   @IsMongoId()
   club?: Types.ObjectId;
 
+  file: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }[];
   @IsOptional()
   @IsMongoId()
   node?: Types.ObjectId;
