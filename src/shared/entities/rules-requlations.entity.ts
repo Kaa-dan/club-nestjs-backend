@@ -28,10 +28,18 @@ export class RulesRegulations extends Document {
   @Prop({ required: true, type: [String] })
   tags: string[];
 
-  @Prop({ required: true, default: false })
+  @Prop({ default: false })
   isPublic: boolean;
 
-  @Prop({ required: true })
+  @Prop({
+    required: true,
+    validate: {
+      validator: (files: string[]) => {
+        return files.length >= 1 && files.length <= 10;
+      },
+      message: 'Must provide between 1 and 10 files',
+    },
+  })
   file: string[];
 
   @Prop([
@@ -62,23 +70,20 @@ export class RulesRegulations extends Document {
   createdBy: Types.ObjectId;
 
   @Prop({
-    required: true,
     type: Types.ObjectId,
     ref: 'Clubs',
   })
   adoptedClubs: [];
 
   @Prop({
-    required: true,
     type: Types.ObjectId,
     ref: 'Nodes',
   })
   adoptedNodes: [];
 
-  @Prop({ required: true })
   version: number;
 
-  @Prop({ required: true })
+  @Prop({ default: true })
   publishedStatus: string;
 
   @Prop({ required: true })
