@@ -84,7 +84,7 @@ export class RulesRegulationsService {
   @Params :updateRulesRegulationDto
   @return :UpdatedRulesRegulations */
 
-  async updateRulesRegulations(dataToSave: any) {
+  async updateRulesRegulations(dataToSave: any, userId: Types.ObjectId) {
     // 1. Find the current version
     const currentVersion = await this.rulesregulationModel.findById(
       dataToSave._id,
@@ -125,6 +125,7 @@ export class RulesRegulationsService {
             ...restData,
             file: [...(olderFile || []), ...fileObjects],
             version: (currentVersion.version || 1) + 1,
+            publishedBy: userId,
             updatedAt: new Date(),
           },
           $push: {
@@ -139,6 +140,75 @@ export class RulesRegulationsService {
       console.error('Error updating rules and regulations:', error);
       throw new InternalServerErrorException(
         'Error while updating rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /*-------------------------GET ALL RULES AND REGULATION OF SINGLE CLUB OR NODE */
+
+  async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
+    try {
+      if (type === 'club') {
+        return await this.rulesregulationModel
+          .find({ isActive: true, clubId: forId })
+          .exec();
+      } else if (type === 'node') {
+        return await this.rulesregulationModel
+          .find({ isActive: true, nodeId: forId })
+          .exec();
+      }
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  async getMyRules(userId: Types.ObjectId) {
+    try {
+      return await this.rulesregulationModel.find({ createdBy: userId }).exec();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /* ------------------------------SAVE RULES AND REGULATION TO DRAFT */
+  async saveRulesRegulationsToDraft(dataToSave: any, userId: Types.ObjectId) {
+    try {
+      const { file, ...restData } = dataToSave;
+      const uploadPromises = file.map((file: FileObject) =>
+        this.uploadFile({
+          buffer: file.buffer,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+        } as Express.Multer.File),
+      );
+      const uploadedFiles = await Promise.all(uploadPromises);
+
+      const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+        url: uploadedFile.url,
+        originalname: file[index].originalname,
+        mimetype: file[index].mimetype,
+        size: file[index].size,
+      }));
+
+      const newRulesRegulations = new this.rulesregulationModel({
+        ...restData,
+        file: fileObjects, // Save the file information in the schema
+        publishedBy: userId,
+        isActive: false,
+      });
+
+      return await newRulesRegulations.save();
+    } catch (error) {
+      console.log({ error });
+      throw new InternalServerErrorException(
+        'Error while creating rules-regulations',
         error,
       );
     }
