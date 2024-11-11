@@ -10,7 +10,7 @@ interface View {
 
 @Schema({ collection: 'rulesandregulations', timestamps: true })
 export class RulesRegulations extends Document {
-  //this will have all the older versions of this schema
+  //this will have all the older versions of this schema it means copy of the schema
   olderVersions: [{}];
 
   @Prop({ required: true })
@@ -84,7 +84,7 @@ export class RulesRegulations extends Document {
   @Prop({ required: true })
   publishedDate: Date;
 
-  @Prop({ required: true })
+  @Prop({ required: true, ref: 'User' })
   publishedBy: Types.ObjectId;
 
   @Prop({ required: true })
