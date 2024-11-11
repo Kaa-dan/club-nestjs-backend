@@ -15,12 +15,9 @@ export class GoogleSignupService {
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =
       googleAuthData;
-console.log({googleAuthData })
+    console.log({ googleAuthData });
 
     try {
-
-
-      
       let token: string;
       const hashedPassword = await hashPassword(generateRandomPassword());
       // Check if the user already exists by email
@@ -31,9 +28,7 @@ console.log({googleAuthData })
         existingUser.registered &&
         existingUser.emailVerified
       ) {
-
         throw new ConflictException('User with this email already exists');
-
       }
 
       if (existingUser && existingUser.emailVerified) {
@@ -63,12 +58,11 @@ console.log({googleAuthData })
           ENV.TOKEN_EXPIRY_TIME,
         );
       } else {
-
         const newUser = new this.userModel({
           email,
           signupThrough,
           userName: userName.split(' ')[0],
-          profileImage:imageUrl,
+          profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,
@@ -92,7 +86,7 @@ console.log({googleAuthData })
         data: user,
       };
     } catch (error) {
-      console.log({error })
+      console.log({ error });
       throw error;
     }
   }
