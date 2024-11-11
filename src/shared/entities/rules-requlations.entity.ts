@@ -86,7 +86,7 @@ export class RulesRegulations extends Document {
   version: number;
 
   @Prop({ default: true })
-  publishedStatus: string;
+  publishedStatus: 'draft' | 'published' | 'olderversion';
 
   @Prop({ required: true })
   publishedDate: Date;

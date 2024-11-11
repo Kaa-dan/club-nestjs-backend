@@ -9,6 +9,7 @@ import {
   ParseFilePipe,
   Post,
   Put,
+  Query,
   Req,
   UploadedFiles,
   UseInterceptors,
@@ -20,6 +21,8 @@ import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { diskStorage, memoryStorage } from 'multer';
 import { extname } from 'path';
+import { from } from 'rxjs';
+import { Types } from 'mongoose';
 
 @Controller('rules-regulations')
 export class RulesRegulationsController {
@@ -170,6 +173,7 @@ export class RulesRegulationsController {
 
       return await this.rulesRegulationsService.updateRulesRegulations(
         dataToSave,
+        req.user._id,
       );
     } catch (error) {
       console.log('error', error);
@@ -178,6 +182,62 @@ export class RulesRegulationsController {
       }
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /*--------------------------------GET ALL RULES AND REGULATION OF SINGLE CLUB OR NODE 
+  @Query : type = club|node 
+  @Query : from = club|node id
+  @Req   : req.user 
+  */
+  @Get('get-all-active-rules-regulations')
+  async getAllActiveRulesRegulations(
+    @Query('from') forId: Types.ObjectId,
+    @Query('type') type: string,
+    @Req() req: Request,
+  ) {
+    try {
+      const ID = new Types.ObjectId(forId);
+      return await this.rulesRegulationsService.getAllActiveRulesRegulations(
+        type,
+        ID,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+  /*-------------------GET MY RULES
+@Req:user_id
+@eturn:RulesRegulations */
+  @Get('get-my-rules')
+  async getMyRules(@Req() req: Request) {
+    try {
+      return await this.rulesRegulationsService.getMyRules(req.user._id);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /*------------------------------------SAVE RULES AND REGULATION TO DRAFT
+   */
+  @Put('save-rules-regulations-to-draft')
+  async saveRulesRegulationsToDraft(@Req() req: Request, @Body() draftData) {
+    try {
+      return await this.rulesRegulationsService.saveRulesRegulationsToDraft(
+        draftData,
+        req.user._id,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
         error,
       );
     }
