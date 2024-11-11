@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -65,7 +65,7 @@ export class UploadService {
       };
     } catch (error) {
       console.log(error);
-      throw new Error(`Failed to upload file: ${error.message ?? error}`);
+      throw new InternalServerErrorException(`Failed to upload file: ${error.message ?? error}`);
     }
   }
 
@@ -85,7 +85,7 @@ export class UploadService {
         success: true,
       };
     } catch (error) {
-      throw new Error(`Failed to delete file: ${error.message}`);
+      throw new InternalServerErrorException(`Failed to delete file: ${error.message}`);
     }
   }
 }
