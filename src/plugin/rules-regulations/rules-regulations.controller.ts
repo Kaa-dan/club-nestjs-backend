@@ -84,6 +84,8 @@ export class RulesRegulationsController {
         mimetype: singleFile.mimetype,
         size: singleFile.size,
       }));
+
+      //saving all the detail to sent to the service
       const dataToSave = {
         ...createRulesRegulationsDto,
         file: fileObjects,
