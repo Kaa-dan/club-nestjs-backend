@@ -11,6 +11,10 @@ import {
   ClubInvitationSchema,
 } from './entities/club-invitation.entity';
 import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
+import {
+  RulesRegulations,
+  RulesRegulationsSchema,
+} from './entities/rules-requlations.entity';
 
 @Module({
   imports: [
@@ -44,6 +48,12 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
       {
         name: ClubMembers.name,
         schema: ClubMembersSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: RulesRegulations.name,
+        schema: RulesRegulationsSchema,
       },
     ]),
     forwardRef(() => SearchModule),
