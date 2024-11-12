@@ -92,11 +92,12 @@ export class RulesRegulationsController {
         createRulesRegulationsDto,
       });
       console.log('nihtin');
-      if (!createRulesRegulationsDto.node || !createRulesRegulationsDto.club) {
+      if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
           'Invalid type parameter. Must be "node" or "club".',
         );
       }
+
       // Validate number of file
       if (files.length > 5) {
         throw new BadRequestException('Must provide between 1 and 5 file');
@@ -120,6 +121,7 @@ export class RulesRegulationsController {
           createdBy: req['user']._id,
           publishedBy: req['user']._id,
           publishedDate: new Date(),
+          isActive: true,
           version: 1,
           files,
         };
