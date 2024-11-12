@@ -9,6 +9,9 @@ import { Model, Types } from 'mongoose';
 import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 import { UploadService } from 'src/shared/upload/upload.service';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
+import { arrayBuffer } from 'stream/consumers';
 
 interface FileObject {
   buffer: Buffer;
@@ -23,6 +26,10 @@ export class RulesRegulationsService {
     @InjectModel(RulesRegulations.name)
     private readonly rulesregulationModel: Model<RulesRegulations>,
     private readonly s3FileUpload: UploadService,
+    @InjectModel(ClubMembers.name)
+    private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(NodeMembers.name)
+    private readonly nodeMembersModel: Model<NodeMembers>,
   ) {}
 
   /*
@@ -314,6 +321,143 @@ export class RulesRegulationsService {
       throw new InternalServerErrorException(
         'Error while adopting rules-regulations',
         error.message,
+      );
+    }
+  }
+  //get all the nodes and clubs that the user is admin and the rules and regulations are not adopted
+  async getClubsNodesNotAdopted(
+    userId: Types.ObjectId,
+    rulesId: Types.ObjectId,
+  ): Promise<{ clubs: any[]; nodes: any[] }> {
+    try {
+      // Get all clubs where user is admin
+      const clubsQuery = await this.clubMembersModel.aggregate([
+        {
+          $match: {
+            user: userId,
+            role: 'admin',
+            status: 'MEMBER',
+          },
+        },
+        {
+          $lookup: {
+            from: 'rulesandregulations',
+            let: { clubId: '$club' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$_id', rulesId] },
+                      {
+                        $not: [
+                          {
+                            $in: ['$$clubId', '$adoptedClubs'],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'notAdoptedRules',
+          },
+        },
+        {
+          $match: {
+            'notAdoptedRules.0': { $exists: true },
+          },
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'clubDetails',
+          },
+        },
+        {
+          $unwind: '$clubDetails',
+        },
+        {
+          $project: {
+            _id: '$clubDetails._id',
+            name: '$clubDetails.name',
+            description: '$clubDetails.description',
+            // add other fields according to the requirements
+          },
+        },
+      ]);
+
+      // Get all nodes where user is admin
+      const nodesQuery = await this.nodeMembersModel.aggregate([
+        {
+          $match: {
+            user: userId,
+            role: 'admin',
+            status: 'MEMBER',
+          },
+        },
+        {
+          $lookup: {
+            from: 'rulesandregulations',
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$_id', rulesId] },
+                      {
+                        $not: [
+                          {
+                            $in: ['$$nodeId', '$adoptedNodes'],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'notAdoptedRules',
+          },
+        },
+        {
+          $match: {
+            'notAdoptedRules.0': { $exists: true },
+          },
+        },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'nodeDetails',
+          },
+        },
+        {
+          $unwind: '$nodeDetails',
+        },
+        {
+          $project: {
+            _id: '$nodeDetails._id',
+            name: '$nodeDetails.name',
+            description: '$nodeDetails.description',
+            // add other node fields which are required
+          },
+        },
+      ]);
+
+      // Execute both queries in parallel
+      const [clubs, nodes] = await Promise.all([clubsQuery, nodesQuery]);
+
+      return { clubs, nodes };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while fetching clubs and nodes',
+        error,
       );
     }
   }
