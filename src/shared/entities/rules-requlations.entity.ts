@@ -6,11 +6,10 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-//copy of this will get pushed and this will be udated
 
 @Schema({ collection: 'rulesandregulations', timestamps: true })
 export class RulesRegulations extends Document {
-  //this will have all the older versions of this schema it means copy of the schema
+  //older version of rules and regulation :copy of the schema
   olderVersions: [{}];
 
   @Prop({ required: true })
@@ -42,7 +41,7 @@ export class RulesRegulations extends Document {
       },
     ],
   })
-  file: any;
+  files: { url: string; originalname: string; size: number }[];
 
   @Prop([
     {
@@ -82,7 +81,7 @@ export class RulesRegulations extends Document {
     ref: 'Nodes',
   })
   adoptedNodes: [];
-
+  @Prop({ required: true, default: 1 })
   version: number;
 
   @Prop({ default: true })
@@ -96,6 +95,12 @@ export class RulesRegulations extends Document {
 
   @Prop({ required: true })
   isActive: boolean;
+
+  updatedDate: Date;
+
+  adoptedDate: Date;
+
+  adoptedParent: null | Types.ObjectId;
 }
 
 export const RulesRegulationsSchema =
