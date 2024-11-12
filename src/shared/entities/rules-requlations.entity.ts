@@ -97,6 +97,10 @@ export class RulesRegulations extends Document {
   isActive: boolean;
 
   updatedDate: Date;
+
+  adoptedDate: Date;
+
+  adoptedParent: null | Types.ObjectId;
 }
 
 export const RulesRegulationsSchema =

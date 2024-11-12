@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   InternalServerErrorException,
+  Param,
   Post,
   Put,
   Query,
@@ -241,6 +242,55 @@ export class RulesRegulationsController {
   async getMyRules(@Req() req: Request) {
     try {
       return await this.rulesRegulationsService.getMyRules(req.user._id);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /*--------------------------ADOPT RULES 
+  @Body:rulesId,clubId,nodeId,type
+  @Req:user_id
+  @return:RulesRegulations
+   */
+
+  @Post('adopt-rules')
+  async adoptRules(
+    @Body('rulesId') rulesId: Types.ObjectId,
+    @Body('clubId') clubId: Types.ObjectId,
+    @Body('nodeId') nodeId: Types.ObjectId,
+    @Body('type') type: 'club' | 'node',
+    @Req() req: Request,
+  ) {
+    try {
+      const data = {
+        type,
+        rulesId,
+        clubId,
+        nodeId,
+        userId: req.user._id,
+      };
+      return await this.rulesRegulationsService.adoptRules(data);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while adopting rules-regulations',
+        error,
+      );
+    }
+  }
+
+  @Get('get-clubs-nodes-notadopted/:rulesId')
+  async getClubsNodesNotAdopted(
+    @Req() req: Request,
+    @Param('rulesId') rulesId: Types.ObjectId,
+  ) {
+    try {
+      return await this.rulesRegulationsService.getClubsNodesNotAdopted(
+        req.user._id,
+        rulesId,
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
