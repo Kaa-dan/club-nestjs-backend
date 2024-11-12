@@ -13,20 +13,6 @@ class EntityDto {
 
 export const entities = ['post', 'debate', 'nodes', 'Club'];
 
-class AttachmentDto {
-    @IsString()
-    @IsNotEmpty()
-    url: string;
-
-    @IsEnum(['image', 'file'])
-    @IsNotEmpty()
-    type: 'image' | 'file';
-
-    @IsString()
-    @IsNotEmpty()
-    filename: string;
-}
-
 export class CreateCommentDto {
     @IsString()
     @IsNotEmpty()
@@ -43,18 +29,11 @@ export class CreateCommentDto {
     parent?: Types.ObjectId;
 
     @IsOptional()
-    attachment?: AttachmentDto;
-}
-
-class UpdateAttachmentDto {
-    @IsString()
-    url: string;
-
-    @IsEnum(['image', 'file'])
-    type: 'image' | 'file';
-
-    @IsString()
-    filename: string;
+    attachment?: {
+        url: string;
+        filename: string;
+        mimetype: string;
+    };
 }
 
 export class UpdateCommentDto {
@@ -63,5 +42,9 @@ export class UpdateCommentDto {
     content?: string;
 
     @IsOptional()
-    attachment?: UpdateAttachmentDto;
+    attachment?: {
+        url: string;
+        filename: string;
+        mimetype: string;
+    };
 }

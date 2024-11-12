@@ -33,19 +33,19 @@ export class Comment extends Document {
     author: Types.ObjectId
 
     @Prop({ type: [Types.ObjectId], default: [], required: false })
-    irrelevant?: Types.ObjectId[];
+    dislike?: Types.ObjectId[];
 
     @Prop({ type: [Types.ObjectId], default: [], required: false })
-    relevant?: Types.ObjectId[];
+    like?: Types.ObjectId[];
 
     @Prop({ required: false, default: false, type: Boolean })
     isDeleted?: boolean
 
     @Prop({
         type: {
-            url: { type: String },
-            type: { type: String, enum: ['image', 'file'] },
-            filename: { type: String },
+            url: String,
+            filename: String,
+            mimetype: String,
         },
         _id: false,
     })
