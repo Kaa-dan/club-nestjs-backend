@@ -195,11 +195,11 @@ export class RulesRegulationsService {
     try {
       if (type === 'club') {
         return await this.rulesregulationModel
-          .find({ isActive: true, clubId: forId })
+          .find({ isActive: true, club: forId })
           .exec();
       } else if (type === 'node') {
         return await this.rulesregulationModel
-          .find({ isActive: true, nodeId: forId })
+          .find({ isActive: true, node: forId })
           .exec();
       }
     } catch (error) {
