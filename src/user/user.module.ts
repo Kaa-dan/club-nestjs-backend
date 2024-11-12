@@ -9,8 +9,11 @@ import { ClubModule } from './club/club.module';
 import { SearchModule } from 'src/shared/search/search.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
+
 import { MongooseModule } from '@nestjs/mongoose';
+
 import { User, UserSchema } from 'src/shared/entities/user.entity';
+
 import { InvitationModule } from './invitation/invitation.module';
 
 @Module({
@@ -23,6 +26,7 @@ import { InvitationModule } from './invitation/invitation.module';
     SearchModule,
     InvitationModule,
   ],
+  
   providers: [
     {
       provide: APP_GUARD,
@@ -33,3 +37,6 @@ import { InvitationModule } from './invitation/invitation.module';
   controllers: [UserController],
 })
 export class UserModule {}
+
+
+
