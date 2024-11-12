@@ -2,11 +2,8 @@ import {
   BadRequestException,
   Body,
   Controller,
-  FileTypeValidator,
   Get,
   InternalServerErrorException,
-  MaxFileSizeValidator,
-  ParseFilePipe,
   Post,
   Put,
   Query,
@@ -32,11 +29,26 @@ export class RulesRegulationsController {
   ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
-  @Param :createRulesRegulationsDto
+  @Query type:node|club
   @return :RulesRegulations*/
-  @Get('get-all-rules-regulations')
-  getAllRulesRegulations() {
-    return 'All rules-regulations';
+  @Get()
+  getAllRulesRegulations(@Query('type') type: 'node' | 'club') {
+    try {
+      if (!type || (type !== 'node' && type !== 'club')) {
+        throw new BadRequestException(
+          'Invalid type parameter. Must be "node" or "club".',
+        );
+      }
+      return this.rulesRegulationsService.getAllRulesRegulations(type);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Error while fetching rules and regulations',
+        error,
+      );
+    }
   }
 
   /* -----------------------------CREATE RULES AND REGULATIONS
@@ -51,12 +63,12 @@ export class RulesRegulationsController {
       storage: memoryStorage(),
     }),
   )
-  @Post('create-rules-regulations')
+  @Post()
   async createRulesRegulations(
     @Req() req: Request,
     @UploadedFiles(
       new FileValidationPipe({
-        file: {
+        files: {
           maxSizeMB: 5,
           allowedMimeTypes: [
             'image/jpeg',
@@ -71,38 +83,50 @@ export class RulesRegulationsController {
         },
       }),
     )
-    file: Express.Multer.File[],
-    @Body() createRulesRegulationsDto,
+    files: Express.Multer.File[],
+    @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
     try {
-      console.log('nithin');
+      console.log({
+        createRulesRegulationsDto,
+      });
+      console.log('nihtin');
+      if (!createRulesRegulationsDto.node || !createRulesRegulationsDto.club) {
+        throw new BadRequestException(
+          'Invalid type parameter. Must be "node" or "club".',
+        );
+      }
       // Validate number of file
-      if (!file || file.length < 1 || file.length > 10) {
-        throw new BadRequestException('Must provide between 1 and 10 file');
+      if (files.length > 5) {
+        throw new BadRequestException('Must provide between 1 and 5 file');
       }
 
-      // Process the file and create file paths array
-      const fileObjects = file.map((singleFile) => ({
-        buffer: singleFile.buffer,
-        originalname: singleFile.originalname,
-        mimetype: singleFile.mimetype,
-        size: singleFile.size,
-      }));
+      if (createRulesRegulationsDto.publishedStatus === 'draft') {
+        //saving all the detail to sent to the service
+        const dataToSave = {
+          ...createRulesRegulationsDto,
+          createdBy: req['user']._id,
+          isActive: false,
+          files,
+        };
 
-      //saving all the detail to sent to the service
-      const dataToSave = {
-        ...createRulesRegulationsDto,
-        file: fileObjects,
-        createdBy: req['user']._id,
-        publishedBy: req['user']._id,
-        publishedDate: new Date(),
-        version: 1,
-        isActive: true,
-      };
+        return await this.rulesRegulationsService.createRulesRegulations(
+          dataToSave,
+        );
+      } else {
+        const dataToSave = {
+          ...createRulesRegulationsDto,
+          createdBy: req['user']._id,
+          publishedBy: req['user']._id,
+          publishedDate: new Date(),
+          version: 1,
+          files,
+        };
 
-      return await this.rulesRegulationsService.createRulesRegulations(
-        dataToSave,
-      );
+        return await this.rulesRegulationsService.createRulesRegulations(
+          dataToSave,
+        );
+      }
     } catch (error) {
       console.log('error', error);
       if (error instanceof BadRequestException) {
@@ -122,11 +146,11 @@ export class RulesRegulationsController {
   @Req:user_id*/
 
   @UseInterceptors(
-    FilesInterceptor('file', 10, {
+    FilesInterceptor('file', 5, {
       storage: memoryStorage(),
     }),
   )
-  @Put('update-rules-regulations')
+  @Put()
   async updateRulesRegulations(
     @Req() req: Request,
     @UploadedFiles(
@@ -150,9 +174,8 @@ export class RulesRegulationsController {
     @Body() updateRulesRegulationsDto,
   ) {
     try {
-      // Validate number of file
-      if (!file || file.length < 1 || file.length > 5) {
-        throw new BadRequestException('Must provide between 1 and 10 file');
+      if (file.length > 5 - updateRulesRegulationsDto.files.length) {
+        throw new BadRequestException('maximum count of files should be 5');
       }
 
       // Process the file and create file paths array
@@ -166,7 +189,6 @@ export class RulesRegulationsController {
       //saving all the detail to sent to the service
       const dataToSave = {
         ...updateRulesRegulationsDto,
-        file: fileObjects,
         updatedBy: req['user']._id,
         updatedDate: new Date(),
       };
@@ -174,6 +196,7 @@ export class RulesRegulationsController {
       return await this.rulesRegulationsService.updateRulesRegulations(
         dataToSave,
         req.user._id,
+        fileObjects,
       );
     } catch (error) {
       console.log('error', error);
@@ -192,7 +215,7 @@ export class RulesRegulationsController {
   @Query : from = club|node id
   @Req   : req.user 
   */
-  @Get('get-all-active-rules-regulations')
+  @Get('get-all-active-rules')
   async getAllActiveRulesRegulations(
     @Query('from') forId: Types.ObjectId,
     @Query('type') type: string,
@@ -212,29 +235,12 @@ export class RulesRegulationsController {
     }
   }
   /*-------------------GET MY RULES
-@Req:user_id
-@eturn:RulesRegulations */
+   @Req:user_id
+   @eturn:RulesRegulations */
   @Get('get-my-rules')
   async getMyRules(@Req() req: Request) {
     try {
       return await this.rulesRegulationsService.getMyRules(req.user._id);
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Error while getting active rules-regulations',
-        error,
-      );
-    }
-  }
-
-  /*------------------------------------SAVE RULES AND REGULATION TO DRAFT
-   */
-  @Put('save-rules-regulations-to-draft')
-  async saveRulesRegulationsToDraft(@Req() req: Request, @Body() draftData) {
-    try {
-      return await this.rulesRegulationsService.saveRulesRegulationsToDraft(
-        draftData,
-        req.user._id,
-      );
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
