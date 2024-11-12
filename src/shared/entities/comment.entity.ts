@@ -3,7 +3,7 @@ import { Document, Types } from "mongoose";
 
 interface IEntity {
     ref: Types.ObjectId;
-    entityType: 'post' | 'debate';
+    entityType: 'post' | 'debate' | 'nodes' | 'Club';
 }
 
 interface IAttachment {
@@ -19,8 +19,8 @@ export class Comment extends Document {
 
     @Prop({
         type: {
-            ref: { type: Types.ObjectId, required: true },
-            entityType: { type: String, enum: ['post', 'debate'], required: true },
+            ref: { type: Types.ObjectId, required: true, refPath: 'entity.entityType' },
+            entityType: { type: String, enum: ['post', 'debate', 'nodes', 'Club'], required: true },
         },
         required: true,
     })
@@ -29,7 +29,7 @@ export class Comment extends Document {
     @Prop({ required: false, type: Types.ObjectId, ref: 'Comment', default: null })
     parent: Types.ObjectId
 
-    @Prop({ required: true, type: Types.ObjectId })
+    @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
     author: Types.ObjectId
 
     @Prop({ type: [Types.ObjectId], default: [], required: false })
