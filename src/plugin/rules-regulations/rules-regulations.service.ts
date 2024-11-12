@@ -68,7 +68,7 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
-    const { files: files, ...restData } = createRulesRegulationsDto;
+    const { files: files, node, club, ...restData } = createRulesRegulationsDto;
 
     //creating promises to upload to S3 bucket
     const uploadPromises = files.map((file: FileObject) =>
@@ -93,6 +93,8 @@ export class RulesRegulationsService {
       //creating rules and regulations -DB
       const newRulesRegulations = new this.rulesregulationModel({
         ...restData,
+        node: node ? new Types.ObjectId(node) : null,
+        club: club ? new Types.ObjectId(club) : null,
         files: fileObjects,
       });
 
@@ -193,10 +195,13 @@ export class RulesRegulationsService {
 
   async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
     try {
+      console.log({ forId, type });
       if (type === 'club') {
-        return await this.rulesregulationModel
+        const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
           .exec();
+        console.log({ response });
+        return response;
       } else if (type === 'node') {
         return await this.rulesregulationModel
           .find({ isActive: true, node: forId })
