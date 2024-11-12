@@ -7,18 +7,11 @@ import {
   IsNumber,
   IsDate,
   ArrayMinSize,
-  ArrayMaxSize,
-  Min,
-  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Types } from 'mongoose';
 
 export class CreateRulesRegulationsDto {
-  @IsOptional()
-  @IsArray()
-  olderVersions?: Record<string, any>[];
-
   @IsString()
   title: string;
 
@@ -39,31 +32,18 @@ export class CreateRulesRegulationsDto {
   @IsBoolean()
   isPublic: boolean;
 
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayMaxSize(10)
-  @IsNumber({}, { each: true })
-  @Min(1, { each: true })
-  @Max(10, { each: true })
-  numbers: number[];
-
-  @IsOptional()
-  @IsArray()
-  views?: {
-    user: Types.ObjectId;
-    date: Date;
-  }[];
-
   @IsOptional()
   @IsMongoId()
   club?: Types.ObjectId;
 
-  file: {
+  @IsOptional()
+  files: {
     buffer: Buffer;
     originalname: string;
     mimetype: string;
     size: number;
   }[];
+
   @IsOptional()
   @IsMongoId()
   node?: Types.ObjectId;
@@ -71,21 +51,15 @@ export class CreateRulesRegulationsDto {
   @IsMongoId()
   createdBy: Types.ObjectId;
 
-  @IsArray()
-  @IsMongoId({ each: true })
-  adoptedClubs: Types.ObjectId[];
-
-  @IsArray()
-  @IsMongoId({ each: true })
-  adoptedNodes: Types.ObjectId[];
-
+  @IsOptional()
   @IsNumber()
   version: number;
 
   @IsString()
-  publishedStatus: string;
+  publishedStatus: 'draft' | 'published';
 
   @IsDate()
+  @IsOptional()
   @Type(() => Date)
   publishedDate: Date;
 
