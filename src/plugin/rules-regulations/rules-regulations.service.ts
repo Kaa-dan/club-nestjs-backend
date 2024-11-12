@@ -25,11 +25,26 @@ export class RulesRegulationsService {
   ) {}
 
   /*
-  
+  @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations() {
+  async getAllRulesRegulations(type?: string) {
     try {
-      return await this.rulesregulationModel.find().exec();
+      //according to the types returning the rules and regulations
+      switch (type) {
+        case 'node':
+          return await this.rulesregulationModel
+            .find({ status: 'published', isPublic: true, isActive: true })
+            .exec();
+        case 'club':
+          return await this.rulesregulationModel
+            .find({ status: 'published', isPublic: true, isActive: true })
+            .exec();
+
+        default:
+          return await this.rulesregulationModel
+            .find({ status: 'published', isPublic: true, isActive: true })
+            .exec();
+      }
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -45,9 +60,9 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
-    console.log({ createRulesRegulationsDto });
+    const { files: files, ...restData } = createRulesRegulationsDto;
 
-    const { file: files, ...restData } = createRulesRegulationsDto;
+    //creating promises to upload to S3 bucket
     const uploadPromises = files.map((file: FileObject) =>
       this.uploadFile({
         buffer: file.buffer,
@@ -55,19 +70,22 @@ export class RulesRegulationsService {
         mimetype: file.mimetype,
       } as Express.Multer.File),
     );
+    // calling all promises and storing
     const uploadedFiles = await Promise.all(uploadPromises);
 
+    //creating file object to store it in the db with proper type
     const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
       url: uploadedFile.url,
       originalname: files[index].originalname,
       mimetype: files[index].mimetype,
       size: files[index].size,
     }));
-    console.log({ fileObjects });
+
     try {
+      //creating rules and regulations -DB
       const newRulesRegulations = new this.rulesregulationModel({
         ...restData,
-        file: fileObjects, // Save the file information in the schema
+        files: fileObjects,
       });
 
       return await newRulesRegulations.save();
@@ -80,64 +98,82 @@ export class RulesRegulationsService {
     }
   }
 
-  /* ---------------------CREATE RULES AND REGULATIONS
+  /* ---------------------UPDATE RULES AND REGULATIONS
   @Params :updateRulesRegulationDto
   @return :UpdatedRulesRegulations */
 
-  async updateRulesRegulations(dataToSave: any, userId: Types.ObjectId) {
-    // 1. Find the current version
-    const currentVersion = await this.rulesregulationModel.findById(
-      dataToSave._id,
-    );
-
-    if (!currentVersion) {
-      throw new Error('Document not found');
-    }
-
-    // 2. Handle file uploads
-    const { file, olderFile = [], ...restData } = dataToSave;
-    const uploadedFiles = await Promise.all(
-      file.map((singlefile) => this.uploadFile(singlefile)),
-    );
-
-    // 3. Create file objects
-    const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
-      url: uploadedFile.url,
-      originalname: file[index].originalname,
-      mimetype: file[index].mimetype,
-      size: file[index].size,
-    }));
-
+  async updateRulesRegulations(
+    dataToSave: any,
+    userId: Types.ObjectId,
+    updateFiles,
+  ) {
     try {
-      // 4. Create a version object from the current document
-      const versionObject = {
-        ...currentVersion.toObject(),
-        uniqid: new Types.ObjectId(),
-        updatedAt: new Date(),
-        version: currentVersion.version || 1,
-      };
-
-      // 5. Update the current document with new data
-      const updatedDocument = await this.rulesregulationModel.findByIdAndUpdate(
+      // Find the current version
+      const currentVersion = await this.rulesregulationModel.findById(
         dataToSave._id,
-        {
-          $set: {
-            ...restData,
-            file: [...(olderFile || []), ...fileObjects],
-            version: (currentVersion.version || 1) + 1,
-            publishedBy: userId,
-            updatedAt: new Date(),
-          },
-          $push: {
-            olderVersions: versionObject,
-          },
-        },
-        { new: true, runValidators: true },
       );
 
-      return updatedDocument;
+      if (!currentVersion) {
+        throw new Error('Document not found');
+      }
+
+      const { files, ...restData } = dataToSave;
+      // Handle file uploads
+
+      const uploadedFiles = await Promise.all(
+        updateFiles.map((singlefile) => this.uploadFile(singlefile)),
+      );
+
+      // Create file objects
+      const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+        url: uploadedFile.url,
+        originalname: uploadedFile.originalname,
+        mimetype: uploadedFile.mimetype,
+        size: uploadedFile.size,
+      }));
+      //merging older files with new files
+      const mergedFiles = [...files, ...fileObjects];
+
+      if (currentVersion.publishedStatus === 'draft') {
+        const updateData = await this.rulesregulationModel.findByIdAndUpdate(
+          dataToSave._id,
+          {
+            $set: {
+              restData,
+              files: mergedFiles,
+            },
+          },
+        );
+        return updateData;
+      } else {
+        // Create a version object from the current document
+        const versionObject = {
+          ...currentVersion.toObject(),
+          version: currentVersion.version || 1,
+          files: mergedFiles,
+        };
+
+        //Update the current document with new data
+        const updatedDocument =
+          await this.rulesregulationModel.findByIdAndUpdate(
+            dataToSave._id,
+            {
+              $set: {
+                ...restData,
+                version: (currentVersion.version || 1) + 1,
+                publishedBy: userId,
+                updatedDate: new Date(),
+              },
+              $push: {
+                olderVersions: versionObject,
+              },
+            },
+            { new: true, runValidators: true },
+          );
+
+        return updatedDocument;
+      }
     } catch (error) {
-      console.error('Error updating rules and regulations:', error);
       throw new InternalServerErrorException(
         'Error while updating rules-regulations',
         error,
@@ -168,6 +204,7 @@ export class RulesRegulationsService {
 
   async getMyRules(userId: Types.ObjectId) {
     try {
+      //fetching from DB
       return await this.rulesregulationModel.find({ createdBy: userId }).exec();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -177,42 +214,6 @@ export class RulesRegulationsService {
     }
   }
 
-  /* ------------------------------SAVE RULES AND REGULATION TO DRAFT */
-  async saveRulesRegulationsToDraft(dataToSave: any, userId: Types.ObjectId) {
-    try {
-      const { file, ...restData } = dataToSave;
-      const uploadPromises = file.map((file: FileObject) =>
-        this.uploadFile({
-          buffer: file.buffer,
-          originalname: file.originalname,
-          mimetype: file.mimetype,
-        } as Express.Multer.File),
-      );
-      const uploadedFiles = await Promise.all(uploadPromises);
-
-      const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
-        url: uploadedFile.url,
-        originalname: file[index].originalname,
-        mimetype: file[index].mimetype,
-        size: file[index].size,
-      }));
-
-      const newRulesRegulations = new this.rulesregulationModel({
-        ...restData,
-        file: fileObjects, // Save the file information in the schema
-        publishedBy: userId,
-        isActive: false,
-      });
-
-      return await newRulesRegulations.save();
-    } catch (error) {
-      console.log({ error });
-      throw new InternalServerErrorException(
-        'Error while creating rules-regulations',
-        error,
-      );
-    }
-  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
