@@ -248,4 +248,35 @@ export class RulesRegulationsController {
       );
     }
   }
+
+  /*--------------------------ADOPT RULES 
+  @Body:rulesId,clubId,nodeId,type
+  @Req:user_id
+  @return:RulesRegulations
+   */
+
+  @Post('adopt-rules')
+  async adoptRules(
+    @Body('rulesId') rulesId: Types.ObjectId,
+    @Body('clubId') clubId: Types.ObjectId,
+    @Body('nodeId') nodeId: Types.ObjectId,
+    @Body('type') type: 'club' | 'node',
+    @Req() req: Request,
+  ) {
+    try {
+      const data = {
+        type,
+        rulesId,
+        clubId,
+        nodeId,
+        userId: req.user._id,
+      };
+      return await this.rulesRegulationsService.adoptRules(data);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while adopting rules-regulations',
+        error,
+      );
+    }
+  }
 }

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -202,6 +203,9 @@ export class RulesRegulationsService {
     }
   }
 
+  /*-------------------GET MY RULES
+   @Req:user_id
+   @eturn:RulesRegulations */
   async getMyRules(userId: Types.ObjectId) {
     try {
       //fetching from DB
@@ -214,6 +218,105 @@ export class RulesRegulationsService {
     }
   }
 
+  /*--------------------------ADOPT RULES 
+  @Body:rulesId,clubId,nodeId,type
+  @Req:user_id
+  @return:RulesRegulations
+   */
+  async adoptRules(dataToSave: {
+    type: 'club' | 'node';
+    rulesId: Types.ObjectId;
+    clubId?: Types.ObjectId;
+    nodeId?: Types.ObjectId;
+    userId: Types.ObjectId;
+  }) {
+    try {
+      // First, find the existing rule document
+      const existingRule = await this.rulesregulationModel.findById(
+        dataToSave.rulesId,
+      );
+
+      if (!existingRule) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      // Create the new rule document without the _id field
+      const ruleData = existingRule.toObject();
+      delete ruleData._id;
+
+      // Prepare base data for the new rule
+      const baseRuleData = {
+        ...ruleData,
+        adoptedBy: dataToSave.userId,
+        adoptedDate: new Date(),
+        adoptedParent: dataToSave.rulesId,
+        publishedDate: new Date(),
+        version: 1,
+      };
+
+      let updateOperation;
+      let newRule;
+
+      if (dataToSave.type === 'club') {
+        // Update the parent rule to add this club to adoptedClubs
+        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+          dataToSave.rulesId,
+          {
+            $addToSet: { adoptedClubs: dataToSave.clubId },
+          },
+          { new: true },
+        );
+
+        // Create new rule for the club
+        newRule = new this.rulesregulationModel({
+          ...baseRuleData,
+          club: dataToSave.clubId,
+        });
+      } else if (dataToSave.type === 'node') {
+        // Update the parent rule to add this node to adoptedNodes
+        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+          dataToSave.rulesId,
+          {
+            $addToSet: { adoptedNodes: dataToSave.nodeId },
+          },
+          { new: true },
+        );
+
+        // Create new rule for the node
+        newRule = new this.rulesregulationModel({
+          ...baseRuleData,
+          node: dataToSave.nodeId,
+        });
+      } else {
+        throw new BadRequestException('Invalid type provided');
+      }
+
+      // Execute both operations in parallel
+      const [updatedParent, savedRule] = await Promise.all([
+        updateOperation,
+        newRule.save(),
+      ]);
+
+      if (!updatedParent || !savedRule) {
+        throw new InternalServerErrorException(
+          'Failed to save or update rules',
+        );
+      }
+
+      return savedRule;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Error while adopting rules-regulations',
+        error.message,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
