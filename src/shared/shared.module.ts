@@ -16,6 +16,11 @@ import {
   RulesRegulationsSchema,
 } from './entities/rules-requlations.entity';
 import { Comment, CommentSchema } from './entities/comment.entity';
+import { Reports, ReportsSchema } from './entities/reports.entity';
+import {
+  ReportOffence,
+  ReportOffenceSchema,
+} from './entities/report-offense.entity';
 
 @Module({
   imports: [
@@ -61,10 +66,22 @@ import { Comment, CommentSchema } from './entities/comment.entity';
       {
         name: Comment.name,
         schema: CommentSchema,
-      }
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Reports.name,
+        schema: ReportsSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: ReportOffence.name,
+        schema: ReportOffenceSchema,
+      },
     ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule { }
+export class SharedModule {}

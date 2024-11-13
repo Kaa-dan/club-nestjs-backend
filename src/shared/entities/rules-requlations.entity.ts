@@ -101,6 +101,13 @@ export class RulesRegulations extends Document {
   adoptedDate: Date;
 
   adoptedParent: null | Types.ObjectId;
+
+  relevant: Types.ObjectId[];
+
+  irrelevant: Types.ObjectId[];
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const RulesRegulationsSchema =
