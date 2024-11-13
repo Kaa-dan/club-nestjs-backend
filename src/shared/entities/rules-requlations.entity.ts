@@ -108,6 +108,9 @@ export class RulesRegulations extends Document {
 
   @Prop({ default: false })
   isDeleted: boolean;
+
+  @Prop({ required: true, type: String })
+  domain: string;
 }
 
 export const RulesRegulationsSchema =
