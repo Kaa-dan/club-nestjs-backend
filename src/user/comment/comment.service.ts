@@ -29,16 +29,111 @@ export class CommentService {
      * @returns The comments for the given entity.
      * @throws NotFoundException If no comments are found.
      */
-    async getCommentsByEntity(entityType: string, entityId: string) {
-        return await this.commentModel
-            .find({ 'entity.entityId': new Types.ObjectId(entityId), 'entity.entityType': entityType })
-            .populate('parent')
-            .populate('author')
-            .populate({
-                path: 'entity.entityId',
-                refPath: 'entity.entityType',
-            } as any)
-            .exec()
+    async getCommentsByEntity(entityType: string, entityId: Types.ObjectId) {
+        try {
+            if (entityType === null || entityType === undefined) {
+                throw new BadRequestException('Invalid entity type');
+            }
+            if (!entities.includes(entityType)) {
+                throw new BadRequestException('Invalid entity type');
+            }
+            if (entityId === null || entityId === undefined) {
+                throw new BadRequestException('Invalid entityId');
+            }
+
+            const commentsData = await this.commentModel.aggregate([
+                {
+                    $match: {
+                        'entity.entityId': new Types.ObjectId(entityId),
+                        'entity.entityType': entityType,
+                        parent: null,
+                        isDeleted: { $ne: true } // Exclude deleted comments
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author'
+                    }
+                },
+                {
+                    $unwind: '$author'
+                },
+                {
+                    $lookup: {
+                        from: 'comment',
+                        let: { commentId: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ['$parent', '$$commentId'] },
+                                    isDeleted: { $ne: true } // Exclude deleted replies
+                                }
+                            },
+                            {
+                                $lookup: {
+                                    from: 'users',
+                                    localField: 'author',
+                                    foreignField: '_id',
+                                    as: 'author'
+                                }
+                            },
+                            {
+                                $unwind: '$author'
+                            },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    firstName: '$author.firstName',
+                                    lastName: '$author.lastName',
+                                    email: '$author.email',
+                                    userName: '$author.userName',
+                                    content: 1,
+                                    profileImage: '$author.profileImage',
+                                    coverImage: '$author.coverImage',
+                                    interests: '$author.interests',
+                                    createdAt: 1,
+                                    likes: { $size: { $ifNull: ['$like', []] } },
+                                    dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                                    attachment: 1 // Include attachment in replies
+                                }
+                            }
+                        ],
+                        as: 'replies'
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        firstName: '$author.firstName',
+                        lastName: '$author.lastName',
+                        email: '$author.email',
+                        userName: '$author.userName',
+                        content: 1,
+                        profileImage: '$author.profileImage',
+                        coverImage: '$author.coverImage',
+                        interests: '$author.interests',
+                        createdAt: 1,
+                        likes: { $size: { $ifNull: ['$like', []] } },
+                        dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                        attachment: 1, // Include attachment in parent comments
+                        replies: 1
+                    }
+                },
+                {
+                    $sort: { createdAt: -1 }
+                }
+            ]);
+
+            return commentsData;
+        } catch (error) {
+            if (error instanceof BadRequestException || error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new BadRequestException('Failed to get comments. Please try again later.');
+        }
     }
 
     /**
@@ -83,7 +178,94 @@ export class CommentService {
 
             const comment = new this.commentModel(commentData);
             await comment.save();
-            return comment;
+
+            const commentsData = await this.commentModel.aggregate([
+                {
+                    $match: {
+                        'entity.entityId': new Types.ObjectId(createCommentDto.entityId),
+                        'entity.entityType': createCommentDto.entityType,
+                        parent: null,
+                        isDeleted: { $ne: true } // Exclude deleted comments
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'author',
+                        foreignField: '_id',
+                        as: 'author'
+                    }
+                },
+                {
+                    $unwind: '$author'
+                },
+                {
+                    $lookup: {
+                        from: 'comment',
+                        let: { commentId: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: { $eq: ['$parent', '$$commentId'] },
+                                    isDeleted: { $ne: true } // Exclude deleted replies
+                                }
+                            },
+                            {
+                                $lookup: {
+                                    from: 'users',
+                                    localField: 'author',
+                                    foreignField: '_id',
+                                    as: 'author'
+                                }
+                            },
+                            {
+                                $unwind: '$author'
+                            },
+                            {
+                                $project: {
+                                    _id: 1,
+                                    firstName: '$author.firstName',
+                                    lastName: '$author.lastName',
+                                    email: '$author.email',
+                                    userName: '$author.userName',
+                                    content: 1,
+                                    profileImage: '$author.profileImage',
+                                    coverImage: '$author.coverImage',
+                                    interests: '$author.interests',
+                                    createdAt: 1,
+                                    likes: { $size: { $ifNull: ['$like', []] } },
+                                    dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                                    attachment: 1 // Include attachment in replies
+                                }
+                            }
+                        ],
+                        as: 'replies'
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        firstName: '$author.firstName',
+                        lastName: '$author.lastName',
+                        email: '$author.email',
+                        userName: '$author.userName',
+                        content: 1,
+                        profileImage: '$author.profileImage',
+                        coverImage: '$author.coverImage',
+                        interests: '$author.interests',
+                        createdAt: 1,
+                        likes: { $size: { $ifNull: ['$like', []] } },
+                        dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                        attachment: 1, // Include attachment in parent comments
+                        replies: 1
+                    }
+                },
+                {
+                    $sort: { createdAt: -1 }
+                }
+            ]);
+
+            return commentsData;
         } catch (error) {
             console.error(error);
             if (error instanceof BadRequestException) {
@@ -208,7 +390,7 @@ export class CommentService {
      * @throws `NotFoundException` if the comment is not found
      * @throws `BadRequestException` if there is an error deleting the comment
      */
-    async deleteComment(commentId: Types.ObjectId, userId: Types.ObjectId) {
+    async deleteComment(commentId: Types.ObjectId) {
         try {
             if (!commentId) {
                 throw new BadRequestException("Invalid commentId");
