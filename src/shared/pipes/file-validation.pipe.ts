@@ -22,7 +22,7 @@ interface FileValidationConfig {
 
 @Injectable()
 export class FileValidationPipe implements PipeTransform {
-  constructor(private config: Record<string, FileValidationConfig>) {}
+  constructor(private config: Record<string, FileValidationConfig>) { }
   transform(value: any, metadata: ArgumentMetadata) {
     console.log('Received value:', value);
 

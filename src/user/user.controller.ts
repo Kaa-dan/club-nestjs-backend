@@ -4,7 +4,9 @@ import {
   Param,
   UseGuards,
   UseInterceptors,
+
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,7 +22,7 @@ import { UserResponseDto } from './dto/user.dto';
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Get('fetch-other-profile/:userId')
   @ApiBearerAuth()
@@ -42,5 +44,20 @@ export class UserController {
     return await this.userService.findUserById(
       new Types.ObjectId(userId),
     );
+  }
+
+  /**
+   * Retrieves a user by their username
+   * @param term - The username search term
+   * @returns Promise containing the matching user data
+   */
+  @Get('userName')
+  async getUserByUserName(@Query('term') term: string) {
+    return await this.userService.getUserByUserName(term)
+  }
+
+  @Get('search-by-name')
+  async getUsersByNameCriteria(@Query('term') term: string) {
+    return await this.userService.getUsersByNameCriteria(term)
   }
 }

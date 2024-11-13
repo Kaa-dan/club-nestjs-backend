@@ -26,7 +26,7 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
-  ) {}
+  ) { }
 
   /*
   --------------------CREATING A CLUB----------------------------
@@ -317,6 +317,45 @@ export class ClubService {
       console.error('Club join error:', error);
       throw new BadRequestException(
         'Failed to process club join request. Please try again later.',
+      );
+    }
+  }
+
+  /**
+   * Cancel a pending join request for a club.
+   * @param clubId - The id of the club to cancel the join request for
+   * @param userId - The id of the user making the request
+   * @returns The deleted join request document
+   * @throws `BadRequestException` if the clubId is invalid
+   * @throws `NotFoundException` if the user has not requested to join the club
+   */
+  async cancelJoinRequest(clubId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      if (!clubId) {
+        throw new BadRequestException('Invalid clubId');
+      }
+
+      const response = await this.clubJoinRequestsModel.findOneAndDelete({
+        club: clubId,
+        user: userId,
+        status: 'REQUESTED',
+      });
+
+      if (!response) {
+        throw new NotFoundException('You have not requested to join this club');
+      }
+
+      return response;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      console.error('Error while canceling join request:', error);
+      throw new BadRequestException(
+        'Failed to cancel join request. Please try again later.',
       );
     }
   }
@@ -694,4 +733,26 @@ export class ClubService {
       );
     }
   }
-}
+
+  /**
+   * Retrieves all join requests made by a user.
+   * @param userId - The id of the user to retrieve join requests for.
+   * @returns A promise that resolves to an array of join requests, populated with club and user details.
+   * @throws `BadRequestException` if there is an error while trying to get join requests.
+   */
+  async getAllRequestsOfUser(userId: Types.ObjectId) {
+    try {
+      const requests = await this.clubJoinRequestsModel
+        .find({ user: userId })
+        .populate('club')
+        .populate('user', '-password')
+        .exec();
+      return requests;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Failed to fetch user join requests. Please try again later.',
+      )
+    }
+  }
+}   
