@@ -28,6 +28,12 @@ export class Reports extends Document {
     enum: ['rulesandregulations', 'Comment', 'Debate'],
   })
   typeModel: string;
+
+  @Prop({ type: String, required: true })
+  reason: string;
+
+  @Prop({})
+  file: string[];
 }
 
 // Helper method to get model name based on type

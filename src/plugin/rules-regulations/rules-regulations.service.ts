@@ -12,6 +12,7 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
+import { ReportOffence } from 'src/shared/entities/report-offense.entity';
 
 interface FileObject {
   buffer: Buffer;
@@ -19,7 +20,13 @@ interface FileObject {
   mimetype: string;
   size: number;
 }
-
+// Interface for the file object
+export interface IFileObject {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 @Injectable()
 export class RulesRegulationsService {
   constructor(
@@ -30,6 +37,8 @@ export class RulesRegulationsService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(ReportOffence.name)
+    private readonly reportOffenceModel: Model<ReportOffence>,
   ) {}
 
   /*
@@ -275,7 +284,7 @@ export class RulesRegulationsService {
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
-            $addToSet: { adoptedClubs: dataToSave.clubId },
+            $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
           },
           { new: true },
         );
@@ -604,6 +613,52 @@ export class RulesRegulationsService {
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while unliking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //------------------REPORTS OFFENSE
+  async reportOffense(
+    userId: Types.ObjectId,
+    reportData: {
+      type: string;
+      typeId: Types.ObjectId;
+      reason: string;
+      rulesID: Types.ObjectId;
+      offenderID: Types.ObjectId;
+    },
+    fileObjects: FileObject[],
+  ) {
+    try {
+      const newOffense = new this.reportOffenceModel({
+        offender: reportData.offenderID,
+        reportedBy: userId,
+        reason: reportData.reason,
+        rulesId: reportData.rulesID,
+        proof: fileObjects,
+        clubOrNode: reportData.type,
+        clubOrNodeId: reportData.typeId,
+      });
+      return await newOffense.save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while reporting offense',
+        error,
+      );
+    }
+  }
+
+  //---------------GET ALL REPORTS
+  async getAllReportOffence(clubId: Types.ObjectId, type: 'Nodes' | 'Clubs') {
+    try {
+      return await this.reportOffenceModel
+        .find({ clubOrNode: type, clubOrNodeId: clubId })
+        .populate('offender')
+        .populate('reportedBy');
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting all reports',
         error,
       );
     }

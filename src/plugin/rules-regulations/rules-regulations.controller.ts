@@ -20,6 +20,12 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 
+export interface IFileObject {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 @Controller('rules-regulations')
 export class RulesRegulationsController {
   //@inject
@@ -365,6 +371,78 @@ export class RulesRegulationsController {
         req.user._id,
         rulesId,
       );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //-----------------------------REPORT OFFENSE
+  @UseInterceptors(
+    FilesInterceptor('file', 5, {
+      storage: memoryStorage(),
+    }),
+  )
+  @Post('reportOffence')
+  async reportOffence(
+    @UploadedFiles(
+      new FileValidationPipe({
+        file: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: true,
+        },
+      }),
+    )
+    file: Express.Multer.File[],
+    @Body('reportReason')
+    reportData: {
+      type: string;
+      typeId: Types.ObjectId;
+      reason: string;
+      rulesID: Types.ObjectId;
+      offenderID: Types.ObjectId;
+    },
+    @Req() req: Request,
+  ) {
+    try {
+      // Process the file and create file paths array
+      const fileObjects: IFileObject[] = file.map((singleFile) => ({
+        buffer: singleFile.buffer,
+        originalname: singleFile.originalname,
+        mimetype: singleFile.mimetype,
+        size: singleFile.size,
+      }));
+      return await this.rulesRegulationsService.reportOffense(
+        req.user._id,
+        reportData,
+        fileObjects,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+  //-----------------------------GET ALL REPORTS
+  @Get('get-all-report-offence')
+  async getAllOffence(
+    @Query('type') type: 'Nodes' | 'Clubs',
+    @Query('clubId') clubId: Types.ObjectId,
+  ) {
+    try {
+      return this.rulesRegulationsService.getAllReportOffence(clubId, type);
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',

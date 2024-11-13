@@ -15,6 +15,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/shared/entities/user.entity';
 
 import { InvitationModule } from './invitation/invitation.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { InvitationModule } from './invitation/invitation.module';
     ClubModule,
     SearchModule,
     InvitationModule,
+    ReportModule,
   ],
   
   providers: [
