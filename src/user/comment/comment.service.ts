@@ -29,16 +29,39 @@ export class CommentService {
      * @returns The comments for the given entity.
      * @throws NotFoundException If no comments are found.
      */
-    async getCommentsByEntity(entityType: string, entityId: string) {
-        return await this.commentModel
-            .find({ 'entity.entityId': new Types.ObjectId(entityId), 'entity.entityType': entityType })
-            .populate('parent')
-            .populate('author')
-            .populate({
-                path: 'entity.entityId',
-                refPath: 'entity.entityType',
-            } as any)
-            .exec()
+    async getCommentsByEntity(entityType: string, entityId: Types.ObjectId) {
+        try {
+            if (entityType === null || entityType === undefined) {
+                throw new BadRequestException('Invalid entity type');
+            }
+            if (!entities.includes(entityType)) {
+                throw new BadRequestException('Invalid entity type');
+            }
+            if (entityId === null || entityId === undefined) {
+                throw new BadRequestException('Invalid entityId');
+            }
+
+            const comments = await this.commentModel
+                .find({ 'entity.entityId': new Types.ObjectId(entityId), 'entity.entityType': entityType })
+                .populate({
+                    path: 'parent',
+                    populate: {
+                        path: 'author',
+                        select: '_id email firstName lastName userName profileImage coverImage interests',
+                    }
+                })
+                .populate('author', '_id email firstName lastName userName profileImage coverImage interests')
+                .exec();
+            if (!comments) {
+                throw new NotFoundException('No comments found for the given entity');
+            }
+            return comments;
+        } catch (error) {
+            if (error instanceof BadRequestException || error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new BadRequestException('Failed to get comments. Please try again later.');
+        }
     }
 
     /**
