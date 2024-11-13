@@ -32,8 +32,8 @@ export class RulesRegulationsController {
   //@inject
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
-    private readonly commentService: CommentService
-  ) { }
+    private readonly commentService: CommentService,
+  ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -460,7 +460,7 @@ export class RulesRegulationsController {
    */
   @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
-    return this.commentService.getCommentsByEntity('RulesRegulations', ruleId)
+    return this.commentService.getCommentsByEntity('RulesRegulations', ruleId);
   }
 
   /**
@@ -470,9 +470,7 @@ export class RulesRegulationsController {
    * @param createCommentData - Comment data to be created
    * @returns Promise containing the created comment
    */
-  @UseInterceptors(
-    FilesInterceptor('file', 1, { storage: memoryStorage() }),
-  )
+  @UseInterceptors(FilesInterceptor('file', 1, { storage: memoryStorage() }))
   @Post('comment')
   async createComment(
     @Req() req,
@@ -495,9 +493,13 @@ export class RulesRegulationsController {
     file: Express.Multer.File[],
     @Body() createCommentData: any,
   ) {
-    createCommentData.entityType = "RulesRegulations"
-    const userId = new Types.ObjectId(req.user._id)
-    return await this.commentService.createComment(createCommentData, userId, file[0])
+    createCommentData.entityType = 'RulesRegulations';
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.commentService.createComment(
+      createCommentData,
+      userId,
+      file[0],
+    );
   }
 
   /**
@@ -509,7 +511,10 @@ export class RulesRegulationsController {
   @Put('comment/:id/like')
   async likeComment(@Req() req, @Param('id') commentId: string) {
     const userId = new Types.ObjectId(req.user._id);
-    return await this.commentService.likeComment(new Types.ObjectId(commentId), userId)
+    return await this.commentService.likeComment(
+      new Types.ObjectId(commentId),
+      userId,
+    );
   }
 
   /**
@@ -521,7 +526,10 @@ export class RulesRegulationsController {
   @Put('comment/:id/dislike')
   async dislikeComment(@Req() req, @Param('id') commentId: string) {
     const userId = new Types.ObjectId(req.user._id);
-    return await this.commentService.dislikeComment(new Types.ObjectId(commentId), userId)
+    return await this.commentService.dislikeComment(
+      new Types.ObjectId(commentId),
+      userId,
+    );
   }
 
   /**
@@ -532,7 +540,8 @@ export class RulesRegulationsController {
    */
   @Put('comment/:id/delete')
   async deleteComment(@Req() req, @Param('id') commentId: string) {
-    return await this.commentService.deleteComment(new Types.ObjectId(commentId))
+    return await this.commentService.deleteComment(
+      new Types.ObjectId(commentId),
+    );
   }
-
 }
