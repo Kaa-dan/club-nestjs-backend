@@ -19,6 +19,7 @@ import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
+import { type } from 'os';
 
 @Controller('rules-regulations')
 export class RulesRegulationsController {
@@ -280,7 +281,7 @@ export class RulesRegulationsController {
       );
     }
   }
-
+  /*--------------------------GET NOT ADOPTED NODE OR CLUBS */
   @Get('get-clubs-nodes-notadopted/:rulesId')
   async getClubsNodesNotAdopted(
     @Req() req: Request,
@@ -298,7 +299,8 @@ export class RulesRegulationsController {
       );
     }
   }
-
+  /*-------------GET SINGLE RULES DETAILS
+   */
   @Get('get-rules/:ruleId')
   async getRules(@Param('ruleId') ruleId: Types.ObjectId) {
     try {
@@ -306,6 +308,47 @@ export class RulesRegulationsController {
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //----------LIKE RULES AND REGULATIONS
+
+  @Put('like-rules')
+  async likeRulesRegulations(
+    @Body('rulesId') rulesId: Types.ObjectId,
+
+    @Req() req: Request,
+  ) {
+    try {
+      return await this.rulesRegulationsService.likeRulesRegulations(
+        req.user._id,
+        rulesId,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //------------------UNLIKE RULES AND REGULATIONS
+  @Put('unlike-rules')
+  async unlikeRulesRegulations(
+    @Body('rulesId') rulesId: Types.ObjectId,
+
+    @Req() req: Request,
+  ) {
+    try {
+      return await this.rulesRegulationsService.unlikeRulesRegulations(
+        req.user._id,
+        rulesId,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
         error,
       );
     }

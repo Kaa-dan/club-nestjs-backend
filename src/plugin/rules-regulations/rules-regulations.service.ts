@@ -481,6 +481,97 @@ export class RulesRegulationsService {
       );
     }
   }
+
+  /*------------------LIKE RULES AND REGULATIONS
+   */
+  async likeRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user has already liked
+      const rulesRegulation = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        relevant: userId,
+      });
+
+      if (rulesRegulation) {
+        throw new BadRequestException(
+          'User has already liked this rules regulation',
+        );
+      }
+
+      // Update the document: Add to relevant array and remove from irrelevant if exists
+      const updatedRulesRegulation = await this.rulesregulationModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to relevant array if not exists
+            $addToSet: { relevant: userId },
+            // Remove from irrelevant array if exists
+            $pull: { irrelevant: userId },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Liked successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //--------------UNLIKE RULES AND REGULATIONS
+  async unlikeRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user has already unliked
+      const rulesRegulation = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        irrelevant: userId,
+      });
+
+      if (!rulesRegulation) {
+        throw new BadRequestException(
+          'User has not liked this rules regulation',
+        );
+      }
+
+      // Update the document: Add to irrelevant array and remove from relevant if exists
+      const updatedRulesRegulation = await this.rulesregulationModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to  array if not exists
+            $addToSet: { irrelevant: userId },
+            // Remove from  array if exists
+            $pull: { relevant: userId },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Unliked successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while unliking rules-regulations',
+        error,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
