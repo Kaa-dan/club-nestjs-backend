@@ -27,7 +27,7 @@ export class RulesRegulationsController {
   //@inject
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
-  ) {}
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club

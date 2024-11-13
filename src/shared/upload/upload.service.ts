@@ -35,19 +35,19 @@ export class UploadService {
     file: Buffer,
     filename: string,
     mimetype: string,
-    folder: 'node' | 'user' | 'club',
+    folder: 'node' | 'user' | 'club' | 'comment',
   ): Promise<{
     filename: string;
     url: string;
   }> {
     try {
-      
+
       const fileExtension = path.extname(filename);
       const uniqueFileName = `${Date.now()}-${Math.round(
         Math.random() * 1e9,
       )}${fileExtension}`;
       const key = `${folder}/${uniqueFileName}`;
-  
+
 
       const command = new PutObjectCommand({
         Bucket: ENV.S3_BUCKET_NAME,

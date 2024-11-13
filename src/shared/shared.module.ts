@@ -15,6 +15,7 @@ import {
   RulesRegulations,
   RulesRegulationsSchema,
 } from './entities/rules-requlations.entity';
+import { Comment, CommentSchema } from './entities/comment.entity';
 
 @Module({
   imports: [
@@ -56,8 +57,14 @@ import {
         schema: RulesRegulationsSchema,
       },
     ]),
+    MongooseModule.forFeature([
+      {
+        name: Comment.name,
+        schema: CommentSchema,
+      }
+    ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule {}
+export class SharedModule { }

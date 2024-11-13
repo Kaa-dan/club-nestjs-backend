@@ -123,7 +123,7 @@ export class NodeService {
         .find({
           node: new Types.ObjectId(nodeId),
         })
-        .populate('user')
+        .populate('user', '-password')
         .exec();
 
       return {
@@ -149,7 +149,7 @@ export class NodeService {
       return await this.nodeMembersModel
         .find({ user: userId })
         .populate('node')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
     } catch (error) {
       console.log(error, 'error');
@@ -222,6 +222,45 @@ export class NodeService {
     }
   }
 
+
+  /**
+   * Cancel a join request made by a user to a node.
+   * @param nodeId The ID of the node the user is canceling the request for.
+   * @param userId The ID of the user canceling the request.
+   * @returns The deleted join request.
+   * @throws NotFoundException if the user has not requested to join the node.
+   * @throws BadRequestException if there is an error while canceling the request.
+   */
+  async cancelJoinRequest(nodeId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      if (!nodeId) {
+        throw new BadRequestException('Please provide node id');
+      }
+
+      const response = await this.nodeJoinRequestModel.findOneAndDelete({
+        node: nodeId,
+        user: userId,
+        status: 'REQUESTED',
+      });
+
+      if (!response) {
+        throw new NotFoundException('You have not requested to join this node');
+      }
+
+      return response;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error('Error while canceling join request:', error);
+      throw new BadRequestException('Failed to cancel join request. Please try again later.');
+    }
+  }
+
   /**
    * Retrieves all join requests for a specific node.
    * @param nodeId - The ID of the node for which to retrieve join requests.
@@ -233,14 +272,36 @@ export class NodeService {
       const requests = await this.nodeJoinRequestModel
         .find({ node: nodeId })
         .populate('node')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
       return requests;
     } catch (error) {
       console.log(error, 'error');
       throw new BadRequestException(
-        'Error while trying to get join requests. Please try again later.',
+        'Error while trying to get node join requests. Please try again later.',
       );
+    }
+  }
+
+/**
+ * Retrieves all join requests made by a specific user.
+ * @param userId - The ID of the user for which to retrieve join requests.
+ * @returns A promise that resolves to an array of join requests, populated with node and user details.
+ * @throws BadRequestException if there is an error while trying to get user join requests.
+ */
+  async getAllJoinRequestsOfUser(userId: Types.ObjectId) {
+    try {
+      const request = await this.nodeJoinRequestModel
+        .find({ user: userId })
+        .populate('node')
+        .populate('user', '-password')
+        .exec();
+      return request;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Error while trying to get user join requests. Please try again later.',
+      )
     }
   }
 

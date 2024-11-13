@@ -110,10 +110,27 @@ export class NodeController {
     return await this.nodeService.requestToJoin(new Types.ObjectId(nodeId), userId);
   }
 
+  // ----------------------------- CANCEL JOIN REQUEST ---------------------------
+  @Delete('cancel-join-request/:nodeId')
+  async cancelJoinRequest(
+    @Param('nodeId') nodeId: string,
+    @Req() request: Request & { user: User },
+  ) {
+    const userId = new Types.ObjectId(request.user._id);
+    return await this.nodeService.cancelJoinRequest(new Types.ObjectId(nodeId), userId);
+  }
+
   // -----------------------------GET ALL JOIN REQUESTS OF NODE ---------------------------
   @Get('join-requests/:nodeId')
   getAllJoinRequestsOfNode(@Param('nodeId') nodeId: string) {
     return this.nodeService.getAllJoinRequestsOfNode(new Types.ObjectId(nodeId));
+  }
+
+  //-----------------------------GET ALL JOIN REQUESTS OF USER ---------------------------
+  @Get('user-join-requests')
+  getAllJoinRequestsOfUser(@Req() request: Request) {
+    const userId = new Types.ObjectId(request.user._id);
+    return this.nodeService.getAllJoinRequestsOfUser(userId);
   }
 
   // -----------------------------ACCEPT OR REJECT JOIN REQUEST ---------------------------
