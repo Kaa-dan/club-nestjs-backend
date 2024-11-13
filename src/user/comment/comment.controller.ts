@@ -60,8 +60,7 @@ export class CommentController {
 
     @Put(':id/delete')
     async deleteComment(@Req() req, @Param('id') commentId: string) {
-        const userId = new Types.ObjectId(req.user._id);
-        return await this.commentService.deleteComment(new Types.ObjectId(commentId), userId);
+        return await this.commentService.deleteComment(new Types.ObjectId(commentId));
     }
 
 }

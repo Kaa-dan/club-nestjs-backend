@@ -208,7 +208,7 @@ export class CommentService {
      * @throws `NotFoundException` if the comment is not found
      * @throws `BadRequestException` if there is an error deleting the comment
      */
-    async deleteComment(commentId: Types.ObjectId, userId: Types.ObjectId) {
+    async deleteComment(commentId: Types.ObjectId) {
         try {
             if (!commentId) {
                 throw new BadRequestException("Invalid commentId");
