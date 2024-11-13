@@ -199,6 +199,7 @@ export class RulesRegulationsService {
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
+          .populate('createdBy')
           .exec();
         console.log({ response });
         return response;
@@ -470,7 +471,9 @@ export class RulesRegulationsService {
   //---------GET SINGLE RULES AND REGULATION
   async getRules(ruleId: Types.ObjectId) {
     try {
-      return await this.rulesregulationModel.findById(ruleId).exec();
+      return await (
+        await this.rulesregulationModel.findById(ruleId)
+      ).populate('createdBy');
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
