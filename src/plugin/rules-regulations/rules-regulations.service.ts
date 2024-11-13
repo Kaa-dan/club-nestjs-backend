@@ -299,7 +299,7 @@ export class RulesRegulationsService {
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
-            $addToSet: { adoptedNodes: dataToSave.nodeId },
+            $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
           },
           { new: true },
         );
