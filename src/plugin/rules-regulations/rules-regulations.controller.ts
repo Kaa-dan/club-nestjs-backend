@@ -17,9 +17,7 @@ import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
-import { diskStorage, memoryStorage } from 'multer';
-import { extname } from 'path';
-import { from } from 'rxjs';
+import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 
 @Controller('rules-regulations')
@@ -293,6 +291,18 @@ export class RulesRegulationsController {
         req.user._id,
         rulesId,
       );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  @Get('get-rules/:ruleId')
+  async getRules(@Param('ruleId') ruleId: Types.ObjectId) {
+    try {
+      return await this.rulesRegulationsService.getRules(ruleId);
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
