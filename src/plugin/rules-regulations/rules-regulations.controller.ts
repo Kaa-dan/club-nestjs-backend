@@ -318,7 +318,7 @@ export class RulesRegulationsController {
    * @param ruleId - The ObjectId of the rule to get comments for
    * @returns Promise containing comments for the specified rule
    */
-  @Get(':ruleId/comment')
+  @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
     return this.commentService.getCommentsByEntity('RulesRegulations', ruleId)
   }
