@@ -12,6 +12,7 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
+import { ReportOffence } from 'src/shared/entities/report-offense.entity';
 
 interface FileObject {
   buffer: Buffer;
@@ -19,7 +20,13 @@ interface FileObject {
   mimetype: string;
   size: number;
 }
-
+// Interface for the file object
+export interface IFileObject {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
 @Injectable()
 export class RulesRegulationsService {
   constructor(
@@ -30,6 +37,8 @@ export class RulesRegulationsService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(ReportOffence.name)
+    private readonly reportOffenceModel: Model<ReportOffence>,
   ) {}
 
   /*
@@ -199,6 +208,7 @@ export class RulesRegulationsService {
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
+          .populate('createdBy')
           .exec();
         console.log({ response });
         return response;
@@ -274,7 +284,7 @@ export class RulesRegulationsService {
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
-            $addToSet: { adoptedClubs: dataToSave.clubId },
+            $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
           },
           { new: true },
         );
@@ -470,10 +480,185 @@ export class RulesRegulationsService {
   //---------GET SINGLE RULES AND REGULATION
   async getRules(ruleId: Types.ObjectId) {
     try {
-      return await this.rulesregulationModel.findById(ruleId).exec();
+      return await (
+        await this.rulesregulationModel.findById(ruleId)
+      ).populate('createdBy');
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  /*------------------LIKE RULES AND REGULATIONS
+   */
+  async likeRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user has already liked
+      const rulesRegulation = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        relevant: userId,
+      });
+
+      if (rulesRegulation) {
+        throw new BadRequestException(
+          'User has already liked this rules regulation',
+        );
+      }
+
+      // Update the document: Add to relevant array and remove from irrelevant if exists
+      const updatedRulesRegulation = await this.rulesregulationModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to relevant array if not exists
+            $addToSet: { relevant: userId },
+            // Remove from irrelevant array if exists
+            $pull: { irrelevant: userId },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Liked successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //--------------UNLIKE RULES AND REGULATIONS
+  async unlikeRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user has already unliked
+      const rulesRegulation = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        irrelevant: userId,
+      });
+
+      if (!rulesRegulation) {
+        throw new BadRequestException(
+          'User has not liked this rules regulation',
+        );
+      }
+
+      // Update the document: Add to irrelevant array and remove from relevant if exists
+      const updatedRulesRegulation = await this.rulesregulationModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to  array if not exists
+            $addToSet: { irrelevant: userId },
+            // Remove from  array if exists
+            $pull: { relevant: userId },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Unliked successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while unliking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //-----SOFT DELETE RULES AND REGULATIONS
+  async softDeleteRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user is the admin
+      const isAdmin = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        createdBy: userId,
+      });
+
+      if (!isAdmin) {
+        throw new BadRequestException(
+          'You are not authorized to delete this rule',
+        );
+      }
+      const response = await this.rulesregulationModel.findByIdAndUpdate(
+        rulesRegulationId,
+        {
+          $set: { isDeleted: true },
+        },
+        { new: true },
+      );
+      if (!response) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+      return { message: 'rules deleted succesfully', status: true };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while unliking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //------------------REPORTS OFFENSE
+  async reportOffense(
+    userId: Types.ObjectId,
+    reportData: {
+      type: string;
+      typeId: Types.ObjectId;
+      reason: string;
+      rulesID: Types.ObjectId;
+      offenderID: Types.ObjectId;
+    },
+    fileObjects: FileObject[],
+  ) {
+    try {
+      const newOffense = new this.reportOffenceModel({
+        offender: reportData.offenderID,
+        reportedBy: userId,
+        reason: reportData.reason,
+        rulesId: reportData.rulesID,
+        proof: fileObjects,
+        clubOrNode: reportData.type,
+        clubOrNodeId: reportData.typeId,
+      });
+      return await newOffense.save();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while reporting offense',
+        error,
+      );
+    }
+  }
+
+  //---------------GET ALL REPORTS
+  async getAllReportOffence(clubId: Types.ObjectId, type: 'Nodes' | 'Clubs') {
+    try {
+      return await this.reportOffenceModel
+        .find({ clubOrNode: type, clubOrNodeId: clubId })
+        .populate('offender')
+        .populate('reportedBy');
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting all reports',
         error,
       );
     }
