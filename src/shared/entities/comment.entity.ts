@@ -1,0 +1,56 @@
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
+
+interface IEntity {
+    entityId: Types.ObjectId;
+    entityType: 'post' | 'debate' | 'nodes' | 'Club' | 'RulesRegulations';
+}
+
+interface IAttachment {
+    url: string;
+    type: 'image' | 'file';
+    filename: string;
+}
+
+@Schema({ collection: 'comment', timestamps: true })
+export class Comment extends Document {
+    @Prop({ required: true, trim: true, type: String })
+    content: string
+
+    @Prop({
+        type: {
+            entityId: { type: Types.ObjectId, required: true, refPath: 'entity.entityType' },
+            entityType: { type: String, enum: ['post', 'debate', 'nodes', 'Club', 'RulesRegulations'], required: true },
+        },
+        _id: false,
+        required: true,
+    })
+    entity: IEntity
+
+    @Prop({ required: false, type: Types.ObjectId, ref: 'Comment', default: null })
+    parent?: Types.ObjectId
+
+    @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
+    author: Types.ObjectId
+
+    @Prop({ type: [Types.ObjectId], default: [], required: false })
+    dislike?: Types.ObjectId[];
+
+    @Prop({ type: [Types.ObjectId], default: [], required: false })
+    like?: Types.ObjectId[];
+
+    @Prop({ required: false, default: false, type: Boolean })
+    isDeleted?: boolean
+
+    @Prop({
+        type: {
+            url: String,
+            filename: String,
+            mimetype: String,
+        },
+        _id: false,
+    })
+    attachment?: IAttachment;
+}
+
+export const CommentSchema = SchemaFactory.createForClass(Comment)

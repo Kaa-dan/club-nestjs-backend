@@ -14,11 +14,12 @@ import {
 } from '@nestjs/common';
 import { RulesRegulationsService } from './rules-regulations.service';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
+import { CommentService } from 'src/user/comment/comment.service';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -31,7 +32,8 @@ export class RulesRegulationsController {
   //@inject
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
-  ) {}
+    private readonly commentService: CommentService
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -450,4 +452,87 @@ export class RulesRegulationsController {
       );
     }
   }
+
+  /**
+   * Retrieves all comments for a specific rule
+   * @param ruleId - The ObjectId of the rule to get comments for
+   * @returns Promise containing comments for the specified rule
+   */
+  @Get(':ruleId/comments')
+  getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
+    return this.commentService.getCommentsByEntity('RulesRegulations', ruleId)
+  }
+
+  /**
+   * Creates a new comment for a rules and regulations entry
+   * @param req - Express request object containing user information
+   * @param file - Array containing a single uploaded file (image, PDF or document)
+   * @param createCommentData - Comment data to be created
+   * @returns Promise containing the created comment
+   */
+  @UseInterceptors(
+    FilesInterceptor('file', 1, { storage: memoryStorage() }),
+  )
+  @Post('comment')
+  async createComment(
+    @Req() req,
+    @UploadedFiles(
+      new FileValidationPipe({
+        files: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+        },
+      }),
+    )
+    file: Express.Multer.File[],
+    @Body() createCommentData: any,
+  ) {
+    createCommentData.entityType = "RulesRegulations"
+    const userId = new Types.ObjectId(req.user._id)
+    return await this.commentService.createComment(createCommentData, userId, file[0])
+  }
+
+  /**
+   * Adds a like to a comment on rules and regulations
+   * @param req - Express request object containing user information
+   * @param commentId - ID of the comment to like
+   * @returns Promise containing the updated comment with the new like
+   */
+  @Put('comment/:id/like')
+  async likeComment(@Req() req, @Param('id') commentId: string) {
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.commentService.likeComment(new Types.ObjectId(commentId), userId)
+  }
+
+  /**
+   * Adds a dislike to a comment on rules and regulations
+   * @param req - Express request object containing user information
+   * @param commentId - ID of the comment to dislike
+   * @returns Promise containing the updated comment with the new dislike
+   */
+  @Put('comment/:id/dislike')
+  async dislikeComment(@Req() req, @Param('id') commentId: string) {
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.commentService.dislikeComment(new Types.ObjectId(commentId), userId)
+  }
+
+  /**
+   * Deletes a comment from rules and regulations
+   * @param req - Express request object
+   * @param commentId - ID of the comment to delete
+   * @returns Promise containing the result of comment deletion
+   */
+  @Put('comment/:id/delete')
+  async deleteComment(@Req() req, @Param('id') commentId: string) {
+    return await this.commentService.deleteComment(new Types.ObjectId(commentId))
+  }
+
 }

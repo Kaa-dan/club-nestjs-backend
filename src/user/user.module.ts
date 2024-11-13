@@ -16,6 +16,7 @@ import { User, UserSchema } from 'src/shared/entities/user.entity';
 
 import { InvitationModule } from './invitation/invitation.module';
 import { ReportModule } from './report/report.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -27,8 +28,9 @@ import { ReportModule } from './report/report.module';
     SearchModule,
     InvitationModule,
     ReportModule,
+    CommentModule,
   ],
-  
+
   providers: [
     {
       provide: APP_GUARD,
@@ -38,7 +40,7 @@ import { ReportModule } from './report/report.module';
   ],
   controllers: [UserController],
 })
-export class UserModule {}
+export class UserModule { }
 
 
 
