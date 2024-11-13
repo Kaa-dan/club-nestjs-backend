@@ -30,7 +30,7 @@ export class RulesRegulationsService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
-  ) {}
+  ) { }
 
   /*
   @Param type :strgin  "node"|"club"
