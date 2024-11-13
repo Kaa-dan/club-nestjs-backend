@@ -466,6 +466,18 @@ export class RulesRegulationsService {
       );
     }
   }
+
+  //---------GET SINGLE RULES AND REGULATION
+  async getRules(ruleId: Types.ObjectId) {
+    try {
+      return await this.rulesregulationModel.findById(ruleId).exec();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
