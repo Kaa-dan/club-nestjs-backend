@@ -344,6 +344,7 @@ export class RulesRegulationsService {
     userId: Types.ObjectId,
     rulesId: Types.ObjectId,
   ): Promise<{ clubs: any[]; nodes: any[] }> {
+    console.log({ userId, rulesId });
     try {
       // Get all clubs where user is admin
       const clubsQuery = await this.clubMembersModel.aggregate([

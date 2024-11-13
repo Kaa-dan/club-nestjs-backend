@@ -295,7 +295,7 @@ export class RulesRegulationsController {
     try {
       return await this.rulesRegulationsService.getClubsNodesNotAdopted(
         req.user._id,
-        rulesId,
+        new Types.ObjectId(rulesId),
       );
     } catch (error) {
       throw new InternalServerErrorException(
