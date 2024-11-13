@@ -11,6 +11,7 @@ import { InterestModule } from './interest/interest.module';
 import { FileUploadMiddleware } from './shared/middleware/file-upload.middleware';
 import { MailerModule } from './mailer/mailer.module';
 import { PluginModule } from './plugin/plugin.module';
+import { RecaptchaModule } from './recaptcha/recaptcha.module';
 @Module({
   imports: [
     UserModule,
@@ -24,6 +25,7 @@ import { PluginModule } from './plugin/plugin.module';
     InterestModule,
     MailerModule,
     PluginModule,
+    RecaptchaModule,
   ],
   providers: [],
 })
