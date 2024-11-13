@@ -280,6 +280,8 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
+      console.log(data);
+
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
       throw new InternalServerErrorException(
@@ -297,7 +299,7 @@ export class RulesRegulationsController {
     try {
       return await this.rulesRegulationsService.getClubsNodesNotAdopted(
         req.user._id,
-        rulesId,
+        new Types.ObjectId(rulesId),
       );
     } catch (error) {
       throw new InternalServerErrorException(

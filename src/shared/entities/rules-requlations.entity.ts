@@ -66,7 +66,7 @@ export class RulesRegulations extends Document {
   @Prop({
     required: true,
     type: Types.ObjectId,
-    ref: 'User',
+    ref: 'users',
   })
   createdBy: Types.ObjectId;
 
