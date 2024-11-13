@@ -15,6 +15,11 @@ import {
   RulesRegulations,
   RulesRegulationsSchema,
 } from './entities/rules-requlations.entity';
+import { Reports, ReportsSchema } from './entities/reports.entity';
+import {
+  ReportOffence,
+  ReportOffenceSchema,
+} from './entities/report-offense.entity';
 import { Comment, CommentSchema } from './entities/comment.entity';
 
 @Module({
@@ -55,6 +60,18 @@ import { Comment, CommentSchema } from './entities/comment.entity';
       {
         name: RulesRegulations.name,
         schema: RulesRegulationsSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Reports.name,
+        schema: ReportsSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: ReportOffence.name,
+        schema: ReportOffenceSchema,
       },
     ]),
     MongooseModule.forFeature([

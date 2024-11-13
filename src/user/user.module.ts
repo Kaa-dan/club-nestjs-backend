@@ -15,6 +15,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from 'src/shared/entities/user.entity';
 
 import { InvitationModule } from './invitation/invitation.module';
+import { ReportModule } from './report/report.module';
 import { CommentModule } from './comment/comment.module';
 
 @Module({
@@ -26,9 +27,10 @@ import { CommentModule } from './comment/comment.module';
     ClubModule,
     SearchModule,
     InvitationModule,
+    ReportModule,
     CommentModule,
   ],
-  
+
   providers: [
     {
       provide: APP_GUARD,
@@ -38,7 +40,7 @@ import { CommentModule } from './comment/comment.module';
   ],
   controllers: [UserController],
 })
-export class UserModule {}
+export class UserModule { }
 
 
 
