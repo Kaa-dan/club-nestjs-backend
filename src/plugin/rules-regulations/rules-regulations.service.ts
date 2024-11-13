@@ -39,7 +39,7 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-  ) { }
+  ) {}
 
   /*
   @Param type :strgin  "node"|"club"
@@ -299,7 +299,7 @@ export class RulesRegulationsService {
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
-            $addToSet: { adoptedNodes: dataToSave.nodeId },
+            $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
           },
           { new: true },
         );

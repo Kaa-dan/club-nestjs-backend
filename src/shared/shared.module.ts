@@ -78,10 +78,10 @@ import { Comment, CommentSchema } from './entities/comment.entity';
       {
         name: Comment.name,
         schema: CommentSchema,
-      }
+      },
     ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule { }
+export class SharedModule {}
