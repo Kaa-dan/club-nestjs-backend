@@ -6,12 +6,12 @@ class EntityDto {
     @IsNotEmpty()
     entityId: Types.ObjectId;
 
-    @IsEnum(['post', 'debate', 'nodes', 'Club'])
+    @IsEnum(['post', 'debate', 'nodes', 'Club', 'RulesRegulations'])
     @IsNotEmpty()
-    entityType: 'post' | 'debate' | 'nodes' | 'Club';
+    entityType: 'post' | 'debate' | 'nodes' | 'Club' | 'RulesRegulations';
 }
 
-export const entities = ['post', 'debate', 'nodes', 'Club'];
+export const entities = ['post', 'debate', 'nodes', 'Club', 'RulesRegulations'];
 
 export class CreateCommentDto {
     @IsString()
@@ -21,9 +21,9 @@ export class CreateCommentDto {
     @IsNotEmpty()
     entityId: Types.ObjectId;
 
-    @IsEnum(['post', 'debate', 'nodes', 'Club'])
+    @IsEnum(['post', 'debate', 'nodes', 'Club', 'RulesRegulations'])
     @IsNotEmpty()
-    entityType: 'post' | 'debate' | 'nodes' | 'Club';
+    entityType: 'post' | 'debate' | 'nodes' | 'Club' | 'RulesRegulations';
 
     @IsOptional()
     parent?: Types.ObjectId;

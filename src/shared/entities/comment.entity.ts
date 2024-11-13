@@ -3,7 +3,7 @@ import { Document, Types } from "mongoose";
 
 interface IEntity {
     entityId: Types.ObjectId;
-    entityType: 'post' | 'debate' | 'nodes' | 'Club';
+    entityType: 'post' | 'debate' | 'nodes' | 'Club' | 'RulesRegulations';
 }
 
 interface IAttachment {
@@ -20,8 +20,9 @@ export class Comment extends Document {
     @Prop({
         type: {
             entityId: { type: Types.ObjectId, required: true, refPath: 'entity.entityType' },
-            entityType: { type: String, enum: ['post', 'debate', 'nodes', 'Club'], required: true },
+            entityType: { type: String, enum: ['post', 'debate', 'nodes', 'Club', 'RulesRegulations'], required: true },
         },
+        _id: false,
         required: true,
     })
     entity: IEntity
