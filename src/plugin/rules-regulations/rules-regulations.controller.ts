@@ -19,7 +19,6 @@ import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
-import { type } from 'os';
 
 @Controller('rules-regulations')
 export class RulesRegulationsController {
@@ -343,6 +342,26 @@ export class RulesRegulationsController {
   ) {
     try {
       return await this.rulesRegulationsService.unlikeRulesRegulations(
+        req.user._id,
+        rulesId,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //-------------------------SOFT DELETE RULES AND REGULATIONS
+  @Put('delete-rules')
+  async softDeleteRulesRegulations(
+    @Query('rulesId') rulesId: Types.ObjectId,
+
+    @Req() req: Request,
+  ) {
+    try {
+      return await this.rulesRegulationsService.softDeleteRulesRegulations(
         req.user._id,
         rulesId,
       );

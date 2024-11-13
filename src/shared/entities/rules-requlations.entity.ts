@@ -105,6 +105,9 @@ export class RulesRegulations extends Document {
   relevant: Types.ObjectId[];
 
   irrelevant: Types.ObjectId[];
+
+  @Prop({ default: false })
+  isDeleted: boolean;
 }
 
 export const RulesRegulationsSchema =

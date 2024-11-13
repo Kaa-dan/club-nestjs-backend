@@ -572,6 +572,42 @@ export class RulesRegulationsService {
       );
     }
   }
+
+  //-----SOFT DELETE RULES AND REGULATIONS
+  async softDeleteRulesRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user is the admin
+      const isAdmin = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        createdBy: userId,
+      });
+
+      if (!isAdmin) {
+        throw new BadRequestException(
+          'You are not authorized to delete this rule',
+        );
+      }
+      const response = await this.rulesregulationModel.findByIdAndUpdate(
+        rulesRegulationId,
+        {
+          $set: { isDeleted: true },
+        },
+        { new: true },
+      );
+      if (!response) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+      return { message: 'rules deleted succesfully', status: true };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while unliking rules-regulations',
+        error,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
