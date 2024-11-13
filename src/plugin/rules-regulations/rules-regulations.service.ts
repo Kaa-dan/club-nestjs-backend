@@ -30,7 +30,7 @@ export class RulesRegulationsService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
-  ) { }
+  ) {}
 
   /*
   @Param type :strgin  "node"|"club"
@@ -475,6 +475,7 @@ export class RulesRegulationsService {
         await this.rulesregulationModel.findById(ruleId)
       ).populate('createdBy');
     } catch (error) {
+      console.log({ error });
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,

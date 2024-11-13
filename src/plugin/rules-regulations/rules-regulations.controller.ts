@@ -25,7 +25,7 @@ export class RulesRegulationsController {
   //@inject
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
-  ) { }
+  ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -272,6 +272,8 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
+      console.log(data);
+
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
       throw new InternalServerErrorException(
