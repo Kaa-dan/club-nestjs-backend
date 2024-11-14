@@ -38,7 +38,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 @ApiTags('Clubs')
 @Controller('clubs')
 export class ClubController {
-  constructor(private readonly clubService: ClubService) {}
+  constructor(private readonly clubService: ClubService) { }
 
   /*
   --------------------CREATING A CLUB----------------------------
