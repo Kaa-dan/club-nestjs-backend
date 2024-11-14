@@ -4,9 +4,9 @@ import {
   Param,
   UseGuards,
   UseInterceptors,
-
   HttpStatus,
   Query,
+  Search,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,11 +18,23 @@ import { Types } from 'mongoose';
 import { UserService } from './user.service';
 
 import { UserResponseDto } from './dto/user.dto';
+import { UserWithoutPassword } from './dto/user.type';
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
+
+  @Get(':search')
+  async getAllUsers(
+    @Param('search') search: string,
+  ): Promise<UserWithoutPassword[]> {
+    try {
+      return await this.userService.getAllUsers(search);
+    } catch (error) {
+      throw error;
+    }
+  }
 
   @Get('fetch-other-profile/:userId')
   @ApiBearerAuth()
@@ -41,9 +53,7 @@ export class UserController {
     description: 'Internal server error',
   })
   async getUserProfile(@Param('userId') userId: string) {
-    return await this.userService.findUserById(
-      new Types.ObjectId(userId),
-    );
+    return await this.userService.findUserById(new Types.ObjectId(userId));
   }
 
   /**
@@ -53,11 +63,11 @@ export class UserController {
    */
   @Get('userName')
   async getUserByUserName(@Query('term') term: string) {
-    return await this.userService.getUserByUserName(term)
+    return await this.userService.getUserByUserName(term);
   }
 
   @Get('search-by-name')
   async getUsersByNameCriteria(@Query('term') term: string) {
-    return await this.userService.getUsersByNameCriteria(term)
+    return await this.userService.getUsersByNameCriteria(term);
   }
 }

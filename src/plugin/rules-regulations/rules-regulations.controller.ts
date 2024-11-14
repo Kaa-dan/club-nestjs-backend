@@ -453,6 +453,24 @@ export class RulesRegulationsController {
     }
   }
 
+  /* -------------CRATE VIEWS FOR THE RULES AND REGULATIONS */
+  @Put('create-views')
+  async createViewsForRulesAndRegulations(
+    @Req() req: Request,
+    @Body() rulesId: { rulesId: Types.ObjectId },
+  ) {
+    try {
+      return await this.rulesRegulationsService.createViewsForRulesAndRegulations(
+        req.user._id,
+        req.body.rulesId,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
   /**
    * Retrieves all comments for a specific rule
    * @param ruleId - The ObjectId of the rule to get comments for
