@@ -671,6 +671,8 @@ export class RulesRegulationsService {
     userId: Types.ObjectId,
     rulesRegulationId: Types.ObjectId,
   ) {
+    console.log({ userId });
+
     try {
       // Check if the user has already liked
       const rulesRegulation = await this.rulesregulationModel.findOne({
@@ -690,7 +692,7 @@ export class RulesRegulationsService {
           rulesRegulationId,
           {
             // Add to relevant array if not exists
-            $addToSet: { views: userId },
+            $addToSet: { views: { user: userId } },
           },
           { new: true },
         )

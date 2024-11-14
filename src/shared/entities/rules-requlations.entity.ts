@@ -45,7 +45,7 @@ export class RulesRegulations extends Document {
 
   @Prop([
     {
-      user: { type: Types.ObjectId, ref: 'User', required: true },
+      user: { type: Types.ObjectId, ref: 'users', required: true },
       date: { type: Date, default: Date.now },
     },
   ])

@@ -467,12 +467,13 @@ export class RulesRegulationsController {
   @Put('create-views')
   async createViewsForRulesAndRegulations(
     @Req() req: Request,
-    @Body() rulesId: { rulesId: Types.ObjectId },
+    @Body('rulesId') rulesId: Types.ObjectId,
   ) {
     try {
+      console.log({ rulesId });
       return await this.rulesRegulationsService.createViewsForRulesAndRegulations(
         req.user._id,
-        req.body.rulesId,
+        rulesId,
       );
     } catch (error) {
       throw new InternalServerErrorException(
