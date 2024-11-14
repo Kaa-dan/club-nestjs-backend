@@ -10,11 +10,25 @@ import { Model, Types } from 'mongoose';
 import { UserResponseDto } from './dto/user.dto';
 import { plainToClass } from 'class-transformer';
 import { User } from 'src/shared/entities/user.entity';
+import { UserWithoutPassword } from './dto/user.type';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel('users') private readonly userModel: Model<User>) { }
+  constructor(@InjectModel('users') private readonly userModel: Model<User>) {}
 
+  async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
+    try {
+      const users = await this.userModel
+        .find()
+        .select('-password')
+        .lean()
+        .exec();
+
+      return users as unknown as UserWithoutPassword[];
+    } catch (error) {
+      throw new InternalServerErrorException('Error fetching users');
+    }
+  }
   /**
    * Find user by ID
    * @param userId - MongoDB ObjectId of the user
@@ -76,23 +90,26 @@ export class UserService {
    */
   async getUserByUserName(term: string) {
     if (!term) {
-      throw new BadRequestException('Term not found')
+      throw new BadRequestException('Term not found');
     }
     try {
-      const user = await this.userModel.findOne({ userName: term }, { password: 0 })
+      const user = await this.userModel.findOne(
+        { userName: term },
+        { password: 0 },
+      );
       if (!user) {
         return {
           data: null,
-          message: "user not found successfully",
-          success: false
-        }
+          message: 'user not found successfully',
+          success: false,
+        };
       }
 
       return {
         data: user,
-        message: "user found successfully",
-        success: true
-      }
+        message: 'user found successfully',
+        success: true,
+      };
     } catch (error) {
       console.log(error);
       if (error instanceof NotFoundException) {
@@ -108,16 +125,19 @@ export class UserService {
     }
     try {
       const caseInsensitive = { $regex: term, $options: 'i' };
-      const users = await this.userModel.find(
-        {
-          $or: [
-            { userName: caseInsensitive },
-            { firstName: caseInsensitive },
-            { lastName: caseInsensitive },
-          ],
-        },
-        { password: 0 }
-      ).lean().exec();
+      const users = await this.userModel
+        .find(
+          {
+            $or: [
+              { userName: caseInsensitive },
+              { firstName: caseInsensitive },
+              { lastName: caseInsensitive },
+            ],
+          },
+          { password: 0 },
+        )
+        .lean()
+        .exec();
 
       if (!users || users.length === 0) {
         return [];
@@ -127,7 +147,10 @@ export class UserService {
       const otherUsers = [];
 
       for (const user of users) {
-        if (user.userName && user.userName.toLowerCase().includes(term.toLowerCase())) {
+        if (
+          user.userName &&
+          user.userName.toLowerCase().includes(term.toLowerCase())
+        ) {
           userNameUsers.push(user);
         } else {
           otherUsers.push(user);
