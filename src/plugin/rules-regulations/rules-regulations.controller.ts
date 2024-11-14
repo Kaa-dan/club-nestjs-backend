@@ -284,7 +284,8 @@ export class RulesRegulationsController {
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
-      console.log('errrrr ', error);
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while adopting rules-regulations',
         error,
@@ -304,6 +305,7 @@ export class RulesRegulationsController {
       );
     } catch (error) {
       console.log('errrrr ', error);
+
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -338,6 +340,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
@@ -358,6 +362,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
@@ -464,12 +470,13 @@ export class RulesRegulationsController {
   @Put('create-views')
   async createViewsForRulesAndRegulations(
     @Req() req: Request,
-    @Body() rulesId: { rulesId: Types.ObjectId },
+    @Body('rulesId') rulesId: Types.ObjectId,
   ) {
     try {
+      console.log({ rulesId });
       return await this.rulesRegulationsService.createViewsForRulesAndRegulations(
         req.user._id,
-        req.body.rulesId,
+        rulesId,
       );
     } catch (error) {
       throw new InternalServerErrorException(
