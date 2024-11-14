@@ -664,6 +664,51 @@ export class RulesRegulationsService {
       );
     }
   }
+
+  /* -------------CRATE VIEWS FOR THE RULES AND REGULATIONS */
+  async createViewsForRulesAndRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    try {
+      // Check if the user has already liked
+      const rulesRegulation = await this.rulesregulationModel.findOne({
+        _id: rulesRegulationId,
+        views: userId,
+      });
+
+      if (rulesRegulation) {
+        throw new BadRequestException(
+          'User has already viewed this rules regulation',
+        );
+      }
+
+      // Update the document: Add to relevant array and remove from irrelevant if exists
+      const updatedRulesRegulation = await this.rulesregulationModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to relevant array if not exists
+            $addToSet: { views: userId },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Viewed successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while viewing rules-regulations',
+        error,
+      );
+    }
+  }
+
+  //------------------------
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
