@@ -29,7 +29,7 @@ import { profile } from 'console';
 
 @Controller('node')
 export class NodeController {
-  constructor(private readonly nodeService: NodeService) {}
+  constructor(private readonly nodeService: NodeService) { }
 
   // -----------------------------CREATE NODE ---------------------------
   @Post()
@@ -84,7 +84,7 @@ export class NodeController {
       request.user._id,
     );
   }
-  
+
   // -----------------------------GET ALL NODE ---------------------------
   @SkipAuth()
   @Get()
@@ -110,29 +110,46 @@ export class NodeController {
     return await this.nodeService.requestToJoin(new Types.ObjectId(nodeId), userId);
   }
 
+  // ----------------------------- CANCEL JOIN REQUEST ---------------------------
+  @Delete('cancel-join-request/:nodeId')
+  async cancelJoinRequest(
+    @Param('nodeId') nodeId: string,
+    @Req() request: Request & { user: User },
+  ) {
+    const userId = new Types.ObjectId(request.user._id);
+    return await this.nodeService.cancelJoinRequest(new Types.ObjectId(nodeId), userId);
+  }
+
   // -----------------------------GET ALL JOIN REQUESTS OF NODE ---------------------------
   @Get('join-requests/:nodeId')
   getAllJoinRequestsOfNode(@Param('nodeId') nodeId: string) {
     return this.nodeService.getAllJoinRequestsOfNode(new Types.ObjectId(nodeId));
   }
 
+  //-----------------------------GET ALL JOIN REQUESTS OF USER ---------------------------
+  @Get('user-join-requests')
+  getAllJoinRequestsOfUser(@Req() request: Request) {
+    const userId = new Types.ObjectId(request.user._id);
+    return this.nodeService.getAllJoinRequestsOfUser(userId);
+  }
+
   // -----------------------------ACCEPT OR REJECT JOIN REQUEST ---------------------------
   @Post('handle-request')
   async acceptOrRejectRequest(
-    @Body() 
+    @Body()
     requestBody: {
-      nodeId: Types.ObjectId; 
-      requestId: Types.ObjectId; 
+      nodeId: Types.ObjectId;
+      requestId: Types.ObjectId;
       status: 'ACCEPTED' | 'REJECTED';
     },
     @Req() request: Request & { user: User },
   ) {
     let { nodeId, requestId, status } = requestBody;
-    
+
     const userId = new Types.ObjectId(request.user._id);
     nodeId = new Types.ObjectId(nodeId);
     requestId = new Types.ObjectId(requestId);
-    
+
     return await this.nodeService.acceptOrRejectRequest(nodeId, userId, requestId, status);
   }
 
@@ -153,6 +170,11 @@ export class NodeController {
       new Types.ObjectId(userId),
       new Types.ObjectId(nodeId),
     );
+  }
+
+  @Get('node-members/:nodeId')
+  async getNodeMembers(@Param('nodeId') nodeId: string) {
+    return await this.nodeService.getNodeMembers(new Types.ObjectId(nodeId));
   }
 
   // -----------------------------PIN NODE ---------------------------

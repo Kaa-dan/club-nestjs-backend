@@ -8,7 +8,7 @@ export class ClubInvitation {
   @Prop({ type: Types.ObjectId, ref: 'Club', required: true })
   club: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
   user: Types.ObjectId;
 
   @Prop({ required: true })

@@ -43,7 +43,6 @@ export class User extends Document {
   @Prop({
     type: String,
     required: false,
-    _id: false,
   })
   coverImage?: string;
 

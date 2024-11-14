@@ -24,10 +24,25 @@ export class InvitationService {
     private readonly clubMember: Model<ClubMembers>,
   ) {}
 
+  async getInvitations(userId: Types.ObjectId): Promise<ClubInvitation[]> {
+    try {
+      console.log('nithin');
+      console.log({ userId });
+      const invitations = await this.invitationModel
+        .find({
+          user: userId,
+        })
+        .populate('club');
+      return invitations;
+    } catch (error) {
+      console.log({ error });
+      throw new BadRequestException(error.message);
+    }
+  }
   async createInvitation(
     createInvitationDto: CreateInvitationDto,
     adminId: Types.ObjectId,
-  ): Promise<ClubInvitation> {
+  ) {
     try {
       // checking if the club is valid
       const club = await this.clubModel.findOne({
@@ -62,14 +77,20 @@ export class InvitationService {
       const invitation = new this.invitationModel({
         club: club._id,
         link: club.link,
-        user: createInvitationDto.userId,
+        user: new Types.ObjectId(createInvitationDto.userId),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
         status: 'PENDING',
         createdBy: adminId,
       });
+      //here i need to sent isInvited to true or false in every user this is an update
+
       // saving invitation
       const savedInvitation = await invitation.save();
-      return savedInvitation;
+      return {
+        savedInvitation,
+        success: true,
+        message: 'invite sent succesfully',
+      };
     } catch (error) {
       console.log(error);
       throw new BadRequestException(error.message);

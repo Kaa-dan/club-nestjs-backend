@@ -11,6 +11,16 @@ import {
   ClubInvitationSchema,
 } from './entities/club-invitation.entity';
 import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
+import {
+  RulesRegulations,
+  RulesRegulationsSchema,
+} from './entities/rules-requlations.entity';
+import { Comment, CommentSchema } from './entities/comment.entity';
+import { Reports, ReportsSchema } from './entities/reports.entity';
+import {
+  ReportOffence,
+  ReportOffenceSchema,
+} from './entities/report-offense.entity';
 
 @Module({
   imports: [
@@ -44,6 +54,36 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
       {
         name: ClubMembers.name,
         schema: ClubMembersSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: RulesRegulations.name,
+        schema: RulesRegulationsSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Comment.name,
+        schema: CommentSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Reports.name,
+        schema: ReportsSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: ReportOffence.name,
+        schema: ReportOffenceSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Comment.name,
+        schema: CommentSchema,
       },
     ]),
     forwardRef(() => SearchModule),
