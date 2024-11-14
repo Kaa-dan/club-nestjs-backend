@@ -245,113 +245,105 @@ export class RulesRegulationsService {
   @Req:user_id
   @return:RulesRegulations
    */
-  async adoptRules(dataToSave: {
-    type: 'club' | 'node';
-    rulesId: Types.ObjectId;
-    clubId?: Types.ObjectId;
-    nodeId?: Types.ObjectId;
-    userId: Types.ObjectId;
-  }) {
-    try {
-      // First, find the existing rule document
-      const existingRule = await this.rulesregulationModel.findById(
-        dataToSave.rulesId,
-      );
+  // async adoptRules(dataToSave: {
+  //   type: 'club' | 'node';
+  //   rulesId: Types.ObjectId;
+  //   clubId?: Types.ObjectId;
+  //   nodeId?: Types.ObjectId;
+  //   userId: Types.ObjectId;
+  // }) {
+  //   try {
+  //     // First, find the existing rule document
+  //     const existingRule = await this.rulesregulationModel.findById(
+  //       dataToSave.rulesId,
+  //     );
 
-      console.log({ existingRule });
+  //     console.log({ existingRule });
 
-      if (!existingRule) {
-        throw new NotFoundException('Rules regulation not found');
-      }
+  //     if (!existingRule) {
+  //       throw new NotFoundException('Rules regulation not found');
+  //     }
 
-      // Create the new rule document without the _id field
-      const ruleData = existingRule.toObject();
-      delete ruleData._id;
+  //     // Create the new rule document without the _id field
+  //     const ruleData = existingRule.toObject();
+  //     delete ruleData._id;
 
-      // ruleData.views =
-      //   ruleData.views?.map((view) => {
-      //     if (!view.user) {
-      //       throw new Error('Each view entry must contain a user field');
-      //     }
-      //     return view;
-      //   }) || [];
+  //     // Prepare base data for the new rule
+  //     const baseRuleData = {
+  //       ...ruleData,
+  //       adoptedBy: dataToSave.userId,
+  //       adoptedDate: new Date(),
+  //       adoptedParent: dataToSave.rulesId,
+  //       publishedDate: new Date(),
+  //       version: 1,
+  //     };
 
-      // Prepare base data for the new rule
-      const baseRuleData = {
-        ...ruleData,
-        adoptedBy: dataToSave.userId,
-        adoptedDate: new Date(),
-        adoptedParent: dataToSave.rulesId,
-        publishedDate: new Date(),
-        version: 1,
-      };
+  //     console.log({ baseRuleData });
 
-      console.log({ baseRuleData });
+  //     let updateOperation;
+  //     let newRule;
 
-      let updateOperation;
-      let newRule;
+  //     if (dataToSave.type === 'club') {
+  //       // Update the parent rule to add this club to adoptedClubs
+  //       updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+  //         dataToSave.rulesId,
+  //         {
+  //           $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
+  //         },
+  //         { new: true },
+  //       );
 
-      if (dataToSave.type === 'club') {
-        // Update the parent rule to add this club to adoptedClubs
-        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-          dataToSave.rulesId,
-          {
-            $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
-          },
-          { new: true },
-        );
+  //       // Create new rule for the club
+  //       newRule = new this.rulesregulationModel({
+  //         ...baseRuleData,
+  //         club: dataToSave.clubId,
+  //       });
+  //     } else if (dataToSave.type === 'node') {
+  //       // Update the parent rule to add this node to adoptedNodes
+  //       updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+  //         dataToSave.rulesId,
+  //         {
+  //           $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
+  //         },
+  //         { new: true },
+  //       );
 
-        // Create new rule for the club
-        newRule = new this.rulesregulationModel({
-          ...baseRuleData,
-          club: dataToSave.clubId,
-        });
-      } else if (dataToSave.type === 'node') {
-        // Update the parent rule to add this node to adoptedNodes
-        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-          dataToSave.rulesId,
-          {
-            $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
-          },
-          { new: true },
-        );
+  //       // Create new rule for the node
+  //       newRule = new this.rulesregulationModel({
+  //         ...baseRuleData,
+  //         node: dataToSave.nodeId,
+  //       });
+  //     } else {
+  //       throw new BadRequestException('Invalid type provided');
+  //     }
 
-        // Create new rule for the node
-        newRule = new this.rulesregulationModel({
-          ...baseRuleData,
-          node: dataToSave.nodeId,
-        });
-      } else {
-        throw new BadRequestException('Invalid type provided');
-      }
+  //     // Execute both operations in parallel
+  //     const [updatedParent, savedRule] = await Promise.all([
+  //       updateOperation,
+  //       newRule.save(),
+  //     ]);
 
-      // Execute both operations in parallel
-      const [updatedParent, savedRule] = await Promise.all([
-        updateOperation,
-        newRule.save(),
-      ]);
+  //     if (!updatedParent || !savedRule) {
+  //       throw new InternalServerErrorException(
+  //         'Failed to save or update rules',
+  //       );
+  //     }
 
-      if (!updatedParent || !savedRule) {
-        throw new InternalServerErrorException(
-          'Failed to save or update rules',
-        );
-      }
-
-      return savedRule;
-    } catch (error) {
-      console.log({ error });
-      if (
-        error instanceof NotFoundException ||
-        error instanceof BadRequestException
-      ) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Error while adopting rules-regulations',
-        error.message,
-      );
-    }
-  }
+  //     return savedRule;
+  //   } catch (error) {
+  //     console.log({ error });
+  //     if (
+  //       error instanceof NotFoundException ||
+  //       error instanceof BadRequestException
+  //     ) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException(
+  //       'Error while adopting rules-regulations',
+  //       error.message,
+  //     );
+  //   }
+  // }
   //get all the nodes and clubs that the user is admin and the rules and regulations are not adopted
   // async getClubsNodesNotAdopted(
   //   userId: Types.ObjectId,
@@ -496,6 +488,98 @@ export class RulesRegulationsService {
   //     );
   //   }
   // }
+  async adoptRules(dataToSave: {
+    type: 'club' | 'node';
+    rulesId: Types.ObjectId;
+    clubId?: Types.ObjectId;
+    nodeId?: Types.ObjectId;
+    userId: Types.ObjectId;
+  }) {
+    try {
+      const existingRule = await this.rulesregulationModel.findById(
+        dataToSave.rulesId,
+      );
+      if (!existingRule) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      const ruleData = existingRule.toObject();
+      delete ruleData._id;
+
+      // Process views to include required user field
+      const processedViews =
+        ruleData.views?.map((view) => ({
+          ...view,
+          user: dataToSave.userId, // Set user for each view
+        })) || [];
+
+      const baseRuleData = {
+        ...ruleData,
+        views: processedViews,
+        adoptedBy: dataToSave.userId,
+        adoptedDate: new Date(),
+        adoptedParent: dataToSave.rulesId,
+        publishedDate: new Date(),
+        version: 1,
+      };
+
+      let updateOperation;
+      let newRule;
+
+      if (dataToSave.type === 'club') {
+        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+          dataToSave.rulesId,
+          {
+            $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
+          },
+          { new: true },
+        );
+        newRule = new this.rulesregulationModel({
+          ...baseRuleData,
+          club: new Types.ObjectId(dataToSave?.clubId),
+        });
+      } else if (dataToSave.type === 'node') {
+        updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+          dataToSave.rulesId,
+          {
+            $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
+          },
+          { new: true },
+        );
+        newRule = new this.rulesregulationModel({
+          ...baseRuleData,
+          node: new Types.ObjectId(dataToSave.nodeId),
+        });
+      } else {
+        throw new BadRequestException('Invalid type provided');
+      }
+
+      const [updatedParent, savedRule] = await Promise.all([
+        updateOperation,
+        newRule.save(),
+      ]);
+
+      if (!updatedParent || !savedRule) {
+        throw new InternalServerErrorException(
+          'Failed to save or update rules',
+        );
+      }
+
+      return savedRule;
+    } catch (error) {
+      console.error({ error });
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Error while adopting rules-regulations',
+        error.message,
+      );
+    }
+  }
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     rulesId: Types.ObjectId,
