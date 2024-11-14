@@ -23,4 +23,5 @@ export const ENV = {
   UI_URL: process.env.UI_URL,
   TOKEN_EXPIRY_TIME: '7d',
   RENDER_URL: process.env.RENDER_URL,
+  RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY,
 };

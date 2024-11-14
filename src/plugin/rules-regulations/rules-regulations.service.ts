@@ -13,6 +13,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
 import { ReportOffence } from 'src/shared/entities/report-offense.entity';
+import { populate } from 'dotenv';
 
 interface FileObject {
   buffer: Buffer;
@@ -39,7 +40,7 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-  ) {}
+  ) { }
 
   /*
   @Param type :strgin  "node"|"club"
@@ -485,6 +486,7 @@ export class RulesRegulationsService {
         await this.rulesregulationModel.findById(ruleId)
       ).populate('createdBy');
     } catch (error) {
+      console.log({ error });
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -629,17 +631,20 @@ export class RulesRegulationsService {
       rulesID: Types.ObjectId;
       offenderID: Types.ObjectId;
     },
-    fileObjects: FileObject[],
+    file: Express.Multer.File,
   ) {
     try {
+
+      const proof = await this.uploadFile(file);
+
       const newOffense = new this.reportOffenceModel({
-        offender: reportData.offenderID,
+        offender: new Types.ObjectId(reportData.offenderID),
         reportedBy: userId,
         reason: reportData.reason,
-        rulesId: reportData.rulesID,
-        proof: fileObjects,
-        clubOrNode: reportData.type,
-        clubOrNodeId: reportData.typeId,
+        rulesId: new Types.ObjectId(reportData.rulesID),
+        proof,
+        clubOrNode: reportData.type === 'club' ? 'Club' : 'nodes',
+        clubOrNodeId: new Types.ObjectId(reportData.typeId),
       });
       return await newOffense.save();
     } catch (error) {
@@ -651,13 +656,15 @@ export class RulesRegulationsService {
   }
 
   //---------------GET ALL REPORTS
-  async getAllReportOffence(clubId: Types.ObjectId, type: 'Nodes' | 'Clubs') {
+  async getAllReportOffence(clubId: Types.ObjectId, type: 'node' | 'club') {
     try {
       return await this.reportOffenceModel
-        .find({ clubOrNode: type, clubOrNodeId: clubId })
+        .find({ clubOrNode: type === 'node' ? 'nodes' : 'Club', clubOrNodeId: new Types.ObjectId(clubId) })
         .populate('offender')
-        .populate('reportedBy');
+        .populate('reportedBy')
+        .populate('rulesId');
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
         'Error while getting all reports',
         error,

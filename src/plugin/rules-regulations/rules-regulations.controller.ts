@@ -33,7 +33,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) {}
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -280,6 +280,8 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
+      console.log(data);
+
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
       throw new InternalServerErrorException(
@@ -383,7 +385,7 @@ export class RulesRegulationsController {
 
   //-----------------------------REPORT OFFENSE
   @UseInterceptors(
-    FilesInterceptor('file', 5, {
+    FilesInterceptor('file', 1, {
       storage: memoryStorage(),
     }),
   )
@@ -406,8 +408,8 @@ export class RulesRegulationsController {
         },
       }),
     )
-    file: Express.Multer.File[],
-    @Body('reportReason')
+    file: Express.Multer.File,
+    @Body()
     reportData: {
       type: string;
       typeId: Types.ObjectId;
@@ -419,20 +421,23 @@ export class RulesRegulationsController {
   ) {
     try {
       // Process the file and create file paths array
-      const fileObjects: IFileObject[] = file.map((singleFile) => ({
-        buffer: singleFile.buffer,
-        originalname: singleFile.originalname,
-        mimetype: singleFile.mimetype,
-        size: singleFile.size,
-      }));
+      // const fileObjects: IFileObject[] = file.map((singleFile) => ({
+      //   buffer: singleFile.buffer,
+      //   originalname: singleFile.originalname,
+      //   mimetype: singleFile.mimetype,
+      //   size: singleFile.size,
+      // }));
+
+      console.log(file, 'file')
       return await this.rulesRegulationsService.reportOffense(
         req.user._id,
         reportData,
-        fileObjects,
+        file[0],
       );
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
-        'Error while liking rules-regulations',
+        'Error while report offense rules-regulations',
         error,
       );
     }
@@ -440,7 +445,7 @@ export class RulesRegulationsController {
   //-----------------------------GET ALL REPORTS
   @Get('get-all-report-offence')
   async getAllOffence(
-    @Query('type') type: 'Nodes' | 'Clubs',
+    @Query('type') type: 'node' | 'club',
     @Query('clubId') clubId: Types.ObjectId,
   ) {
     try {
