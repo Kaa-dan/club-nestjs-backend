@@ -95,8 +95,10 @@ export class CommentService {
                                     coverImage: '$author.coverImage',
                                     interests: '$author.interests',
                                     createdAt: 1,
-                                    likes: { $size: { $ifNull: ['$like', []] } },
-                                    dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                                    like: { $ifNull: ['$like', []] },
+                                    dislike: { $ifNull: ['$dislike', []] },
+                                    // likes: { $size: { $ifNull: ['$like', []] } },
+                                    // dislikes: { $size: { $ifNull: ['$dislike', []] } },
                                     attachment: 1 // Include attachment in replies
                                 }
                             }
@@ -116,8 +118,10 @@ export class CommentService {
                         coverImage: '$author.coverImage',
                         interests: '$author.interests',
                         createdAt: 1,
-                        likes: { $size: { $ifNull: ['$like', []] } },
-                        dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                        like: { $ifNull: ['$like', []] },
+                        dislike: { $ifNull: ['$dislike', []] },
+                        // likes: { $size: { $ifNull: ['$like', []] } },
+                        // dislikes: { $size: { $ifNull: ['$dislike', []] } },
                         attachment: 1, // Include attachment in parent comments
                         replies: 1
                     }
@@ -233,8 +237,10 @@ export class CommentService {
                                     coverImage: '$author.coverImage',
                                     interests: '$author.interests',
                                     createdAt: 1,
-                                    likes: { $size: { $ifNull: ['$like', []] } },
-                                    dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                                    like: { $ifNull: ['$like', []] },
+                                    dislike: { $ifNull: ['$dislike', []] },
+                                    // likes: { $size: { $ifNull: ['$like', []] } },
+                                    // dislikes: { $size: { $ifNull: ['$dislike', []] } },
                                     attachment: 1 // Include attachment in replies
                                 }
                             }
@@ -254,8 +260,10 @@ export class CommentService {
                         coverImage: '$author.coverImage',
                         interests: '$author.interests',
                         createdAt: 1,
-                        likes: { $size: { $ifNull: ['$like', []] } },
-                        dislikes: { $size: { $ifNull: ['$dislike', []] } },
+                        like: { $ifNull: ['$like', []] },
+                        dislike: { $ifNull: ['$dislike', []] },
+                        // likes: { $size: { $ifNull: ['$like', []] } },
+                        // dislikes: { $size: { $ifNull: ['$dislike', []] } },
                         attachment: 1, // Include attachment in parent comments
                         replies: 1
                     }
