@@ -304,6 +304,8 @@ export class RulesRegulationsController {
         new Types.ObjectId(rulesId),
       );
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
