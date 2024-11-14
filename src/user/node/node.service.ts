@@ -23,7 +23,7 @@ export class NodeService {
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   /**
    * Creates a new node in the database.
@@ -202,7 +202,7 @@ export class NodeService {
         status: 'REQUESTED',
       });
 
-      if(existingRequest){
+      if (existingRequest) {
         throw new ConflictException('You have already requested to join this node');
       }
 
@@ -214,10 +214,10 @@ export class NodeService {
 
       return response;
     } catch (error) {
-      if(error instanceof ConflictException){
+      if (error instanceof ConflictException) {
         throw new ConflictException('You have already requested to join this node')
       }
-      console.log(error,"error")
+      console.log(error, "error")
       throw new BadRequestException('Error while trying to request to join. Please try again later.');
     }
   }
@@ -283,12 +283,12 @@ export class NodeService {
     }
   }
 
-/**
- * Retrieves all join requests made by a specific user.
- * @param userId - The ID of the user for which to retrieve join requests.
- * @returns A promise that resolves to an array of join requests, populated with node and user details.
- * @throws BadRequestException if there is an error while trying to get user join requests.
- */
+  /**
+   * Retrieves all join requests made by a specific user.
+   * @param userId - The ID of the user for which to retrieve join requests.
+   * @returns A promise that resolves to an array of join requests, populated with node and user details.
+   * @throws BadRequestException if there is an error while trying to get user join requests.
+   */
   async getAllJoinRequestsOfUser(userId: Types.ObjectId) {
     try {
       const request = await this.nodeJoinRequestModel
@@ -587,6 +587,19 @@ export class NodeService {
     } catch (error) {
       throw new BadRequestException(
         'Failed to unpin node. Please try again later.',
+      );
+    }
+  }
+
+  async getNodeMembers(nodeId: Types.ObjectId) {
+    try {
+      return await this.nodeMembersModel
+        .find({ node: nodeId })
+        .populate('user', '-password')
+        .exec();
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get node members. Please try again later.',
       );
     }
   }
