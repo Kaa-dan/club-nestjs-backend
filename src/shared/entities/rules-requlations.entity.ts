@@ -102,10 +102,17 @@ export class RulesRegulations extends Document {
 
   adoptedParent: null | Types.ObjectId;
 
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'users' }],
+    default: [],
+  })
   relevant: Types.ObjectId[];
 
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'users' }],
+    default: [],
+  })
   irrelevant: Types.ObjectId[];
-
   @Prop({ default: false })
   isDeleted: boolean;
 

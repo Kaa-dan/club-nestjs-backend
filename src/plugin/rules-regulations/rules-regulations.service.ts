@@ -500,6 +500,7 @@ export class RulesRegulationsService {
     rulesRegulationId: Types.ObjectId,
   ) {
     try {
+      console.log({ userId, rulesRegulationId });
       // Check if the user has already liked
       const rulesRegulation = await this.rulesregulationModel.findOne({
         _id: rulesRegulationId,
@@ -518,14 +519,14 @@ export class RulesRegulationsService {
           rulesRegulationId,
           {
             // Add to relevant array if not exists
-            $addToSet: { relevant: userId },
+            $addToSet: { relevant: new Types.ObjectId(userId) },
             // Remove from irrelevant array if exists
-            $pull: { irrelevant: userId },
+            $pull: { irrelevant: new Types.ObjectId(userId) },
           },
-          { new: true },
+          { new: true, upsert: true },
         )
         .exec();
-
+      console.log({ updatedRulesRegulation });
       if (!updatedRulesRegulation) {
         throw new NotFoundException('Rules regulation not found');
       }
@@ -550,8 +551,7 @@ export class RulesRegulationsService {
         _id: rulesRegulationId,
         irrelevant: userId,
       });
-
-      if (!rulesRegulation) {
+      if (rulesRegulation) {
         throw new BadRequestException(
           'User has not liked this rules regulation',
         );

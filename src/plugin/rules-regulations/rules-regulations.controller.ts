@@ -284,6 +284,8 @@ export class RulesRegulationsController {
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while adopting rules-regulations',
         error,
@@ -336,6 +338,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
@@ -356,6 +360,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
