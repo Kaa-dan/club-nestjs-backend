@@ -14,7 +14,7 @@ import { UserWithoutPassword } from './dto/user.type';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel('users') private readonly userModel: Model<User>) {}
+  constructor(@InjectModel('users') private readonly userModel: Model<User>) { }
 
   async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
     try {
@@ -161,6 +161,20 @@ export class UserService {
     } catch (error) {
       console.error('Error fetching users by name criteria:', error);
       throw new InternalServerErrorException('Error fetching user profile');
+    }
+  }
+
+  async isUserLoggedIn(userId: Types.ObjectId) {
+    try {
+      const user = await this.userModel.findById(userId).select('-password');
+      if (!user) {
+        return {
+          isLogged: false
+        };
+      }
+      return { isLogged: true, user };
+    } catch (error) {
+
     }
   }
 }
