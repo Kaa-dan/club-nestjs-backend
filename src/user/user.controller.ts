@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Query,
   Search,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,22 +20,12 @@ import { UserService } from './user.service';
 
 import { UserResponseDto } from './dto/user.dto';
 import { UserWithoutPassword } from './dto/user.type';
+import { Request } from 'express';
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
-
-  @Get(':search')
-  async getAllUsers(
-    @Param('search') search: string,
-  ): Promise<UserWithoutPassword[]> {
-    try {
-      return await this.userService.getAllUsers(search);
-    } catch (error) {
-      throw error;
-    }
-  }
+  constructor(private readonly userService: UserService) { }
 
   @Get('fetch-other-profile/:userId')
   @ApiBearerAuth()
@@ -69,5 +60,22 @@ export class UserController {
   @Get('search-by-name')
   async getUsersByNameCriteria(@Query('term') term: string) {
     return await this.userService.getUsersByNameCriteria(term);
+  }
+
+  @Get('isUserLoggedIn')
+  async isUserLoggedIn(@Req() req: Request) {
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.userService.isUserLoggedIn(userId);
+  }
+
+  @Get(':search')
+  async getAllUsers(
+    @Param('search') search: string,
+  ): Promise<UserWithoutPassword[]> {
+    try {
+      return await this.userService.getAllUsers(search);
+    } catch (error) {
+      throw error;
+    }
   }
 }

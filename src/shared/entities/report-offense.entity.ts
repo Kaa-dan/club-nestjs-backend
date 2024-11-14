@@ -3,8 +3,8 @@ import { Document, Types } from 'mongoose';
 
 // Create a mapping for model references
 const MODEL_REFS = {
-  node: 'Nodes',
-  club: 'Clubs',
+  node: 'nodes',
+  club: 'Club',
 } as const;
 
 export interface IReportOffence {
@@ -12,30 +12,41 @@ export interface IReportOffence {
   reportedBy: Types.ObjectId;
   reason: string;
   rulesId: Types.ObjectId;
-  proof: string[];
-  clubOrNode: 'Nodes' | 'Clubs';
+  proof: {
+    url: string;
+    filename: string;
+  };
+  clubOrNode: 'nodes' | 'Club';
   clubOrNodeId: Types.ObjectId;
 }
 
 @Schema({ collection: 'report_offences', timestamps: true })
 export class ReportOffence extends Document implements IReportOffence {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
   offender: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
   reportedBy: Types.ObjectId;
 
   @Prop({ required: true, type: String })
   reason: string;
 
-  @Prop({ required: true, type: Types.ObjectId })
+  @Prop({ required: true, type: Types.ObjectId, ref: 'RulesRegulations' })
   rulesId: Types.ObjectId;
 
-  @Prop({ required: true, type: [] })
-  proof: [];
+  @Prop({
+    required: true, type: {
+      url: String,
+      filename: String
+    }
+  })
+  proof: {
+    url: string;
+    filename: string;
+  };
 
-  @Prop({ required: true, type: String, enum: ['Nodes', 'Clubs'] })
-  clubOrNode: 'Nodes' | 'Clubs';
+  @Prop({ required: true, type: String, enum: ['nodes', 'Club'] })
+  clubOrNode: 'nodes' | 'Club';
 
   @Prop({
     required: true,
