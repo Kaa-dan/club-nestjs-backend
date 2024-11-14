@@ -24,6 +24,16 @@ export class InvitationService {
     private readonly clubMember: Model<ClubMembers>,
   ) {}
 
+  async getInvitations(userId: Types.ObjectId): Promise<ClubInvitation[]> {
+    try {
+      const invitations = await this.invitationModel.find({
+        user: userId,
+      });
+      return invitations;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
   async createInvitation(
     createInvitationDto: CreateInvitationDto,
     adminId: Types.ObjectId,

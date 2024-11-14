@@ -39,7 +39,6 @@ export class OnboardingService {
     return this.stageOrder[currentIndex + 1];
   }
 
-  
   /**
    * Retrieves the onboarding details of a user by their ID.
    *
@@ -61,16 +60,14 @@ export class OnboardingService {
         message: 'User onboarding details retrieved successfully',
       };
     } catch (error) {
-      console.log(error)
-      if(error instanceof NotFoundException) throw new NotFoundException(error.message);
+      console.log(error);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
       throw new BadRequestException('Internal Server Error');
     }
   }
 
-  async createDetails(
-    id: string,
-    createDetailsDto: CreateDetailsDto,
-  ){
+  async createDetails(id: string, createDetailsDto: CreateDetailsDto) {
     try {
       const user = await this.userModel.findOne({ _id: id });
       if (!user) {
@@ -80,7 +77,7 @@ export class OnboardingService {
       const isUserNameExists = await this.userModel.findOne({
         userName: createDetailsDto.userName,
       });
-      
+
       if (isUserNameExists) {
         throw new BadRequestException('userName already exists');
       }
@@ -105,8 +102,10 @@ export class OnboardingService {
         message: 'User details updated successfully',
       };
     } catch (error) {
-      if(error instanceof BadRequestException) throw new BadRequestException(error.message);
-      if(error instanceof NotFoundException) throw new NotFoundException(error.message);
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -138,9 +137,9 @@ export class OnboardingService {
           imageFiles.profileImage.mimetype,
           'user',
         );
-
+        console.log({ user });
         // Delete old profile image if it exists
-        if (user.profileImage) {
+        if (user.profileImage && user.signupThrough === 'gmail') {
           await this.uploadService.deleteFile(user.profileImage);
         }
 
@@ -158,7 +157,7 @@ export class OnboardingService {
         );
 
         // Delete old cover image if it exists
-        if (user.coverImage) {
+        if (user.coverImage && user.signupThrough === 'gmail') {
           await this.uploadService.deleteFile(user.coverImage);
         }
 
@@ -185,17 +184,16 @@ export class OnboardingService {
         message: 'User images updated successfully',
       };
     } catch (error) {
-      console.log(error)
-      if(error instanceof InternalServerErrorException) throw new InternalServerErrorException(error.message);
-      if(error instanceof NotFoundException) throw new NotFoundException(error.message);
+      console.log(error);
+      if (error instanceof InternalServerErrorException)
+        throw new InternalServerErrorException(error.message);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
       throw new BadRequestException('Internal Server Error');
     }
   }
 
-  async updateInterests(
-    id: string,
-    updateInterestDto: UpdateInterestDto,
-  ) {
+  async updateInterests(id: string, updateInterestDto: UpdateInterestDto) {
     try {
       const user = await this.userModel.findById(id);
 
@@ -223,12 +221,13 @@ export class OnboardingService {
         message: 'User interests updated successfully',
       };
     } catch (error) {
-      if(error instanceof BadRequestException) throw new BadRequestException(error.message);
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
 
-  async completeOnboarding(id: string){
+  async completeOnboarding(id: string) {
     try {
       const user = await this.userModel.findById(id);
 
@@ -256,7 +255,8 @@ export class OnboardingService {
         message: 'Onboarding completed successfully',
       };
     } catch (error) {
-      if(error instanceof BadRequestException) throw new BadRequestException(error.message);
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }

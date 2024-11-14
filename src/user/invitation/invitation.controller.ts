@@ -9,6 +9,10 @@ import { Types } from 'mongoose';
 export class InvitationController {
   constructor(private readonly invitationService: InvitationService) {}
 
+  @Get()
+  getInvitations(@Req() req: Request) {
+    return this.invitationService.getInvitations(req.user._id);
+  }
   @Post()
   createInvitation(
     @Req() req: Request,
