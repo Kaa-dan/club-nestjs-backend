@@ -40,7 +40,4 @@ import { CommentModule } from './comment/comment.module';
   ],
   controllers: [UserController],
 })
-export class UserModule { }
-
-
-
+export class UserModule {}

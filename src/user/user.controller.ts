@@ -80,14 +80,14 @@ export class UserController {
     return await this.userService.isUserLoggedIn(userId);
   }
 
-  @Get(':search')
-  async getAllUsers(
-    @Param('search') search: string,
-  ): Promise<UserWithoutPassword[]> {
-    try {
-      return await this.userService.getAllUsers(search);
-    } catch (error) {
-      throw error;
-    }
-  }
+  // @Get(':search')
+  // async getAllUsers(
+  //   @Param('search') search: string,
+  // ): Promise<UserWithoutPassword[]> {
+  //   try {
+  //     return await this.userService.getAllUsers(search);
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 }
