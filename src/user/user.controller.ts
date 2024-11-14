@@ -25,7 +25,19 @@ import { Request } from 'express';
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
+
+  @Get('search')
+  async getAllUsers(
+    @Query('keyword') keyword?: string, // Make it optional with ?
+  ): Promise<UserWithoutPassword[]> {
+    try {
+      console.log({ keyword });
+      return await this.userService.getAllUsers(keyword);
+    } catch (error) {
+      throw error;
+    }
+  }
 
   @Get('fetch-other-profile/:userId')
   @ApiBearerAuth()

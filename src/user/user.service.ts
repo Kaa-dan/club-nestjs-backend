@@ -18,8 +18,16 @@ export class UserService {
 
   async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
     try {
+      const searchRegex = new RegExp(search, 'i'); // case-insensitive search
+
       const users = await this.userModel
-        .find()
+        .find({
+          $or: [
+            { firstName: { $regex: searchRegex } },
+            { lastName: { $regex: searchRegex } },
+            { email: { $regex: searchRegex } },
+          ],
+        })
         .select('-password')
         .lean()
         .exec();
