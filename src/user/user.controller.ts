@@ -25,12 +25,13 @@ import { UserWithoutPassword } from './dto/user.type';
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Get(':search')
+  @Get('search')
   async getAllUsers(
-    @Param('search') search: string,
+    @Query('keyword') keyword?: string, // Make it optional with ?
   ): Promise<UserWithoutPassword[]> {
     try {
-      return await this.userService.getAllUsers(search);
+      console.log({ keyword });
+      return await this.userService.getAllUsers(keyword);
     } catch (error) {
       throw error;
     }
