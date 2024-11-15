@@ -44,24 +44,14 @@ export class RulesRegulationsService {
   /*
   @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations(type?: string) {
+  async getAllRulesRegulations() {
+    return await this.rulesregulationModel
+      .find({
+        isPublic: true,
+        isActive: true,
+      })
+      .populate('createdBy');
     try {
-      //according to the types returning the rules and regulations
-      switch (type) {
-        case 'node':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-        case 'club':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-
-        default:
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-      }
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
