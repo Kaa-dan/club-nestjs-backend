@@ -107,6 +107,47 @@ export class RulesRegulationsService {
     }
   }
 
+  /*-----------------SAVE TO DRAFT RULES AND RUGULATIONS*/
+  async saveToDraft(createRulesRegulationsDto) {
+    const { files: files, node, club, ...restData } = createRulesRegulationsDto;
+
+    //creating promises to upload to S3 bucket
+    const uploadPromises = files.map((file: FileObject) =>
+      this.uploadFile({
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+      } as Express.Multer.File),
+    );
+    // calling all promises and storing
+    const uploadedFiles = await Promise.all(uploadPromises);
+
+    //creating file object to store it in the db with proper type
+    const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+      url: uploadedFile.url,
+      originalname: files[index].originalname,
+      mimetype: files[index].mimetype,
+      size: files[index].size,
+    }));
+
+    try {
+      //creating rules and regulations -DB
+      const newRulesRegulations = new this.rulesregulationModel({
+        ...restData,
+        node: node ? new Types.ObjectId(node) : null,
+        club: club ? new Types.ObjectId(club) : null,
+        files: fileObjects,
+      });
+
+      return await newRulesRegulations.save();
+    } catch (error) {
+      console.log({ error });
+      throw new InternalServerErrorException(
+        'Error while creating rules-regulations',
+        error,
+      );
+    }
+  }
   /* ---------------------UPDATE RULES AND REGULATIONS
   @Params :updateRulesRegulationDto
   @return :UpdatedRulesRegulations */
