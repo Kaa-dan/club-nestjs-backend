@@ -218,10 +218,27 @@ export class RulesRegulationsService {
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
-  async getMyRules(userId: Types.ObjectId) {
+  async getMyRules(
+    userId: Types.ObjectId,
+    type: 'node' | 'club',
+    entityId: Types.ObjectId,
+  ) {
     try {
-      //fetching from DB
-      return await this.rulesregulationModel.find({ createdBy: userId }).exec();
+      let query = {};
+
+      if (type === 'club') {
+        query = {
+          createdBy: userId,
+          club: entityId,
+        };
+      } else {
+        query = {
+          createdBy: userId,
+          node: entityId,
+        };
+      }
+
+      return await this.rulesregulationModel.find(query).exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
