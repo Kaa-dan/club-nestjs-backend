@@ -24,11 +24,17 @@ export class InvitationController {
     );
   }
 
-  @Put('accept/:invitationId')
+  @Put('acceptOrReject/:invitationId/:accept')
   acceptInvitation(
     @Req() req: Request,
     @Param('invitationId') invitationId: Types.ObjectId,
+    @Param('accept') accept: boolean,
   ) {
-    return this.invitationService.acceptInvitation(invitationId, req.user._id);
+    console.log('nithin');
+    return this.invitationService.acceptInvitation(
+      invitationId,
+      req.user._id,
+      accept,
+    );
   }
 }
