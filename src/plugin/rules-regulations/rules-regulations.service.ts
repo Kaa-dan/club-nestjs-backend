@@ -262,20 +262,21 @@ export class RulesRegulationsService {
   async getMyRules(
     userId: Types.ObjectId,
     type: 'node' | 'club',
-    entityId: Types.ObjectId,
+    entity: Types.ObjectId,
   ) {
     try {
+      console.log({ userId, type, entity });
       let query = {};
 
       if (type === 'club') {
         query = {
           createdBy: userId,
-          club: entityId,
+          club: new Types.ObjectId(entity),
         };
       } else {
         query = {
           createdBy: userId,
-          node: entityId,
+          node: new Types.ObjectId(entity),
         };
       }
 
