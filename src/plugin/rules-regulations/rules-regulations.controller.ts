@@ -33,7 +33,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) { }
+  ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -284,6 +284,8 @@ export class RulesRegulationsController {
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while adopting rules-regulations',
         error,
@@ -302,6 +304,8 @@ export class RulesRegulationsController {
         new Types.ObjectId(rulesId),
       );
     } catch (error) {
+      console.log('errrrr ', error);
+
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -336,6 +340,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log(error);
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
@@ -356,6 +362,8 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
         error,
@@ -428,14 +436,14 @@ export class RulesRegulationsController {
       //   size: singleFile.size,
       // }));
 
-      console.log(file, 'file')
+      console.log(file, 'file');
       return await this.rulesRegulationsService.reportOffense(
         req.user._id,
         reportData,
         file[0],
       );
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while report offense rules-regulations',
         error,
@@ -462,12 +470,13 @@ export class RulesRegulationsController {
   @Put('create-views')
   async createViewsForRulesAndRegulations(
     @Req() req: Request,
-    @Body() rulesId: { rulesId: Types.ObjectId },
+    @Body('rulesId') rulesId: Types.ObjectId,
   ) {
     try {
+      console.log({ rulesId });
       return await this.rulesRegulationsService.createViewsForRulesAndRegulations(
         req.user._id,
-        req.body.rulesId,
+        rulesId,
       );
     } catch (error) {
       throw new InternalServerErrorException(

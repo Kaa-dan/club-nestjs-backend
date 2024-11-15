@@ -13,7 +13,6 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
 import { ReportOffence } from 'src/shared/entities/report-offense.entity';
-import { populate } from 'dotenv';
 
 interface FileObject {
   buffer: Buffer;
@@ -40,7 +39,7 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-  ) { }
+  ) {}
 
   /*
   @Param type :strgin  "node"|"club"
@@ -246,6 +245,249 @@ export class RulesRegulationsService {
   @Req:user_id
   @return:RulesRegulations
    */
+  // async adoptRules(dataToSave: {
+  //   type: 'club' | 'node';
+  //   rulesId: Types.ObjectId;
+  //   clubId?: Types.ObjectId;
+  //   nodeId?: Types.ObjectId;
+  //   userId: Types.ObjectId;
+  // }) {
+  //   try {
+  //     // First, find the existing rule document
+  //     const existingRule = await this.rulesregulationModel.findById(
+  //       dataToSave.rulesId,
+  //     );
+
+  //     console.log({ existingRule });
+
+  //     if (!existingRule) {
+  //       throw new NotFoundException('Rules regulation not found');
+  //     }
+
+  //     // Create the new rule document without the _id field
+  //     const ruleData = existingRule.toObject();
+  //     delete ruleData._id;
+
+  //     // Prepare base data for the new rule
+  //     const baseRuleData = {
+  //       ...ruleData,
+  //       adoptedBy: dataToSave.userId,
+  //       adoptedDate: new Date(),
+  //       adoptedParent: dataToSave.rulesId,
+  //       publishedDate: new Date(),
+  //       version: 1,
+  //     };
+
+  //     console.log({ baseRuleData });
+
+  //     let updateOperation;
+  //     let newRule;
+
+  //     if (dataToSave.type === 'club') {
+  //       // Update the parent rule to add this club to adoptedClubs
+  //       updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+  //         dataToSave.rulesId,
+  //         {
+  //           $addToSet: { adoptedClubs: new Types.ObjectId(dataToSave.clubId) },
+  //         },
+  //         { new: true },
+  //       );
+
+  //       // Create new rule for the club
+  //       newRule = new this.rulesregulationModel({
+  //         ...baseRuleData,
+  //         club: dataToSave.clubId,
+  //       });
+  //     } else if (dataToSave.type === 'node') {
+  //       // Update the parent rule to add this node to adoptedNodes
+  //       updateOperation = this.rulesregulationModel.findByIdAndUpdate(
+  //         dataToSave.rulesId,
+  //         {
+  //           $addToSet: { adoptedNodes: new Types.ObjectId(dataToSave.nodeId) },
+  //         },
+  //         { new: true },
+  //       );
+
+  //       // Create new rule for the node
+  //       newRule = new this.rulesregulationModel({
+  //         ...baseRuleData,
+  //         node: dataToSave.nodeId,
+  //       });
+  //     } else {
+  //       throw new BadRequestException('Invalid type provided');
+  //     }
+
+  //     // Execute both operations in parallel
+  //     const [updatedParent, savedRule] = await Promise.all([
+  //       updateOperation,
+  //       newRule.save(),
+  //     ]);
+
+  //     if (!updatedParent || !savedRule) {
+  //       throw new InternalServerErrorException(
+  //         'Failed to save or update rules',
+  //       );
+  //     }
+
+  //     return savedRule;
+  //   } catch (error) {
+  //     console.log({ error });
+  //     if (
+  //       error instanceof NotFoundException ||
+  //       error instanceof BadRequestException
+  //     ) {
+  //       throw error;
+  //     }
+  //     throw new InternalServerErrorException(
+  //       'Error while adopting rules-regulations',
+  //       error.message,
+  //     );
+  //   }
+  // }
+  //get all the nodes and clubs that the user is admin and the rules and regulations are not adopted
+  // async getClubsNodesNotAdopted(
+  //   userId: Types.ObjectId,
+  //   rulesId: Types.ObjectId,
+  // ): Promise<{ clubs: any[]; nodes: any[] }> {
+  //   try {
+  //     // Get all clubs where user is admin
+  //     const clubsQuery = await this.clubMembersModel.aggregate([
+  //       {
+  //         $match: {
+  //           user: userId,
+  //           role: 'admin',
+  //           status: 'MEMBER',
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'rulesandregulations',
+  //           let: { clubId: '$club' },
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 $expr: {
+  //                   $and: [
+  //                     { $eq: ['$_id', rulesId] },
+  //                     {
+  //                       $not: [
+  //                         {
+  //                           $in: ['$$clubId', '$adoptedClubs'],
+  //                         },
+  //                       ],
+  //                     },
+  //                   ],
+  //                 },
+  //               },
+  //             },
+  //           ],
+  //           as: 'notAdoptedRules',
+  //         },
+  //       },
+  //       {
+  //         $match: {
+  //           'notAdoptedRules.0': { $exists: true },
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'clubs',
+  //           localField: 'club',
+  //           foreignField: '_id',
+  //           as: 'clubDetails',
+  //         },
+  //       },
+  //       {
+  //         $unwind: '$clubDetails',
+  //       },
+  //       {
+  //         $project: {
+  //           _id: '$clubDetails._id',
+  //           name: '$clubDetails.name',
+  //           description: '$clubDetails.description',
+  //           // add other fields according to the requirements
+  //         },
+  //       },
+  //     ]);
+
+  //     console.log({ clubsQuery });
+
+  //     // Get all nodes where user is admin
+  //     const nodesQuery = await this.nodeMembersModel.aggregate([
+  //       {
+  //         $match: {
+  //           user: userId,
+  //           role: 'admin',
+  //           status: 'MEMBER',
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'rulesandregulations',
+  //           let: { nodeId: '$node' },
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 $expr: {
+  //                   $and: [
+  //                     { $eq: ['$_id', rulesId] },
+  //                     {
+  //                       $not: [
+  //                         {
+  //                           $in: ['$$nodeId', '$adoptedNodes'],
+  //                         },
+  //                       ],
+  //                     },
+  //                   ],
+  //                 },
+  //               },
+  //             },
+  //           ],
+  //           as: 'notAdoptedRules',
+  //         },
+  //       },
+  //       {
+  //         $match: {
+  //           'notAdoptedRules.0': { $exists: true },
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'nodes',
+  //           localField: 'node',
+  //           foreignField: '_id',
+  //           as: 'nodeDetails',
+  //         },
+  //       },
+  //       {
+  //         $unwind: '$nodeDetails',
+  //       },
+  //       {
+  //         $project: {
+  //           _id: '$nodeDetails._id',
+  //           name: '$nodeDetails.name',
+  //           description: '$nodeDetails.description',
+  //           // add other node fields which are required
+  //         },
+  //       },
+  //     ]);
+
+  //     console.log({ nodesQuery });
+
+  //     // Execute both queries in parallel
+  //     const [clubs, nodes] = await Promise.all([clubsQuery, nodesQuery]);
+
+  //     console.log({ clubs, nodes });
+
+  //     return { clubs, nodes };
+  //   } catch (error) {
+  //     console.log({ error });
+  //     throw new InternalServerErrorException(
+  //       'Error while fetching clubs and nodes',
+  //       error,
+  //     );
+  //   }
+  // }
   async adoptRules(dataToSave: {
     type: 'club' | 'node';
     rulesId: Types.ObjectId;
@@ -254,22 +496,26 @@ export class RulesRegulationsService {
     userId: Types.ObjectId;
   }) {
     try {
-      // First, find the existing rule document
       const existingRule = await this.rulesregulationModel.findById(
         dataToSave.rulesId,
       );
-
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }
 
-      // Create the new rule document without the _id field
       const ruleData = existingRule.toObject();
       delete ruleData._id;
 
-      // Prepare base data for the new rule
+      // Process views to include required user field
+      const processedViews =
+        ruleData.views?.map((view) => ({
+          ...view,
+          user: dataToSave.userId, // Set user for each view
+        })) || [];
+
       const baseRuleData = {
         ...ruleData,
+        views: processedViews,
         adoptedBy: dataToSave.userId,
         adoptedDate: new Date(),
         adoptedParent: dataToSave.rulesId,
@@ -281,7 +527,6 @@ export class RulesRegulationsService {
       let newRule;
 
       if (dataToSave.type === 'club') {
-        // Update the parent rule to add this club to adoptedClubs
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
@@ -289,14 +534,11 @@ export class RulesRegulationsService {
           },
           { new: true },
         );
-
-        // Create new rule for the club
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
-          club: dataToSave.clubId,
+          club: new Types.ObjectId(dataToSave?.clubId),
         });
       } else if (dataToSave.type === 'node') {
-        // Update the parent rule to add this node to adoptedNodes
         updateOperation = this.rulesregulationModel.findByIdAndUpdate(
           dataToSave.rulesId,
           {
@@ -304,17 +546,14 @@ export class RulesRegulationsService {
           },
           { new: true },
         );
-
-        // Create new rule for the node
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
-          node: dataToSave.nodeId,
+          node: new Types.ObjectId(dataToSave.nodeId),
         });
       } else {
         throw new BadRequestException('Invalid type provided');
       }
 
-      // Execute both operations in parallel
       const [updatedParent, savedRule] = await Promise.all([
         updateOperation,
         newRule.save(),
@@ -328,6 +567,7 @@ export class RulesRegulationsService {
 
       return savedRule;
     } catch (error) {
+      console.error({ error });
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
@@ -340,14 +580,11 @@ export class RulesRegulationsService {
       );
     }
   }
-  //get all the nodes and clubs that the user is admin and the rules and regulations are not adopted
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     rulesId: Types.ObjectId,
   ): Promise<{ clubs: any[]; nodes: any[] }> {
-    console.log({ userId, rulesId });
     try {
-      // Get all clubs where user is admin
       const clubsQuery = await this.clubMembersModel.aggregate([
         {
           $match: {
@@ -367,9 +604,17 @@ export class RulesRegulationsService {
                     $and: [
                       { $eq: ['$_id', rulesId] },
                       {
-                        $not: [
+                        $or: [
+                          { $eq: [{ $ifNull: ['$adoptedClubs', []] }, []] },
                           {
-                            $in: ['$$clubId', '$adoptedClubs'],
+                            $not: [
+                              {
+                                $in: [
+                                  '$$clubId',
+                                  { $ifNull: ['$adoptedClubs', []] },
+                                ],
+                              },
+                            ],
                           },
                         ],
                       },
@@ -402,12 +647,10 @@ export class RulesRegulationsService {
             _id: '$clubDetails._id',
             name: '$clubDetails.name',
             description: '$clubDetails.description',
-            // add other fields according to the requirements
           },
         },
       ]);
 
-      // Get all nodes where user is admin
       const nodesQuery = await this.nodeMembersModel.aggregate([
         {
           $match: {
@@ -427,9 +670,17 @@ export class RulesRegulationsService {
                     $and: [
                       { $eq: ['$_id', rulesId] },
                       {
-                        $not: [
+                        $or: [
+                          { $eq: [{ $ifNull: ['$adoptedNodes', []] }, []] },
                           {
-                            $in: ['$$nodeId', '$adoptedNodes'],
+                            $not: [
+                              {
+                                $in: [
+                                  '$$nodeId',
+                                  { $ifNull: ['$adoptedNodes', []] },
+                                ],
+                              },
+                            ],
                           },
                         ],
                       },
@@ -462,23 +713,20 @@ export class RulesRegulationsService {
             _id: '$nodeDetails._id',
             name: '$nodeDetails.name',
             description: '$nodeDetails.description',
-            // add other node fields which are required
           },
         },
       ]);
 
-      // Execute both queries in parallel
       const [clubs, nodes] = await Promise.all([clubsQuery, nodesQuery]);
-
       return { clubs, nodes };
     } catch (error) {
+      console.error('Aggregation error:', error);
       throw new InternalServerErrorException(
         'Error while fetching clubs and nodes',
         error,
       );
     }
   }
-
   //---------GET SINGLE RULES AND REGULATION
   async getRules(ruleId: Types.ObjectId) {
     try {
@@ -486,7 +734,6 @@ export class RulesRegulationsService {
         await this.rulesregulationModel.findById(ruleId)
       ).populate('createdBy');
     } catch (error) {
-      console.log({ error });
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -501,6 +748,7 @@ export class RulesRegulationsService {
     rulesRegulationId: Types.ObjectId,
   ) {
     try {
+      console.log({ userId, rulesRegulationId });
       // Check if the user has already liked
       const rulesRegulation = await this.rulesregulationModel.findOne({
         _id: rulesRegulationId,
@@ -519,14 +767,14 @@ export class RulesRegulationsService {
           rulesRegulationId,
           {
             // Add to relevant array if not exists
-            $addToSet: { relevant: userId },
+            $addToSet: { relevant: new Types.ObjectId(userId) },
             // Remove from irrelevant array if exists
-            $pull: { irrelevant: userId },
+            $pull: { irrelevant: new Types.ObjectId(userId) },
           },
-          { new: true },
+          { new: true, upsert: true },
         )
         .exec();
-
+      console.log({ updatedRulesRegulation });
       if (!updatedRulesRegulation) {
         throw new NotFoundException('Rules regulation not found');
       }
@@ -551,8 +799,7 @@ export class RulesRegulationsService {
         _id: rulesRegulationId,
         irrelevant: userId,
       });
-
-      if (!rulesRegulation) {
+      if (rulesRegulation) {
         throw new BadRequestException(
           'User has not liked this rules regulation',
         );
@@ -634,7 +881,6 @@ export class RulesRegulationsService {
     file: Express.Multer.File,
   ) {
     try {
-
       const proof = await this.uploadFile(file);
 
       const newOffense = new this.reportOffenceModel({
@@ -659,12 +905,15 @@ export class RulesRegulationsService {
   async getAllReportOffence(clubId: Types.ObjectId, type: 'node' | 'club') {
     try {
       return await this.reportOffenceModel
-        .find({ clubOrNode: type === 'node' ? 'nodes' : 'Club', clubOrNodeId: new Types.ObjectId(clubId) })
+        .find({
+          clubOrNode: type === 'node' ? 'nodes' : 'Club',
+          clubOrNodeId: new Types.ObjectId(clubId),
+        })
         .populate('offender')
         .populate('reportedBy')
         .populate('rulesId');
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting all reports',
         error,
@@ -677,6 +926,8 @@ export class RulesRegulationsService {
     userId: Types.ObjectId,
     rulesRegulationId: Types.ObjectId,
   ) {
+    console.log({ userId });
+
     try {
       // Check if the user has already liked
       const rulesRegulation = await this.rulesregulationModel.findOne({
@@ -696,7 +947,7 @@ export class RulesRegulationsService {
           rulesRegulationId,
           {
             // Add to relevant array if not exists
-            $addToSet: { views: userId },
+            $addToSet: { views: { user: userId } },
           },
           { new: true },
         )

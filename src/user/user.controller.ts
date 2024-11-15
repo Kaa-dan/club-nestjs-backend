@@ -25,7 +25,19 @@ import { Request } from 'express';
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
+
+  @Get('search')
+  async getAllUsers(
+    @Query('keyword') keyword?: string, // Make it optional with ?
+  ): Promise<UserWithoutPassword[]> {
+    try {
+      console.log({ keyword });
+      return await this.userService.getAllUsers(keyword);
+    } catch (error) {
+      throw error;
+    }
+  }
 
   @Get('fetch-other-profile/:userId')
   @ApiBearerAuth()
@@ -68,14 +80,14 @@ export class UserController {
     return await this.userService.isUserLoggedIn(userId);
   }
 
-  @Get(':search')
-  async getAllUsers(
-    @Param('search') search: string,
-  ): Promise<UserWithoutPassword[]> {
-    try {
-      return await this.userService.getAllUsers(search);
-    } catch (error) {
-      throw error;
-    }
-  }
+  // @Get(':search')
+  // async getAllUsers(
+  //   @Param('search') search: string,
+  // ): Promise<UserWithoutPassword[]> {
+  //   try {
+  //     return await this.userService.getAllUsers(search);
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 }

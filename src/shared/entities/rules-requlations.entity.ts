@@ -45,7 +45,7 @@ export class RulesRegulations extends Document {
 
   @Prop([
     {
-      user: { type: Types.ObjectId, ref: 'User', required: true },
+      user: { type: Types.ObjectId, ref: 'users', required: true },
       date: { type: Date, default: Date.now },
     },
   ])
@@ -102,10 +102,17 @@ export class RulesRegulations extends Document {
 
   adoptedParent: null | Types.ObjectId;
 
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'users' }],
+    default: [],
+  })
   relevant: Types.ObjectId[];
 
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'users' }],
+    default: [],
+  })
   irrelevant: Types.ObjectId[];
-
   @Prop({ default: false })
   isDeleted: boolean;
 

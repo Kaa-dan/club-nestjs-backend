@@ -12,6 +12,12 @@ async function bootstrap() {
   const pinger = new SpinUp({
     url: ENV.RENDER_URL,
     intervalMinutes: 10,
+    onSuccess: () => {
+      console.log('Server is up and running!');
+    },
+    onError: (error) => {
+      console.error('Error pinging server:', error);
+    },
   });
 
   pinger.start();
