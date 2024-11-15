@@ -64,6 +64,7 @@ export class FileValidationPipe implements PipeTransform {
     console.log(`Validating files for field ${fieldName}:`, files);
 
     const config = this.config[fieldName];
+    console.log("config", config);
     if (!config) {
       throw new BadRequestException(
         `No configuration found for field ${fieldName}`,
@@ -99,4 +100,5 @@ export class FileValidationPipe implements PipeTransform {
 
     return files;
   }
+
 }

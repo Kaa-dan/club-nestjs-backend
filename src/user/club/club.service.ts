@@ -743,7 +743,7 @@ export class ClubService {
   async getAllRequestsOfUser(userId: Types.ObjectId) {
     try {
       const requests = await this.clubJoinRequestsModel
-        .find({ user: userId })
+        .find({ user: userId, status: 'REQUESTED' })
         .populate('club')
         .populate('user', '-password')
         .exec();

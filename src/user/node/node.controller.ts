@@ -39,20 +39,7 @@ export class NodeController {
       { name: 'coverImage', maxCount: 1 },
     ]),
   )
-  @UsePipes(
-    new FileValidationPipe({
-      profileImage: {
-        maxSizeMB: 2,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        required: true,
-      },
-      coverImage: {
-        maxSizeMB: 2,
-        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/jpg'],
-        required: true,
-      },
-    }),
-  )
+
   createNode(
     @Body()
     createNodeBody: {
@@ -61,19 +48,34 @@ export class NodeController {
       description: string;
       location: string;
     },
-    @UploadedFiles()
+
+    @Req() req: Request,
+    @UploadedFiles(
+      new FileValidationPipe({
+        profileImage: {
+          maxSizeMB: 5,
+          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+          required: true,
+        },
+        coverImage: {
+          maxSizeMB: 10,
+          allowedMimeTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+          required: true,
+        },
+      }),
+    )
     files: {
-      profileImage?: Express.Multer.File[];
-      coverImage?: Express.Multer.File[];
+      profileImage: Express.Multer.File[];
+      coverImage: Express.Multer.File[];
     },
-    @Req() request: Request & { user: User },
   ) {
+    console.log(files.profileImage, "createNodeBody");
+
     if (!files.profileImage?.[0] || !files.coverImage?.[0]) {
       throw new BadRequestException(
         'Both profile and cover images are required',
       );
     }
-
 
     return this.nodeService.createNode(
       {
@@ -81,7 +83,7 @@ export class NodeController {
         profileImage: files.profileImage[0],
         coverImage: files.coverImage[0],
       },
-      request.user._id,
+      req.user._id,
     );
   }
 
