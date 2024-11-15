@@ -6,7 +6,14 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-
+interface AdoptedClub {
+  club: Types.ObjectId;
+  date: Date;
+}
+interface AdoptedNode {
+  node: Types.ObjectId;
+  date: Date;
+}
 @Schema({ collection: 'rulesandregulations', timestamps: true })
 export class RulesRegulations extends Document {
   //older version of rules and regulation :copy of the schema
@@ -68,16 +75,20 @@ export class RulesRegulations extends Document {
   })
   createdBy: Types.ObjectId;
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'Clubs',
-  })
+  @Prop([
+    {
+      club: { type: Types.ObjectId, ref: 'Clubs' },
+      date: { type: Date, default: Date.now },
+    },
+  ])
   adoptedClubs: [];
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: 'Nodes',
-  })
+  @Prop([
+    {
+      club: { type: Types.ObjectId, ref: 'Nodes' },
+      date: { type: Date, default: Date.now },
+    },
+  ])
   adoptedNodes: [];
   @Prop({ default: 1 })
   version: number;
