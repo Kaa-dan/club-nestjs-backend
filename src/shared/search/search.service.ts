@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Node_} from 'src/shared/entities/node.entity';
+import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from '../entities/club.entity';
 
 @Injectable()
 export class SearchService {
     constructor(
-        @InjectModel('nodes') private readonly nodeModel: Model<Node>,
+        @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
         @InjectModel(Club.name) private readonly clubModel: Model<Club>
     ) { }
 
@@ -43,7 +43,7 @@ export class SearchService {
             }
 
         } catch (error) {
-            console.log("e",error)
+            console.log("e", error)
             throw new BadRequestException('Failed to search')
         }
     }
