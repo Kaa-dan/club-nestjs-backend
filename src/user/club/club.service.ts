@@ -520,7 +520,11 @@ export class ClubService {
       // object based on status to query
       const updateData: any = { status };
       if (status === 'REJECTED') {
-        updateData.rejectedDate = new Date();
+        const response = await this.clubJoinRequestsModel.findOneAndDelete({
+          _id: requestId,
+        })
+
+        return response;
       }
 
       const response = await this.clubJoinRequestsModel.findOneAndUpdate(

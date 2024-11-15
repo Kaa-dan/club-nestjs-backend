@@ -152,6 +152,7 @@ export class NodeController {
     nodeId = new Types.ObjectId(nodeId);
     requestId = new Types.ObjectId(requestId);
 
+    console.log(status, "status");
     return await this.nodeService.acceptOrRejectRequest(nodeId, userId, requestId, status);
   }
 

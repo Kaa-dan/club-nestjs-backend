@@ -321,6 +321,7 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
+      console.log('ddd', status)
       const updateData: any = { status };
       if (status === 'REJECTED') {
         const response = await this.nodeJoinRequestModel.findOneAndDelete({
