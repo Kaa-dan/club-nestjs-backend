@@ -100,7 +100,14 @@ export class InvitationService {
   async acceptInvitation(
     invitationId: Types.ObjectId,
     userId: Types.ObjectId,
-  ): Promise<void> {
+    accept: boolean,
+  ): Promise<{ message: string; status: boolean; data: {} | null }> {
+    console.log({ invitationId, userId, accept });
+    if (!accept) {
+      const response =
+        await this.invitationModel.findByIdAndDelete(invitationId);
+      return { message: 'invitation rejected', status: true, data: response };
+    }
     const session = await this.invitationModel.db.startSession();
     session.startTransaction();
 
