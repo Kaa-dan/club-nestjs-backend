@@ -520,7 +520,11 @@ export class ClubService {
       // object based on status to query
       const updateData: any = { status };
       if (status === 'REJECTED') {
-        updateData.rejectedDate = new Date();
+        const response = await this.clubJoinRequestsModel.findOneAndDelete({
+          _id: requestId,
+        })
+
+        return response;
       }
 
       const response = await this.clubJoinRequestsModel.findOneAndUpdate(
@@ -743,7 +747,7 @@ export class ClubService {
   async getAllRequestsOfUser(userId: Types.ObjectId) {
     try {
       const requests = await this.clubJoinRequestsModel
-        .find({ user: userId })
+        .find({ user: userId, status: 'REQUESTED' })
         .populate('club')
         .populate('user', '-password')
         .exec();
