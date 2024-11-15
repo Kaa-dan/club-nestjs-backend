@@ -20,6 +20,8 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
+import { type } from 'node:os';
+import { publish } from 'rxjs';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -143,6 +145,96 @@ export class RulesRegulationsController {
     }
   }
 
+  /*------------------------------SAVE TO DRAFT RULES AND REGULATIONS 
+  @Param :createRulesRegulationsDto
+  @Res :RulesRegulations
+  @description :Create a new rules-regulations
+  @Req:user_id 
+
+  */
+
+  @UseInterceptors(
+    FilesInterceptor('file', 5, {
+      storage: memoryStorage(),
+    }),
+  )
+  @Post('draft')
+  async saveToDraft(
+    @Req() req: Request,
+    @UploadedFiles(
+      new FileValidationPipe({
+        files: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: true,
+        },
+      }),
+    )
+    files: Express.Multer.File[],
+    @Body() createRulesRegulationsDto,
+  ) {
+    try {
+      console.log({
+        createRulesRegulationsDto,
+      });
+      console.log('nihtin');
+      if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
+        throw new BadRequestException(
+          'Invalid type parameter. Must be "node" or "club".',
+        );
+      }
+
+      // Validate number of file
+      if (files.length > 5) {
+        throw new BadRequestException('Must provide between 1 and 5 file');
+      }
+
+      if (createRulesRegulationsDto.publishedStatus === 'draft') {
+        //saving all the detail to sent to the service
+        const dataToSave = {
+          ...createRulesRegulationsDto,
+          createdBy: req['user']._id,
+          isActive: false,
+          files,
+        };
+
+        return await this.rulesRegulationsService.createRulesRegulations(
+          dataToSave,
+        );
+      } else {
+        const dataToSave = {
+          ...createRulesRegulationsDto,
+          createdBy: req['user']._id,
+          isPublic: false,
+          isActive: false,
+          version: 1,
+          files,
+          publishedStatus: 'draft',
+        };
+
+        return await this.rulesRegulationsService.createRulesRegulations(
+          dataToSave,
+        );
+      }
+    } catch (error) {
+      console.log('error', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Error while creating rules-regulations',
+        error,
+      );
+    }
+  }
   /* ----------------------------------UPDATING RULES AND REGULATIONS
   @Param :updateRulesRegulationDto
   @Res:RulesRegulations
@@ -244,14 +336,15 @@ export class RulesRegulationsController {
   @Get('get-my-rules')
   async getMyRules(
     @Req() req: Request,
-    @Query('entity') enitityId: Types.ObjectId,
+    @Query('entity') entity: Types.ObjectId,
     @Query('type') type: 'node' | 'club',
   ) {
     try {
+      console.log('entity', entity);
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
-        enitityId,
+        entity,
       );
     } catch (error) {
       throw new InternalServerErrorException(
