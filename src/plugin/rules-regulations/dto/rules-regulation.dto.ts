@@ -74,4 +74,7 @@ export class CreateRulesRegulationsDto {
 
   @IsBoolean()
   isActive: boolean;
+
+  @IsString()
+  domain: string;
 }

@@ -44,24 +44,14 @@ export class RulesRegulationsService {
   /*
   @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations(type?: string) {
+  async getAllRulesRegulations() {
+    return await this.rulesregulationModel
+      .find({
+        isPublic: true,
+        isActive: true,
+      })
+      .populate('createdBy');
     try {
-      //according to the types returning the rules and regulations
-      switch (type) {
-        case 'node':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-        case 'club':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-
-        default:
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-      }
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -117,6 +107,47 @@ export class RulesRegulationsService {
     }
   }
 
+  /*-----------------SAVE TO DRAFT RULES AND RUGULATIONS*/
+  async saveToDraft(createRulesRegulationsDto) {
+    const { files: files, node, club, ...restData } = createRulesRegulationsDto;
+
+    //creating promises to upload to S3 bucket
+    const uploadPromises = files.map((file: FileObject) =>
+      this.uploadFile({
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+      } as Express.Multer.File),
+    );
+    // calling all promises and storing
+    const uploadedFiles = await Promise.all(uploadPromises);
+
+    //creating file object to store it in the db with proper type
+    const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+      url: uploadedFile.url,
+      originalname: files[index].originalname,
+      mimetype: files[index].mimetype,
+      size: files[index].size,
+    }));
+
+    try {
+      //creating rules and regulations -DB
+      const newRulesRegulations = new this.rulesregulationModel({
+        ...restData,
+        node: node ? new Types.ObjectId(node) : null,
+        club: club ? new Types.ObjectId(club) : null,
+        files: fileObjects,
+      });
+
+      return await newRulesRegulations.save();
+    } catch (error) {
+      console.log({ error });
+      throw new InternalServerErrorException(
+        'Error while creating rules-regulations',
+        error,
+      );
+    }
+  }
   /* ---------------------UPDATE RULES AND REGULATIONS
   @Params :updateRulesRegulationDto
   @return :UpdatedRulesRegulations */
@@ -228,10 +259,27 @@ export class RulesRegulationsService {
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
-  async getMyRules(userId: Types.ObjectId) {
+  async getMyRules(
+    userId: Types.ObjectId,
+    type: 'node' | 'club',
+    entityId: Types.ObjectId,
+  ) {
     try {
-      //fetching from DB
-      return await this.rulesregulationModel.find({ createdBy: userId }).exec();
+      let query = {};
+
+      if (type === 'club') {
+        query = {
+          createdBy: userId,
+          club: entityId,
+        };
+      } else {
+        query = {
+          createdBy: userId,
+          node: entityId,
+        };
+      }
+
+      return await this.rulesregulationModel.find(query).exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
