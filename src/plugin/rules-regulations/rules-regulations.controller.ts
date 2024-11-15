@@ -336,14 +336,15 @@ export class RulesRegulationsController {
   @Get('get-my-rules')
   async getMyRules(
     @Req() req: Request,
-    @Query('entity') enitityId: Types.ObjectId,
+    @Query('entity') entity: Types.ObjectId,
     @Query('type') type: 'node' | 'club',
   ) {
     try {
+      console.log('entity', entity);
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
-        enitityId,
+        entity,
       );
     } catch (error) {
       throw new InternalServerErrorException(
