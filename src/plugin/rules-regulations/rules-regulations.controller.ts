@@ -39,14 +39,9 @@ export class RulesRegulationsController {
   @Query type:node|club
   @return :RulesRegulations*/
   @Get()
-  getAllRulesRegulations(@Query('type') type: 'node' | 'club' | 'all') {
+  getAllRulesRegulations() {
     try {
-      // if (!type || (type !== 'node' && type !== 'club')) {
-      //   throw new BadRequestException(
-      //     'Invalid type parameter. Must be "node" or "club".',
-      //   );
-      // }
-      return this.rulesRegulationsService.getAllRulesRegulations(type);
+      return this.rulesRegulationsService.getAllRulesRegulations();
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
