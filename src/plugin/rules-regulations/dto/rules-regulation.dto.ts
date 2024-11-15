@@ -12,23 +12,29 @@ import { Type } from 'class-transformer';
 import { Types } from 'mongoose';
 
 export class CreateRulesRegulationsDto {
+  @IsOptional()
   @IsString()
   title: string;
 
+  @IsOptional()
   @IsString()
   description: string;
 
+  @IsOptional()
   @IsString()
   category: string;
 
+  @IsOptional()
   @IsString()
   significance: string;
 
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   @ArrayMinSize(1)
   tags: string[];
 
+  @IsOptional()
   @IsBoolean()
   isPublic: boolean;
 
@@ -48,10 +54,10 @@ export class CreateRulesRegulationsDto {
   @IsMongoId()
   node?: Types.ObjectId;
 
+  @IsOptional()
   @IsMongoId()
   createdBy: Types.ObjectId;
 
-  @IsOptional()
   @IsNumber()
   version: number;
 
