@@ -242,9 +242,17 @@ export class RulesRegulationsController {
    @Req:user_id
    @eturn:RulesRegulations */
   @Get('get-my-rules')
-  async getMyRules(@Req() req: Request) {
+  async getMyRules(
+    @Req() req: Request,
+    @Query('entity') enitityId: Types.ObjectId,
+    @Query('type') type: 'node' | 'club',
+  ) {
     try {
-      return await this.rulesRegulationsService.getMyRules(req.user._id);
+      return await this.rulesRegulationsService.getMyRules(
+        req.user._id,
+        type,
+        enitityId,
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
