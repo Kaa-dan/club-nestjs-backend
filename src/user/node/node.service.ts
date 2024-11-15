@@ -78,8 +78,8 @@ export class NodeService {
       await session.commitTransaction();
       return nodeResponse;
     } catch (error) {
-      await session.abortTransaction();
       console.log(error, 'error');
+      await session.abortTransaction();
 
       if (error instanceof ConflictException) {
         throw error;
@@ -292,7 +292,7 @@ export class NodeService {
   async getAllJoinRequestsOfUser(userId: Types.ObjectId) {
     try {
       const request = await this.nodeJoinRequestModel
-        .find({ user: userId })
+        .find({ user: userId, status: 'REQUESTED' })
         .populate('node')
         .populate('user', '-password')
         .exec();
@@ -321,9 +321,14 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
+      console.log('ddd', status)
       const updateData: any = { status };
       if (status === 'REJECTED') {
-        updateData.rejectedDate = new Date();
+        const response = await this.nodeJoinRequestModel.findOneAndDelete({
+          _id: requestId,
+        })
+
+        return response;
       }
 
       const response = await this.nodeJoinRequestModel.findOneAndUpdate(
