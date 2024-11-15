@@ -39,14 +39,9 @@ export class RulesRegulationsController {
   @Query type:node|club
   @return :RulesRegulations*/
   @Get()
-  getAllRulesRegulations(@Query('type') type: 'node' | 'club' | 'all') {
+  getAllRulesRegulations() {
     try {
-      // if (!type || (type !== 'node' && type !== 'club')) {
-      //   throw new BadRequestException(
-      //     'Invalid type parameter. Must be "node" or "club".',
-      //   );
-      // }
-      return this.rulesRegulationsService.getAllRulesRegulations(type);
+      return this.rulesRegulationsService.getAllRulesRegulations();
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -247,9 +242,17 @@ export class RulesRegulationsController {
    @Req:user_id
    @eturn:RulesRegulations */
   @Get('get-my-rules')
-  async getMyRules(@Req() req: Request) {
+  async getMyRules(
+    @Req() req: Request,
+    @Query('entity') enitityId: Types.ObjectId,
+    @Query('type') type: 'node' | 'club',
+  ) {
     try {
-      return await this.rulesRegulationsService.getMyRules(req.user._id);
+      return await this.rulesRegulationsService.getMyRules(
+        req.user._id,
+        type,
+        enitityId,
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',

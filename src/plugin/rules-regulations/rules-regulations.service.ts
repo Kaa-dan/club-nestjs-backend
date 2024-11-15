@@ -44,24 +44,14 @@ export class RulesRegulationsService {
   /*
   @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations(type?: string) {
+  async getAllRulesRegulations() {
+    return await this.rulesregulationModel
+      .find({
+        isPublic: true,
+        isActive: true,
+      })
+      .populate('createdBy');
     try {
-      //according to the types returning the rules and regulations
-      switch (type) {
-        case 'node':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-        case 'club':
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-
-        default:
-          return await this.rulesregulationModel
-            .find({ status: 'published', isPublic: true, isActive: true })
-            .exec();
-      }
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -228,10 +218,27 @@ export class RulesRegulationsService {
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
-  async getMyRules(userId: Types.ObjectId) {
+  async getMyRules(
+    userId: Types.ObjectId,
+    type: 'node' | 'club',
+    entityId: Types.ObjectId,
+  ) {
     try {
-      //fetching from DB
-      return await this.rulesregulationModel.find({ createdBy: userId }).exec();
+      let query = {};
+
+      if (type === 'club') {
+        query = {
+          createdBy: userId,
+          club: entityId,
+        };
+      } else {
+        query = {
+          createdBy: userId,
+          node: entityId,
+        };
+      }
+
+      return await this.rulesregulationModel.find(query).exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
