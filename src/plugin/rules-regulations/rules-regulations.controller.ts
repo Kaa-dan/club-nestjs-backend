@@ -377,6 +377,7 @@ export class RulesRegulationsController {
         userId: req.user._id,
       };
       // console.log(data);
+      console.log({ adoptClub: type });
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {

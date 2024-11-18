@@ -13,6 +13,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
 import { ReportOffence } from 'src/shared/entities/report-offense.entity';
+import { type } from 'node:os';
 
 interface FileObject {
   buffer: Buffer;
@@ -307,8 +308,6 @@ export class RulesRegulationsService {
         dataToSave.rulesId,
       );
 
-      console.log({ existingRule });
-
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }
@@ -370,7 +369,7 @@ export class RulesRegulationsService {
         // Create new rule for the node
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
-          node: dataToSave.nodeId,
+          node: new Types.ObjectId(dataToSave.nodeId),
         });
       } else {
         throw new BadRequestException('Invalid type provided');
