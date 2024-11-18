@@ -302,7 +302,6 @@ export class RulesRegulationsService {
     userId: Types.ObjectId;
   }) {
     try {
-      console.log({ dataToSave });
       // First, find the existing rule document
       const existingRule = await this.rulesregulationModel.findById(
         dataToSave.rulesId,
@@ -351,7 +350,7 @@ export class RulesRegulationsService {
         // Create new rule for the club
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
-          club: dataToSave.clubId,
+          club: new Types.ObjectId(dataToSave.clubId),
         });
       } else if (dataToSave.type === 'node') {
         // Update the parent rule to add this node to adoptedNodes
