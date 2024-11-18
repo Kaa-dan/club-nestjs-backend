@@ -47,13 +47,13 @@ export class RulesRegulationsService {
   @Param type :strgin  "node"|"club"
   */
   async getAllRulesRegulations() {
+    try {
     return await this.rulesregulationModel
       .find({
         isPublic: true,
         isActive: true,
       })
       .populate('createdBy');
-    try {
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -431,7 +431,7 @@ export class RulesRegulationsService {
                   $expr: {
                     $and: [
                       { $eq: ['$_id', rulesId] },
-                      {
+                      {                                               
                         $not: [
                           {
                             $in: [
@@ -810,4 +810,5 @@ export class RulesRegulationsService {
       );
     }
   }
+
 }
