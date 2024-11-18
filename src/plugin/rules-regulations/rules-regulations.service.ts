@@ -47,13 +47,13 @@ export class RulesRegulationsService {
   @Param type :strgin  "node"|"club"
   */
   async getAllRulesRegulations() {
-    return await this.rulesregulationModel
-      .find({
-        isPublic: true,
-        isActive: true,
-      })
-      .populate('createdBy');
     try {
+      return await this.rulesregulationModel
+        .find({
+          isPublic: true,
+          isActive: true,
+        })
+        .populate('createdBy');
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
