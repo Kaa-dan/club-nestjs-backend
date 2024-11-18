@@ -7,8 +7,8 @@ import { CreateInterestDto, UpdateInterestDto } from './dto/interest.dto';
 @Injectable()
 export class InterestService {
   constructor(
-    @InjectModel('interests') private interestModel: Model<Interest>,
-  ) {}
+    @InjectModel(Interest.name) private interestModel: Model<Interest>,
+  ) { }
 
   /**
    * Get all interests

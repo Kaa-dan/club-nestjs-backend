@@ -18,8 +18,8 @@ import { InjectModel } from '@nestjs/mongoose';
 export class UserAuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    @InjectModel('users') private readonly usersModel: Model<User>, // Inject UserService
-  ) {}
+    @InjectModel(User.name) private readonly usersModel: Model<User>, // Inject UserService
+  ) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest();

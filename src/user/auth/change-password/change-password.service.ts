@@ -11,7 +11,7 @@ import { hashPassword, verifyToken } from 'src/utils'; // Assuming you have a ut
 
 @Injectable()
 export class ChangePasswordService {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async changePassword(
     password: string,

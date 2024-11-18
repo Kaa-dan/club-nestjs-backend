@@ -8,7 +8,7 @@ import { Model } from 'mongoose';
 
 @Injectable()
 export class VerifyToken {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async verifyToken(token: string) {
     try {

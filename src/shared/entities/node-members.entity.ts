@@ -1,16 +1,19 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Model, Types } from 'mongoose';
+import { Node_ } from './node.entity';
+import { User } from './user.entity';
 
-@Schema({ collection: 'nodemembers', timestamps: true })
+@Schema({ timestamps: true })
 export class NodeMembers extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'nodes', required: true })
+  @Prop({ type: Types.ObjectId, ref: Node_.name, required: true })
   node: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   user: Types.ObjectId;
 
   @Prop({ required: true, enum: ['admin', 'moderator', 'member'] })
   role: 'admin' | 'moderator' | 'member';
+
   @Prop({ required: true })
   status: 'MEMBER' | 'BLOCKED';
 

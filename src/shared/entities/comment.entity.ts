@@ -1,9 +1,13 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import { User } from "./user.entity";
+import { Club } from "./club.entity";
+import { Node_ } from "./node.entity";
+import { RulesRegulations } from "./rules-requlations.entity";
 
 interface IEntity {
     entityId: Types.ObjectId;
-    entityType: 'post' | 'debate' | 'nodes' | 'Club' | 'RulesRegulations';
+    entityType: typeof Node_.name | typeof Club.name | typeof RulesRegulations.name;
 }
 
 interface IAttachment {
@@ -12,7 +16,7 @@ interface IAttachment {
     filename: string;
 }
 
-@Schema({ collection: 'comment', timestamps: true })
+@Schema({ timestamps: true })
 export class Comment extends Document {
     @Prop({ required: true, trim: true, type: String })
     content: string
@@ -20,17 +24,17 @@ export class Comment extends Document {
     @Prop({
         type: {
             entityId: { type: Types.ObjectId, required: true, refPath: 'entity.entityType' },
-            entityType: { type: String, enum: ['post', 'debate', 'nodes', 'Club', 'RulesRegulations'], required: true },
+            entityType: { type: String, enum: [Node_.name, Club.name, RulesRegulations.name], required: true },
         },
         _id: false,
         required: true,
     })
     entity: IEntity
 
-    @Prop({ required: false, type: Types.ObjectId, ref: 'Comment', default: null })
+    @Prop({ required: false, type: Types.ObjectId, ref: Comment.name, default: null })
     parent?: Types.ObjectId
 
-    @Prop({ required: true, type: Types.ObjectId, ref: 'users' })
+    @Prop({ required: true, type: Types.ObjectId, ref: User.name })
     author: Types.ObjectId
 
     @Prop({ type: [Types.ObjectId], default: [], required: false })
