@@ -377,7 +377,7 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
-      console.log(data);
+      // console.log(data);
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
@@ -402,7 +402,6 @@ export class RulesRegulationsController {
       );
     } catch (error) {
       console.log('errrrr ', error);
-
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,

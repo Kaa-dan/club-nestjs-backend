@@ -9,32 +9,38 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-
+interface AdoptedClub {
+  club: Types.ObjectId;
+  date: Date;
+}
+interface AdoptedNode {
+  node: Types.ObjectId;
+  date: Date;
+}
 @Schema({ timestamps: true })
 export class RulesRegulations extends Document {
   //older version of rules and regulation :copy of the schema
   olderVersions: [{}];
 
-  @Prop({ required: true })
+  @Prop({})
   title: string;
 
-  @Prop({ required: true })
+  @Prop({})
   description: string;
 
-  @Prop({ required: true })
+  @Prop({})
   category: string;
 
-  @Prop({ required: true })
+  @Prop({})
   significance: string;
 
-  @Prop({ required: true, type: [String] })
+  @Prop({ type: [String] })
   tags: string[];
 
   @Prop({ default: false })
   isPublic: boolean;
 
   @Prop({
-    required: true,
     type: [
       {
         url: String,
@@ -67,36 +73,39 @@ export class RulesRegulations extends Document {
   node: Types.ObjectId;
   //created
   @Prop({
-    required: true,
     type: Types.ObjectId,
     ref: User.name,
   })
   createdBy: Types.ObjectId;
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: Club.name,
-  })
+  @Prop([
+    {
+      club: { type: Types.ObjectId, ref: Club.name },
+      date: { type: Date, default: Date.now },
+    },
+  ])
   adoptedClubs: [];
 
-  @Prop({
-    type: Types.ObjectId,
-    ref: Node_.name,
-  })
+  @Prop([
+    {
+      club: { type: Types.ObjectId, ref: Node_.name },
+      date: { type: Date, default: Date.now },
+    },
+  ])
   adoptedNodes: [];
-  @Prop({ required: true, default: 1 })
+  @Prop({ default: 1 })
   version: number;
 
   @Prop({ default: true })
   publishedStatus: 'draft' | 'published' | 'olderversion';
 
-  @Prop({ required: true })
+  @Prop({})
   publishedDate: Date;
 
   @Prop({ required: true, ref: User.name })
   publishedBy: Types.ObjectId;
 
-  @Prop({ required: true })
+  @Prop()
   isActive: boolean;
 
   updatedDate: Date;
@@ -119,7 +128,7 @@ export class RulesRegulations extends Document {
   @Prop({ default: false })
   isDeleted: boolean;
 
-  @Prop({ required: true, type: String })
+  @Prop({ type: String })
   domain: string;
 }
 
