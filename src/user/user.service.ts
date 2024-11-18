@@ -14,7 +14,7 @@ import { UserWithoutPassword } from './dto/user.type';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel('users') private readonly userModel: Model<User>) { }
+  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
 
   async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
     try {

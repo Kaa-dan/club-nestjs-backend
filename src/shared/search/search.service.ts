@@ -7,7 +7,7 @@ import { Club } from '../entities/club.entity';
 @Injectable()
 export class SearchService {
     constructor(
-        @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
+        @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
         @InjectModel(Club.name) private readonly clubModel: Model<Club>
     ) { }
 
