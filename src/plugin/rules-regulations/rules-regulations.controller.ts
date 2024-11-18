@@ -84,7 +84,7 @@ export class RulesRegulationsController {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
-          required: true,
+          required: false,
         },
       }),
     )
