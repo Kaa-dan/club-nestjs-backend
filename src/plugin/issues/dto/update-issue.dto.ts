@@ -1,39 +1,21 @@
-import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDate,
   IsMongoId,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
-  Min,
-  ValidateNested,
 } from 'class-validator';
 import { Types } from 'mongoose';
+import { IRelevantAndView } from 'src/shared/entities/issues.entity';
+import { CreateIssuesDto } from './create-issue.dto';
 
-export class FileDto {
-  @IsNotEmpty()
-  buffer: Buffer;
-
-  @IsString()
-  @IsNotEmpty()
-  originalname: string;
-
-  @IsString()
-  @IsNotEmpty()
-  mimetype: string;
-
-  @IsNumber()
-  @Min(0)
-  size: number;
-}
-export class CreateIssuesDto {
-  @IsNotEmpty()
+export class UpdateIssuesDto extends CreateIssuesDto {
+  @IsOptional()
   @IsString()
   title: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   issueType: string;
 
@@ -53,22 +35,27 @@ export class CreateIssuesDto {
   @IsString()
   reasonOfDeadline: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   significance: string;
 
   @IsOptional()
-  @IsMongoId({ each: true })
+  @IsMongoId()
   whoShouldAddress: Types.ObjectId[];
 
   @IsOptional()
-  @ValidateNested({ each: true })
-  @Type(() => FileDto)
-  files: FileDto[];
+  files: {
+    buffer: Buffer;
+    originalname: string;
+    mimetype: string;
+    size: number;
+  }[];
 
+  @IsOptional()
   @IsBoolean()
   isPublic: boolean;
 
+  @IsOptional()
   @IsBoolean()
   isAnonymous: boolean;
 
