@@ -36,7 +36,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) { }
+  ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -319,6 +319,9 @@ export class RulesRegulationsController {
     @Req() req: Request,
   ) {
     try {
+      console.log({ forId, type });
+      console.log('callethi');
+
       const ID = new Types.ObjectId(forId);
       return await this.rulesRegulationsService.getAllActiveRulesRegulations(
         type,
@@ -589,7 +592,10 @@ export class RulesRegulationsController {
    */
   @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
-    return this.commentService.getCommentsByEntity(RulesRegulations.name, ruleId);
+    return this.commentService.getCommentsByEntity(
+      RulesRegulations.name,
+      ruleId,
+    );
   }
 
   /**

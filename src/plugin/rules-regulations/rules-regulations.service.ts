@@ -237,7 +237,7 @@ export class RulesRegulationsService {
 
   async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
     try {
-      console.log({ forId, type });
+      console.log({ hehe: forId, type });
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
