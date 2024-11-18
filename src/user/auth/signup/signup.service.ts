@@ -23,7 +23,7 @@ interface OnBoardingData {
 
 @Injectable()
 export class SignupService {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async signUp(
     signupData: CreateUserDto,
@@ -49,7 +49,7 @@ export class SignupService {
       // existingUser.isOnBoarded = 1;
 
       await existingUser.save();
-      const token = generateToken({ email, id: existingUser._id  }, ENV.TOKEN_EXPIRY_TIME);
+      const token = generateToken({ email, id: existingUser._id }, ENV.TOKEN_EXPIRY_TIME);
 
       const sanitizedUser = JSON.parse(JSON.stringify(existingUser));
       delete sanitizedUser.password;

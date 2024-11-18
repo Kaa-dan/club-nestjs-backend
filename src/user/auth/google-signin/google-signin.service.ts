@@ -8,7 +8,7 @@ import { generateRandomPassword } from 'src/utils/generatePassword';
 import { ENV } from 'src/utils/config/env.config';
 @Injectable()
 export class GoogleSigninService {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async googleLogin(signinData: GoogleSignIn) {
     const hashedPassword = await hashPassword(generateRandomPassword());
@@ -20,7 +20,7 @@ export class GoogleSigninService {
       let user = await this.userModel.findOne({ email }).select('-password');
 
       // User exists, generate a token and send response
-      let token:any;
+      let token: any;
       if (user && user.registered && user.emailVerified) {
         token = generateToken(
           { email, id: user._id },
@@ -60,7 +60,7 @@ export class GoogleSigninService {
         const newUser = await this.userModel.create({
           email,
           userName: userName.split(' ')[0],
-          profileImage:imageUrl,
+          profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
           registered: true,

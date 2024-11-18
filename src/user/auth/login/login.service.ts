@@ -13,7 +13,7 @@ import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class LoginService {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async login(
     loginDto: LoginDto,

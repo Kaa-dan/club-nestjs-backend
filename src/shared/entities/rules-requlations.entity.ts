@@ -1,5 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { User } from './user.entity';
+import { Club } from './club.entity';
+import { Node_ } from './node.entity';
 
 // Interface for the views array objects
 interface View {
@@ -14,7 +17,7 @@ interface AdoptedNode {
   node: Types.ObjectId;
   date: Date;
 }
-@Schema({ collection: 'rulesandregulations', timestamps: true })
+@Schema({ timestamps: true })
 export class RulesRegulations extends Document {
   //older version of rules and regulation :copy of the schema
   olderVersions: [{}];
@@ -51,7 +54,7 @@ export class RulesRegulations extends Document {
 
   @Prop([
     {
-      user: { type: Types.ObjectId, ref: 'users' },
+      user: { type: Types.ObjectId, ref: User.name, required: true },
       date: { type: Date, default: Date.now },
     },
   ])
@@ -59,25 +62,25 @@ export class RulesRegulations extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Clubs',
+    ref: Club.name,
   })
   club: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Nodes',
+    ref: Node_.name,
   })
   node: Types.ObjectId;
   //created
   @Prop({
     type: Types.ObjectId,
-    ref: 'users',
+    ref: User.name,
   })
   createdBy: Types.ObjectId;
 
   @Prop([
     {
-      club: { type: Types.ObjectId, ref: 'Clubs' },
+      club: { type: Types.ObjectId, ref: Club.name },
       date: { type: Date, default: Date.now },
     },
   ])
@@ -85,7 +88,7 @@ export class RulesRegulations extends Document {
 
   @Prop([
     {
-      club: { type: Types.ObjectId, ref: 'Nodes' },
+      club: { type: Types.ObjectId, ref: Node_.name },
       date: { type: Date, default: Date.now },
     },
   ])
@@ -99,7 +102,7 @@ export class RulesRegulations extends Document {
   @Prop({})
   publishedDate: Date;
 
-  @Prop({ ref: 'User' })
+  @Prop({ required: true, ref: User.name })
   publishedBy: Types.ObjectId;
 
   @Prop()
@@ -112,13 +115,13 @@ export class RulesRegulations extends Document {
   adoptedParent: null | Types.ObjectId;
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: 'users' }],
+    type: [{ type: Types.ObjectId, ref: User.name }],
     default: [],
   })
   relevant: Types.ObjectId[];
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: 'users' }],
+    type: [{ type: Types.ObjectId, ref: User.name }],
     default: [],
   })
   irrelevant: Types.ObjectId[];

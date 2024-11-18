@@ -18,8 +18,8 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 export class NodeService {
   constructor(
     @InjectConnection() private readonly connection: Connection,
-    @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
-    @InjectModel('nodejoinrequests')
+    @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
+    @InjectModel(NodeJoinRequest.name)
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,

@@ -15,7 +15,7 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Module({
   imports: [
     SharedModule,
-    MongooseModule.forFeature([{ name: 'otps', schema: OTPSchema }]),
+    MongooseModule.forFeature([{ name: OTP.name, schema: OTPSchema }]),
   ],
   controllers: [
     SignupController,
@@ -25,4 +25,4 @@ import { MailerService } from 'src/mailer/mailer.service';
   ],
   providers: [SignupService, OtpService, VerifyToken],
 })
-export class SignupModule {}
+export class SignupModule { }
