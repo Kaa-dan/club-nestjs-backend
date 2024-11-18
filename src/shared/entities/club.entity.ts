@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { SchemaTypes } from 'mongoose';
+import { User } from './user.entity';
 
 export enum MemberRole {
   ADMIN = 'admin',
@@ -23,7 +24,6 @@ export interface IBlockedUser {
 }
 
 @Schema({
-  collection: 'clubs',
   timestamps: true,
 })
 export class Club extends Document {
@@ -70,7 +70,7 @@ export class Club extends Document {
   link: string;
 
   //reference of the user who created the club
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   createdBy: Types.ObjectId;
 }
 

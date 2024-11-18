@@ -14,10 +14,10 @@ import { MailerService } from 'src/mailer/mailer.service';
 @Injectable()
 export class OtpService {
   constructor(
-    @InjectModel('otps') private otpModel: Model<OTP>,
-    @InjectModel('users') private userModel: Model<User>,
+    @InjectModel(OTP.name) private otpModel: Model<OTP>,
+    @InjectModel(User.name) private userModel: Model<User>,
     private brevoService: MailerService,
-  ) {}
+  ) { }
 
   async generateAndStoreOtp(emailDto: string): Promise<{ status: boolean }> {
     const email = emailDto; // Extract email from DTO

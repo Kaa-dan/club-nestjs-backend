@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, SchemaTypes, Types } from 'mongoose';
+import { User } from './user.entity';
 
 export interface IBlockedUser {
   userId: Types.ObjectId;
@@ -7,7 +8,6 @@ export interface IBlockedUser {
 }
 
 @Schema({
-  collection: 'nodes',
   timestamps: true,
 })
 export class Node_ extends Document {
@@ -49,7 +49,7 @@ export class Node_ extends Document {
   @Prop({
     type: [
       {
-        user: { type: Types.ObjectId, ref: 'users', required: true },
+        user: { type: Types.ObjectId, ref: User.name, required: true },
         date: { type: Date, default: Date.now, required: true },
       },
     ],
@@ -57,7 +57,7 @@ export class Node_ extends Document {
   })
   blockedUsers: IBlockedUser[];
 
-  @Prop({ type: Types.ObjectId, ref: 'users', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   createdBy: Types.ObjectId;
 
   @Prop({ default: false })

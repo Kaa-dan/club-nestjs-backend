@@ -13,6 +13,8 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { arrayBuffer } from 'stream/consumers';
 import { ReportOffence } from 'src/shared/entities/report-offense.entity';
+import { Club } from 'src/shared/entities/club.entity';
+import { Node_ } from 'src/shared/entities/node.entity';
 
 interface FileObject {
   buffer: Buffer;
@@ -39,7 +41,7 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-  ) {}
+  ) { }
 
   /*
   @Param type :strgin  "node"|"club"
@@ -421,7 +423,7 @@ export class RulesRegulationsService {
         },
         {
           $lookup: {
-            from: 'rulesandregulations',
+            from: 'rulesregulations',
             let: { clubId: '$club' },
             pipeline: [
               {
@@ -484,7 +486,7 @@ export class RulesRegulationsService {
         },
         {
           $lookup: {
-            from: 'rulesandregulations',
+            from: 'rulesregulations',
             let: { nodeId: '$node' },
             pipeline: [
               {
@@ -517,7 +519,7 @@ export class RulesRegulationsService {
         },
         {
           $lookup: {
-            from: 'nodes',
+            from: 'node_',
             localField: 'node',
             foreignField: '_id',
             as: 'nodeDetails',
@@ -713,7 +715,7 @@ export class RulesRegulationsService {
         reason: reportData.reason,
         rulesId: new Types.ObjectId(reportData.rulesID),
         proof,
-        clubOrNode: reportData.type === 'club' ? 'Club' : 'nodes',
+        clubOrNode: reportData.type === 'club' ? Club.name : Node_.name,
         clubOrNodeId: new Types.ObjectId(reportData.typeId),
       });
       return await newOffense.save();
@@ -730,7 +732,7 @@ export class RulesRegulationsService {
     try {
       return await this.reportOffenceModel
         .find({
-          clubOrNode: type === 'node' ? 'nodes' : 'Club',
+          clubOrNode: type === 'club' ? Club.name : Node_.name,
           clubOrNodeId: new Types.ObjectId(clubId),
         })
         .populate('offender')

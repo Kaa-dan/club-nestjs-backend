@@ -22,6 +22,7 @@ import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
 import { type } from 'node:os';
 import { publish } from 'rxjs';
+import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -35,7 +36,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) {}
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -587,7 +588,7 @@ export class RulesRegulationsController {
    */
   @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
-    return this.commentService.getCommentsByEntity('RulesRegulations', ruleId);
+    return this.commentService.getCommentsByEntity(RulesRegulations.name, ruleId);
   }
 
   /**
@@ -620,7 +621,7 @@ export class RulesRegulationsController {
     file: Express.Multer.File[],
     @Body() createCommentData: any,
   ) {
-    createCommentData.entityType = 'RulesRegulations';
+    createCommentData.entityType = RulesRegulations.name;
     const userId = new Types.ObjectId(req.user._id);
     return await this.commentService.createComment(
       createCommentData,
