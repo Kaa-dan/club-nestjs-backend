@@ -21,6 +21,7 @@ import {
   ReportOffenceSchema,
 } from './entities/report-offense.entity';
 import { Node_, NodeSchema } from './entities/node.entity';
+import { Issues, IssuesSchema } from './entities/issues.entity';
 
 @Module({
   imports: [
@@ -36,9 +37,10 @@ import { Node_, NodeSchema } from './entities/node.entity';
       { name: Comment.name, schema: CommentSchema },
       { name: Reports.name, schema: ReportsSchema },
       { name: ReportOffence.name, schema: ReportOffenceSchema },
+      { name: Issues.name, schema: IssuesSchema },
     ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule { }
+export class SharedModule {}
