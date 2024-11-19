@@ -92,10 +92,6 @@ export class RulesRegulationsController {
     @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
     try {
-      console.log({
-        createRulesRegulationsDto,
-      });
-      console.log('nihtin');
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
           'Invalid type parameter. Must be "node" or "club".',
@@ -135,7 +131,8 @@ export class RulesRegulationsController {
         );
       }
     } catch (error) {
-      console.log('error', error);
+      console.log({ error });
+
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -351,7 +348,9 @@ export class RulesRegulationsController {
     @Query('type') type: 'node' | 'club',
   ) {
     try {
-      console.log('entity', entity);
+      console.log({ type });
+      console.log({ entity });
+
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,

@@ -301,7 +301,13 @@ export class RulesRegulationsService {
         };
       }
 
-      return await this.rulesregulationModel.find(query).exec();
+      return await this.rulesregulationModel
+        .find(query)
+        .populate({
+          path: 'createdBy',
+          select: '-password',
+        })
+        .exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',

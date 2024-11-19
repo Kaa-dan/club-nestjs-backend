@@ -9,16 +9,16 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true, // Enable transformation
-      transformOptions: {
-        enableImplicitConversion: true, // Enable implicit conversions
-      },
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    }),
-  );
+  // app.useGlobalPipes(
+  //   new ValidationPipe({
+  //     transform: true, // Enable transformation
+  //     transformOptions: {
+  //       enableImplicitConversion: true, // Enable implicit conversions
+  //     },
+  //     whitelist: true,
+  //     forbidNonWhitelisted: true,
+  //   }),
+  // );
   const pinger = new SpinUp({
     url: ENV.RENDER_URL,
     intervalMinutes: 10,
