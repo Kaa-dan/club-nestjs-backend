@@ -647,12 +647,11 @@ export class ClubService {
       );
 
       const joinRequestResponse =
-        await this.clubJoinRequestsModel.findOneAndUpdate(
+        await this.clubJoinRequestsModel.findOneAndDelete(
           {
             club: clubId,
             user: userId,
           },
-          { status: 'LEFT', leftDate: new Date() },
           { session },
         );
 

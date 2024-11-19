@@ -47,13 +47,13 @@ export class RulesRegulationsService {
   @Param type :strgin  "node"|"club"
   */
   async getAllRulesRegulations() {
-    return await this.rulesregulationModel
-      .find({
-        isPublic: true,
-        isActive: true,
-      })
-      .populate('createdBy');
     try {
+      return await this.rulesregulationModel
+        .find({
+          isPublic: true,
+          isActive: true,
+        })
+        .populate('createdBy');
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -70,34 +70,40 @@ export class RulesRegulationsService {
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
+    let fileObjects = null
+    if (files) {
 
-    //creating promises to upload to S3 bucket
-    const uploadPromises = files.map((file: FileObject) =>
-      this.uploadFile({
-        buffer: file.buffer,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-      } as Express.Multer.File),
-    );
-    // calling all promises and storing
-    const uploadedFiles = await Promise.all(uploadPromises);
+      //creating promises to upload to S3 bucket
+      const uploadPromises = files.map((file: FileObject) =>
+        this.uploadFile({
+          buffer: file.buffer,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+        } as Express.Multer.File),
+      );
+      // calling all promises and storing
+      const uploadedFiles = await Promise.all(uploadPromises);
 
-    //creating file object to store it in the db with proper type
-    const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
-      url: uploadedFile.url,
-      originalname: files[index].originalname,
-      mimetype: files[index].mimetype,
-      size: files[index].size,
-    }));
+      //creating file object to store it in the db with proper type
+      fileObjects = uploadedFiles.map((uploadedFile, index) => ({
+        url: uploadedFile.url,
+        originalname: files[index].originalname,
+        mimetype: files[index].mimetype,
+        size: files[index].size,
+      }));
+
+    }
 
     try {
-      //creating rules and regulations -DB
-      const newRulesRegulations = new this.rulesregulationModel({
+
+      const dataToSave = {
         ...restData,
         node: node ? new Types.ObjectId(node) : null,
         club: club ? new Types.ObjectId(club) : null,
         files: fileObjects,
-      });
+      };
+
+      const newRulesRegulations = new this.rulesregulationModel(dataToSave);
 
       return await newRulesRegulations.save();
     } catch (error) {
