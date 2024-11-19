@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { User } from './user.entity';
 import { Club } from './club.entity';
+import { Node_ } from './node.entity';
 
 export interface IRelevantAndView {
   user: Types.ObjectId;
@@ -88,7 +89,7 @@ export class Issues extends Document {
 
   @Prop({
     type: Types.ObjectId,
-    ref: Node.name,
+    ref: Node_.name,
   })
   node: Types.ObjectId;
 
@@ -121,7 +122,7 @@ export class Issues extends Document {
 
   @Prop([
     {
-      node: { type: Types.ObjectId, ref: Node.name },
+      node: { type: Types.ObjectId, ref: Node_.name },
       date: { type: Date, default: Date.now },
     },
   ])
@@ -146,3 +147,6 @@ export class Issues extends Document {
 }
 
 export const IssuesSchema = SchemaFactory.createForClass(Issues);
+
+// export type IssueDocument = Issues & Document;
+// export const IssueSchema = SchemaFactory.createForClass(Issues);

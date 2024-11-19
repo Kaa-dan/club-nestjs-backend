@@ -4,7 +4,7 @@ import { SharedModule } from 'src/shared/shared.module';
 import { IssuesModule } from './issues/issues.module';
 
 @Module({
-  imports: [RulesRegulationsModule, SharedModule, IssuesModule],
-  exports: [RulesRegulationsModule],
+  imports: [RulesRegulationsModule, IssuesModule, SharedModule],
+  exports: [RulesRegulationsModule, IssuesModule],
 })
 export class PluginModule {}

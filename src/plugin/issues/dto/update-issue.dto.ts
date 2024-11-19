@@ -28,8 +28,7 @@ export class UpdateIssuesDto extends CreateIssuesDto {
   whereOrWho: string;
 
   @IsOptional()
-  @IsDate()
-  deadline: Date;
+  deadline: string;
 
   @IsOptional()
   @IsString()
