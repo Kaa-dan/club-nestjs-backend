@@ -263,7 +263,7 @@ export class RulesRegulationsController {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
-          required: true,
+          required: false, // Allow empty or no files
         },
       }),
     )
@@ -271,38 +271,45 @@ export class RulesRegulationsController {
     @Body() updateRulesRegulationsDto,
   ) {
     try {
-      if (file.length > 5 - updateRulesRegulationsDto.files.length) {
-        throw new BadRequestException('maximum count of files should be 5');
+      // Initialize fileObjects array
+      const fileObjects = file
+        ? file.map((singleFile) => ({
+            buffer: singleFile.buffer,
+            originalname: singleFile.originalname,
+            mimetype: singleFile.mimetype,
+            size: singleFile.size,
+          }))
+        : [];
+
+      // Validate the total file count if `files` exist in DTO
+      if (
+        file &&
+        updateRulesRegulationsDto?.files &&
+        file.length > 5 - updateRulesRegulationsDto.files.length
+      ) {
+        throw new BadRequestException('Maximum count of files should be 5');
       }
 
-      // Process the file and create file paths array
-      const fileObjects = file.map((singleFile) => ({
-        buffer: singleFile.buffer,
-        originalname: singleFile.originalname,
-        mimetype: singleFile.mimetype,
-        size: singleFile.size,
-      }));
-
-      //saving all the detail to sent to the service
+      // Prepare data to save
       const dataToSave = {
         ...updateRulesRegulationsDto,
-        updatedBy: req['user']._id,
+        updatedBy: req['user']?._id,
         updatedDate: new Date(),
       };
 
+      // Call the service with data and file objects
       return await this.rulesRegulationsService.updateRulesRegulations(
         dataToSave,
-        req.user._id,
+        req['user']?._id,
         fileObjects,
       );
     } catch (error) {
-      console.log('error', error);
+      console.error('Error:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new InternalServerErrorException(
-        'Error while creating rules-regulations',
-        error,
+        'Error while updating rules-regulations',
       );
     }
   }
@@ -419,6 +426,8 @@ export class RulesRegulationsController {
     try {
       return await this.rulesRegulationsService.getRules(ruleId);
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,

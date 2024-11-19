@@ -169,9 +169,24 @@ export class RulesRegulationsService {
         throw new Error('Document not found');
       }
 
-      const { files, ...restData } = dataToSave;
-      // Handle file uploads
+      const { tags, files, ...restData } = dataToSave;
 
+      // Parse and validate `tags`
+      let parsedTags = tags;
+      if (typeof tags === 'string') {
+        try {
+          parsedTags = JSON.parse(tags); // Parse if tags is a JSON string
+        } catch (error) {
+          console.error('Error parsing tags:', error);
+          throw new BadRequestException('Invalid format for tags');
+        }
+      }
+
+      if (!Array.isArray(parsedTags)) {
+        throw new BadRequestException('Tags must be an array');
+      }
+
+      // Handle file uploads
       const uploadedFiles = await Promise.all(
         updateFiles.map((singlefile) => this.uploadFile(singlefile)),
       );
@@ -183,18 +198,21 @@ export class RulesRegulationsService {
         mimetype: uploadedFile.mimetype,
         size: uploadedFile.size,
       }));
-      //merging older files with new files
-      const mergedFiles = [...files, ...fileObjects];
+
+      // Merging older files with new files
+      const mergedFiles = [...(files ?? []), ...fileObjects];
 
       if (currentVersion.publishedStatus === 'draft') {
         const updateData = await this.rulesregulationModel.findByIdAndUpdate(
           dataToSave._id,
           {
             $set: {
-              restData,
+              tags: parsedTags, // Ensure tags is saved as an array
+              ...restData, // Spread the rest of the data
               files: mergedFiles,
             },
           },
+          { new: true, runValidators: true },
         );
         return updateData;
       } else {
@@ -205,13 +223,14 @@ export class RulesRegulationsService {
           files: mergedFiles,
         };
 
-        //Update the current document with new data
+        // Update the current document with new data
         const updatedDocument =
           await this.rulesregulationModel.findByIdAndUpdate(
             dataToSave._id,
             {
               $set: {
                 ...restData,
+                tags: parsedTags, // Ensure tags is saved as an array
                 version: (currentVersion.version || 1) + 1,
                 publishedBy: userId,
                 updatedDate: new Date(),
