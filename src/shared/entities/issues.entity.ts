@@ -10,7 +10,7 @@ export interface IRelevantAndView {
 }
 [];
 
-@Schema({ collection: 'issues', timestamps: true })
+@Schema({ timestamps: true })
 export class Issues extends Document {
   @Prop({ trim: true, required: true })
   title: string;
@@ -131,7 +131,7 @@ export class Issues extends Document {
     date: Date;
   }[];
   @Prop({ default: 'draft' })
-  publishedStatus: 'draft' | 'published' | 'olderversion' | 'proposed';
+  publishedStatus: 'draft' | 'published' | 'olderversion' | 'proposed' | 'archived';
 
   @Prop()
   isActive: boolean;
