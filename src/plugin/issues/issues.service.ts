@@ -4,7 +4,8 @@ import { Model, Types } from 'mongoose';
 import { Issues } from 'src/shared/entities/issues.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateIssuesDto } from './dto/create-issue.dto';
-import { version } from 'os';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { publish } from 'rxjs';
 
 interface FileObject {
@@ -20,6 +21,10 @@ export class IssuesService {
     @InjectModel(Issues.name)
     private readonly issuesModel: Model<Issues>,
     private readonly s3FileUpload: UploadService,
+    @InjectModel(ClubMembers.name)
+    private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(NodeMembers.name)
+    private readonly nodeMembersModel: Model<NodeMembers>,
   ) { }
 
   /**
@@ -101,7 +106,7 @@ export class IssuesService {
         mergedFiles = [...fileObjects];
       }
 
-
+      // If the document is a draft, update the document
       if (dataToSave.publishedStatus === 'draft') {
         const updateData = await this.issuesModel.findByIdAndUpdate(
           dataToSave._id,
@@ -114,31 +119,53 @@ export class IssuesService {
         )
 
         return updateData;
-      } else {
-        const versionObject = {
-          ...currentVersion.toObject(),
-          version: currentVersion.version || 1,
-          files: mergedFiles
-        }
+      }
 
-        const updatedDocument = await this.issuesModel.findByIdAndUpdate(
+      // Check if the user is an admin or not
+      const memberRole = await this.getMemberRoles(userId, dataToSave);
+
+      // If the user is not an admin, update the document to proposed
+      if (memberRole !== 'admin') {
+        const updateData = await this.issuesModel.findByIdAndUpdate(
           dataToSave._id,
           {
             $set: {
               ...restData,
-              version: (currentVersion.version || 1) + 1,
-              publishedBy: userId,
-              publishedAt: new Date(),
+              files: mergedFiles,
+              publishedStatus: 'proposed',
             },
-            $push: {
-              olderVersions: versionObject,
-            }
-          },
-          { new: true, runValidators: true }
+          }
         )
 
-        return updatedDocument
+        return updateData;
       }
+
+
+      // If the user is an admin, update the document to published
+      const versionObject = {
+        ...currentVersion.toObject(),
+        version: currentVersion.version || 1,
+        files: mergedFiles
+      }
+
+      const updatedDocument = await this.issuesModel.findByIdAndUpdate(
+        dataToSave._id,
+        {
+          $set: {
+            ...restData,
+            version: (currentVersion.version || 1) + 1,
+            publishedBy: userId,
+            publishedAt: new Date(),
+          },
+          $push: {
+            olderVersions: versionObject,
+          }
+        },
+        { new: true, runValidators: true }
+      )
+
+      return updatedDocument
+
 
     } catch (error) {
       console.log({ error });
@@ -229,6 +256,36 @@ export class IssuesService {
     } catch (error) {
       throw new BadRequestException(
         'Failed to upload file. Please try again later.',
+      );
+    }
+  }
+
+  async getMemberRoles(userId: Types.ObjectId, createIssuesData: any) {
+    try {
+
+      if (createIssuesData.node) {
+        const memberInfo = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(createIssuesData.node),
+          user: new Types.ObjectId(userId),
+        })
+        console.log(memberInfo)
+        return memberInfo.role
+      }
+
+      const memberInfo = await this.clubMembersModel.findOne({
+        club: new Types.ObjectId(createIssuesData.club),
+        user: new Types.ObjectId(userId),
+      })
+      console.log(memberInfo)
+      return memberInfo.role
+
+
+    } catch (error) {
+
+      console.log(error)
+      throw new InternalServerErrorException(
+        'Error while getting user roles',
+        error,
       );
     }
   }
