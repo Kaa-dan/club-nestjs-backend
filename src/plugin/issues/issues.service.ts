@@ -30,7 +30,7 @@ export class IssuesService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
-  ) {}
+  ) { }
 
   /**
    * Create a new issue. This function will also handle the upload of any files
@@ -148,7 +148,8 @@ export class IssuesService {
         ...currentVersion.toObject(),
         version: currentVersion.version || 1,
         files: mergedFiles,
-      };
+        publishedStatus: 'olderversion'
+      }
 
       const updatedDocument = await this.issuesModel.findByIdAndUpdate(
         dataToSave._id,
@@ -189,13 +190,13 @@ export class IssuesService {
         query = {
           node: entityId,
           isActive: true,
-          status: 'published',
+          publishedStatus: 'published',
         };
       } else {
         query = {
           club: entityId,
           isActive: true,
-          status: 'published',
+          publishedStatus: 'published',
         };
       }
       return await this.issuesModel
@@ -226,7 +227,7 @@ export class IssuesService {
         .find(query)
         .populate('createdBy', '-password')
         .exec();
-    } catch (error) {}
+    } catch (error) { }
   }
 
   /**
