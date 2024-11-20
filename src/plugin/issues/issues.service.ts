@@ -190,13 +190,13 @@ export class IssuesService {
         query = {
           node: entityId,
           isActive: true,
-          status: 'published',
+          publishedStatus: 'published',
         };
       } else {
         query = {
           club: entityId,
           isActive: true,
-          status: 'published',
+          publishedStatus: 'published',
         };
       }
       return await this.issuesModel
