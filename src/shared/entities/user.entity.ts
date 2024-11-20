@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ collection: 'users', timestamps: true })
+@Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ trim: true })
   userName: string;
@@ -43,7 +43,6 @@ export class User extends Document {
   @Prop({
     type: String,
     required: false,
-    _id: false,
   })
   coverImage?: string;
 

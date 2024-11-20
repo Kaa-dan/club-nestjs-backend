@@ -38,7 +38,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 @ApiTags('Clubs')
 @Controller('clubs')
 export class ClubController {
-  constructor(private readonly clubService: ClubService) {}
+  constructor(private readonly clubService: ClubService) { }
 
   /*
   --------------------CREATING A CLUB----------------------------
@@ -230,6 +230,20 @@ export class ClubController {
     return await this.clubService.getAllRequestsOfClub(CLUBID);
   }
 
+  //---------------------GETTING ALL REQUESTS OF THE SPECIFIED USER ----------------------------
+  @Get('user-join-requests')
+  @ApiOperation({ summary: 'Get all requests of a user' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all requests of the user',
+    type: [ClubMembers],
+  })
+  async getAllRequestsOfUser(@Req() req: Request) {
+    const userId = new Types.ObjectId(req.user._id);
+    return await this.clubService.getAllRequestsOfUser(userId);
+  }
+
+
   /*----------------------REQUESTING OR JOINING THE CLUB---------------
   @PARAM groupId @user :userId*/
   @Put('request-join/:clubId')
@@ -253,6 +267,14 @@ export class ClubController {
     const CLUBID = new Types.ObjectId(clubId);
     // retuning response
     return await this.clubService.requestOrJoinClub(CLUBID, userId);
+  }
+
+  //---------------------CANCEL JOIN REQUEST OF THE CLUB---------------
+  @Delete('cancel-join-request/:clubId')
+  async cancelJoinRequest(@Req() req: Request, @Param('clubId') clubId: string) {
+    const userId = new Types.ObjectId(req.user._id);
+    const CLUBID = new Types.ObjectId(clubId);
+    return await this.clubService.cancelJoinRequest(CLUBID, userId);
   }
 
   /*----------------------------CHECKING THE STATUS OF THE USER OF A CLUB---------------------------- */

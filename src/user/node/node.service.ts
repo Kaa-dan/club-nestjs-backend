@@ -18,12 +18,12 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 export class NodeService {
   constructor(
     @InjectConnection() private readonly connection: Connection,
-    @InjectModel('nodes') private readonly nodeModel: Model<Node_>,
-    @InjectModel('nodejoinrequests')
+    @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
+    @InjectModel(NodeJoinRequest.name)
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   /**
    * Creates a new node in the database.
@@ -78,8 +78,8 @@ export class NodeService {
       await session.commitTransaction();
       return nodeResponse;
     } catch (error) {
-      await session.abortTransaction();
       console.log(error, 'error');
+      await session.abortTransaction();
 
       if (error instanceof ConflictException) {
         throw error;
@@ -123,7 +123,7 @@ export class NodeService {
         .find({
           node: new Types.ObjectId(nodeId),
         })
-        .populate('user')
+        .populate('user', '-password')
         .exec();
 
       return {
@@ -149,7 +149,7 @@ export class NodeService {
       return await this.nodeMembersModel
         .find({ user: userId })
         .populate('node')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
     } catch (error) {
       console.log(error, 'error');
@@ -202,7 +202,7 @@ export class NodeService {
         status: 'REQUESTED',
       });
 
-      if(existingRequest){
+      if (existingRequest) {
         throw new ConflictException('You have already requested to join this node');
       }
 
@@ -214,11 +214,50 @@ export class NodeService {
 
       return response;
     } catch (error) {
-      if(error instanceof ConflictException){
+      if (error instanceof ConflictException) {
         throw new ConflictException('You have already requested to join this node')
       }
-      console.log(error,"error")
+      console.log(error, "error")
       throw new BadRequestException('Error while trying to request to join. Please try again later.');
+    }
+  }
+
+
+  /**
+   * Cancel a join request made by a user to a node.
+   * @param nodeId The ID of the node the user is canceling the request for.
+   * @param userId The ID of the user canceling the request.
+   * @returns The deleted join request.
+   * @throws NotFoundException if the user has not requested to join the node.
+   * @throws BadRequestException if there is an error while canceling the request.
+   */
+  async cancelJoinRequest(nodeId: Types.ObjectId, userId: Types.ObjectId) {
+    try {
+      if (!nodeId) {
+        throw new BadRequestException('Please provide node id');
+      }
+
+      const response = await this.nodeJoinRequestModel.findOneAndDelete({
+        node: nodeId,
+        user: userId,
+        status: 'REQUESTED',
+      });
+
+      if (!response) {
+        throw new NotFoundException('You have not requested to join this node');
+      }
+
+      return response;
+    } catch (error) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      console.error('Error while canceling join request:', error);
+      throw new BadRequestException('Failed to cancel join request. Please try again later.');
     }
   }
 
@@ -233,14 +272,36 @@ export class NodeService {
       const requests = await this.nodeJoinRequestModel
         .find({ node: nodeId })
         .populate('node')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
       return requests;
     } catch (error) {
       console.log(error, 'error');
       throw new BadRequestException(
-        'Error while trying to get join requests. Please try again later.',
+        'Error while trying to get node join requests. Please try again later.',
       );
+    }
+  }
+
+  /**
+   * Retrieves all join requests made by a specific user.
+   * @param userId - The ID of the user for which to retrieve join requests.
+   * @returns A promise that resolves to an array of join requests, populated with node and user details.
+   * @throws BadRequestException if there is an error while trying to get user join requests.
+   */
+  async getAllJoinRequestsOfUser(userId: Types.ObjectId) {
+    try {
+      const request = await this.nodeJoinRequestModel
+        .find({ user: userId, status: 'REQUESTED' })
+        .populate('node')
+        .populate('user', '-password')
+        .exec();
+      return request;
+    } catch (error) {
+      console.log(error);
+      throw new BadRequestException(
+        'Error while trying to get user join requests. Please try again later.',
+      )
     }
   }
 
@@ -260,9 +321,14 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
+      console.log('ddd', status)
       const updateData: any = { status };
       if (status === 'REJECTED') {
-        updateData.rejectedDate = new Date();
+        const response = await this.nodeJoinRequestModel.findOneAndDelete({
+          _id: requestId,
+        })
+
+        return response;
       }
 
       const response = await this.nodeJoinRequestModel.findOneAndUpdate(
@@ -526,6 +592,19 @@ export class NodeService {
     } catch (error) {
       throw new BadRequestException(
         'Failed to unpin node. Please try again later.',
+      );
+    }
+  }
+
+  async getNodeMembers(nodeId: Types.ObjectId) {
+    try {
+      return await this.nodeMembersModel
+        .find({ node: nodeId })
+        .populate('user', '-password')
+        .exec();
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get node members. Please try again later.',
       );
     }
   }

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -24,9 +25,9 @@ export class OnboardingService {
   ];
 
   constructor(
-    @InjectModel('users') private userModel: Model<User>,
+    @InjectModel(User.name) private userModel: Model<User>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   private getNextStage(currentStage: string): string {
     const currentIndex = this.stageOrder.indexOf(
@@ -38,7 +39,6 @@ export class OnboardingService {
     return this.stageOrder[currentIndex + 1];
   }
 
-  
   /**
    * Retrieves the onboarding details of a user by their ID.
    *
@@ -60,27 +60,27 @@ export class OnboardingService {
         message: 'User onboarding details retrieved successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Internal Server Error',
-      };
+      console.log(error);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
+      throw new BadRequestException('Internal Server Error');
     }
   }
 
-  async createDetails(
-    id: string,
-    createDetailsDto: CreateDetailsDto,
-  ): Promise<ServiceResponse> {
+  async createDetails(id: string, createDetailsDto: CreateDetailsDto) {
     try {
       const user = await this.userModel.findOne({ _id: id });
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
-      // if (user.onBoardingStage !== OnboardingStage.DETAILS) {
-      //   throw new BadRequestException('Invalid onboarding stage');
-      // }
+      const isUserNameExists = await this.userModel.findOne({
+        userName: createDetailsDto.userName,
+      });
+
+      if (isUserNameExists) {
+        throw new BadRequestException('userName already exists');
+      }
 
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
@@ -102,11 +102,11 @@ export class OnboardingService {
         message: 'User details updated successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Internal Server Error',
-      };
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
+      throw new InternalServerErrorException('Internal Server Error');
     }
   }
 
@@ -116,17 +116,13 @@ export class OnboardingService {
       profileImage?: Express.Multer.File;
       coverImage?: Express.Multer.File;
     },
-  ): Promise<ServiceResponse> {
+  ) {
     try {
       const user = await this.userModel.findById(id);
 
       if (!user) {
         throw new NotFoundException('User not found');
       }
-
-      // if (user.onBoardingStage !== OnboardingStage.IMAGE) {
-      //   throw new BadRequestException('Invalid onboarding stage');
-      // }
 
       const updateData: {
         profileImage?: string;
@@ -141,14 +137,10 @@ export class OnboardingService {
           imageFiles.profileImage.mimetype,
           'user',
         );
-
+        console.log({ user });
         // Delete old profile image if it exists
-        if (user.profileImage) {
-          try {
-            await this.uploadService.deleteFile(user.profileImage);
-          } catch (error) {
-            console.error('Error deleting old profile image:', error);
-          }
+        if (user.profileImage && user.signupThrough === 'gmail') {
+          await this.uploadService.deleteFile(user.profileImage);
         }
 
         // Create ImageData object with correct typing
@@ -165,12 +157,8 @@ export class OnboardingService {
         );
 
         // Delete old cover image if it exists
-        if (user.coverImage) {
-          try {
-            await this.uploadService.deleteFile(user.coverImage);
-          } catch (error) {
-            console.error('Error deleting old cover image:', error);
-          }
+        if (user.coverImage && user.signupThrough === 'gmail') {
+          await this.uploadService.deleteFile(user.coverImage);
         }
 
         // Create ImageData object with correct typing
@@ -196,28 +184,22 @@ export class OnboardingService {
         message: 'User images updated successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Internal Server Error',
-      };
+      console.log(error);
+      if (error instanceof InternalServerErrorException)
+        throw new InternalServerErrorException(error.message);
+      if (error instanceof NotFoundException)
+        throw new NotFoundException(error.message);
+      throw new BadRequestException('Internal Server Error');
     }
   }
 
-  async updateInterests(
-    id: string,
-    updateInterestDto: UpdateInterestDto,
-  ): Promise<ServiceResponse> {
+  async updateInterests(id: string, updateInterestDto: UpdateInterestDto) {
     try {
       const user = await this.userModel.findById(id);
 
       if (!user) {
         throw new NotFoundException('User not found');
       }
-
-      // if (user.onBoardingStage !== OnboardingStage.INTEREST) {
-      //   throw new BadRequestException('Invalid onboarding stage');
-      // }
 
       const updatedUser = await this.userModel
         .findByIdAndUpdate(
@@ -239,15 +221,13 @@ export class OnboardingService {
         message: 'User interests updated successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Internal Server Error',
-      };
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
+      throw new InternalServerErrorException('Internal Server Error');
     }
   }
 
-  async completeOnboarding(id: string): Promise<ServiceResponse> {
+  async completeOnboarding(id: string) {
     try {
       const user = await this.userModel.findById(id);
 
@@ -275,11 +255,9 @@ export class OnboardingService {
         message: 'Onboarding completed successfully',
       };
     } catch (error) {
-      return {
-        success: false,
-        status: error.status || 500,
-        message: error.message || 'Internal Server Error',
-      };
+      if (error instanceof BadRequestException)
+        throw new BadRequestException(error.message);
+      throw new InternalServerErrorException('Internal Server Error');
     }
   }
 }

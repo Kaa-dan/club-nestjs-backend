@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -35,19 +35,19 @@ export class UploadService {
     file: Buffer,
     filename: string,
     mimetype: string,
-    folder: 'node' | 'user' | 'club',
+    folder: 'node' | 'user' | 'club' | 'comment',
   ): Promise<{
     filename: string;
     url: string;
   }> {
     try {
-      
+
       const fileExtension = path.extname(filename);
       const uniqueFileName = `${Date.now()}-${Math.round(
         Math.random() * 1e9,
       )}${fileExtension}`;
       const key = `${folder}/${uniqueFileName}`;
-  
+
 
       const command = new PutObjectCommand({
         Bucket: ENV.S3_BUCKET_NAME,
@@ -65,7 +65,7 @@ export class UploadService {
       };
     } catch (error) {
       console.log(error);
-      throw new Error(`Failed to upload file: ${error.message ?? error}`);
+      throw new InternalServerErrorException(`Failed to upload file: ${error.message ?? error}`);
     }
   }
 
@@ -85,7 +85,7 @@ export class UploadService {
         success: true,
       };
     } catch (error) {
-      throw new Error(`Failed to delete file: ${error.message}`);
+      throw new InternalServerErrorException(`Failed to delete file: ${error.message}`);
     }
   }
 }

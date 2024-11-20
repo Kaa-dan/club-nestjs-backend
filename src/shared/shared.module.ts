@@ -2,7 +2,6 @@ import { forwardRef, Module } from '@nestjs/common';
 import { UploadModule } from './upload/upload.module';
 import { User, UserSchema } from './entities/user.entity';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Node_, NodeSchema } from './entities/node.entity';
 import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
 import { SearchModule } from './search/search.module';
 import { Club, ClubSchema } from './entities/club.entity';
@@ -11,40 +10,36 @@ import {
   ClubInvitationSchema,
 } from './entities/club-invitation.entity';
 import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
+import {
+  RulesRegulations,
+  RulesRegulationsSchema,
+} from './entities/rules-requlations.entity';
+import { Comment, CommentSchema } from './entities/comment.entity';
+import { Reports, ReportsSchema } from './entities/reports.entity';
+import {
+  ReportOffence,
+  ReportOffenceSchema,
+} from './entities/report-offense.entity';
+import { Node_, NodeSchema } from './entities/node.entity';
+import { Issues, IssuesSchema } from './entities/issues.entity';
+import { ProposeRulesAndRegulation, ProposeRulesAndRegulationSchema } from './entities/propose-rulesAndRegulations';
 
 @Module({
   imports: [
     UploadModule,
-    MongooseModule.forFeature([{ name: 'users', schema: UserSchema }]),
     MongooseModule.forFeature([
-      {
-        name: 'nodes',
-        schema: NodeSchema,
-      },
-    ]),
-    MongooseModule.forFeature([
-      {
-        name: NodeMembers.name,
-        schema: NodeMembersSchema,
-      },
-    ]),
-    MongooseModule.forFeature([
-      {
-        name: Club.name,
-        schema: ClubSchema,
-      },
-    ]),
-    MongooseModule.forFeature([
-      {
-        name: ClubInvitation.name,
-        schema: ClubInvitationSchema,
-      },
-    ]),
-    MongooseModule.forFeature([
-      {
-        name: ClubMembers.name,
-        schema: ClubMembersSchema,
-      },
+      { name: User.name, schema: UserSchema },
+      { name: Node_.name, schema: NodeSchema },
+      { name: NodeMembers.name, schema: NodeMembersSchema },
+      { name: Club.name, schema: ClubSchema },
+      { name: ClubInvitation.name, schema: ClubInvitationSchema },
+      { name: ClubMembers.name, schema: ClubMembersSchema },
+      { name: RulesRegulations.name, schema: RulesRegulationsSchema },
+      { name: Comment.name, schema: CommentSchema },
+      { name: Reports.name, schema: ReportsSchema },
+      { name: ReportOffence.name, schema: ReportOffenceSchema },
+      { name: Issues.name, schema: IssuesSchema },
+      {name:ProposeRulesAndRegulation.name,schema:ProposeRulesAndRegulationSchema}
     ]),
     forwardRef(() => SearchModule),
   ],

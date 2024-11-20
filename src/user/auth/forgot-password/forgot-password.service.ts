@@ -15,9 +15,9 @@ import { ENV } from 'src/utils/config/env.config';
 @Injectable()
 export class ForgotPasswordService {
   constructor(
-    @InjectModel('users') private userModel: Model<User>,
+    @InjectModel(User.name) private userModel: Model<User>,
     private brevoService: MailerService,
-  ) {}
+  ) { }
 
   async changePassword(emailDto: ChangePasswordDto): Promise<ServiceResponse> {
     try {
