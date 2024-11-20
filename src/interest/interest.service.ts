@@ -45,6 +45,7 @@ export class InterestService {
    * @param updateInterestDto - Interest update data
    * @returns Promise<Interest>
    */
+  
   async updateInterest(
     id: string,
     updateInterestDto: UpdateInterestDto,
