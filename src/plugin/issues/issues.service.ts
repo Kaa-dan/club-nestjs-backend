@@ -210,6 +210,25 @@ export class IssuesService {
     }
   }
 
+  async getAllIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
+    try {
+      let query = {};
+      if (entity === 'node') {
+        query = {
+          node: entityId,
+        };
+      } else {
+        query = {
+          club: entityId,
+        };
+      }
+      return await this.issuesModel
+        .find(query)
+        .populate('createdBy', '-password')
+        .exec();
+    } catch (error) {}
+  }
+
   /**
    * Returns all active issues created by the given user for a given entity
    * @param userId - The id of the user

@@ -170,6 +170,18 @@ export class IssuesController {
     );
   }
 
+  @Get('all-issues')
+  async getAllIssues(
+    @Req() req: Request,
+    @Query('entity') entity: 'node' | 'club',
+    @Query('entityId') entityId: string,
+  ) {
+    return await this.issuesService.getAllIssues(
+      entity,
+      new Types.ObjectId(entityId),
+    );
+  }
+
   @Get('get-my-issues')
   async getMyIssues(
     @Req() req: Request,
