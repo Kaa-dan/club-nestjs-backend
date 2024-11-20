@@ -63,7 +63,7 @@ export class CommentService {
                 },
                 {
                     $lookup: {
-                        from: 'comment',
+                        from: 'comments',
                         let: { commentId: '$_id' },
                         pipeline: [
                             {
@@ -207,7 +207,7 @@ export class CommentService {
                 },
                 {
                     $lookup: {
-                        from: 'comment',
+                        from: 'comments',
                         let: { commentId: '$_id' },
                         pipeline: [
                             {

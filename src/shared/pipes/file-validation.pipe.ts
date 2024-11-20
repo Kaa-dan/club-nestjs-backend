@@ -24,6 +24,7 @@ interface FileValidationConfig {
 export class FileValidationPipe implements PipeTransform {
   constructor(private config: Record<string, FileValidationConfig>) { }
   transform(value: any, metadata: ArgumentMetadata) {
+
     console.log('Received value:', value);
 
     // Handle array of files directly

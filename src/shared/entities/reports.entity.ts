@@ -1,16 +1,25 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { User } from './user.entity';
+import { RulesRegulations } from './rules-requlations.entity';
+import { Comment } from './comment.entity';
 
-@Schema({ collection: 'reports', timestamps: true })
+// Create a mapping for model references
+const MODEL_REFS = {
+  [RulesRegulations.name]: RulesRegulations.name,
+  [Comment.name]: Comment.name
+} as const;
+
+@Schema({ timestamps: true })
 export class Reports extends Document {
   @Prop({
     type: String,
     required: true,
-    enum: ['rules', 'comment', 'debate'],
+    enum: [RulesRegulations.name, Comment.name],
   })
-  type: 'rules' | 'comment' | 'debate';
+  type: typeof RulesRegulations.name | typeof Comment.name;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   reportedBy: Types.ObjectId;
 
   @Prop({
@@ -22,12 +31,15 @@ export class Reports extends Document {
   typeId: Types.ObjectId;
 
   @Prop({
-    type: String,
+    type: Types.ObjectId,
     required: true,
+    ref: function (this: Reports) {
+      return MODEL_REFS[this.type];
+    },
     // Map type to corresponding model names
-    enum: ['rulesandregulations', 'Comment', 'Debate'],
+    enum: [RulesRegulations.name, Comment.name],
   })
-  typeModel: string;
+  typeModel: Types.ObjectId;
 
   @Prop({ type: String, required: true })
   reason: string;
@@ -37,24 +49,23 @@ export class Reports extends Document {
 }
 
 // Helper method to get model name based on type
-export function getModelNameForType(
-  type: 'rules' | 'comment' | 'debate',
-): string {
-  const typeToModel = {
-    rules: 'rulesandregulations',
-    comment: 'Comment',
-    debate: 'Debate',
-  };
-  return typeToModel[type];
-}
+// export function getModelNameForType(
+//   type: typeof RulesRegulations.name | typeof Comment.name,
+// ): string {
+//   const typeToModel = {
+//     [RulesRegulations.name]: RulesRegulations.name,
+//     [Comment.name]: Comment.name
+//   };
+//   return typeToModel[type];
+// }
 
 // Create schema
 export const ReportsSchema = SchemaFactory.createForClass(Reports);
 
 // Add pre-save middleware to automatically set typeModel based on type
-ReportsSchema.pre('save', function (next) {
-  if (this.type) {
-    this.typeModel = getModelNameForType(this.type);
-  }
-  next();
-});
+// ReportsSchema.pre('save', function (next) {
+//   if (this.type) {
+//     this.typeModel = getModelNameForType(this.type);
+//   }
+//   next();
+// });
