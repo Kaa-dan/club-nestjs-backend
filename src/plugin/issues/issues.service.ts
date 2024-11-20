@@ -145,7 +145,8 @@ export class IssuesService {
       const versionObject = {
         ...currentVersion.toObject(),
         version: currentVersion.version || 1,
-        files: mergedFiles
+        files: mergedFiles,
+        publishedStatus: 'olderversion'
       }
 
       const updatedDocument = await this.issuesModel.findByIdAndUpdate(
