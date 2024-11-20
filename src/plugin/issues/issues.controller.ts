@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
@@ -21,7 +22,7 @@ import { Types } from 'mongoose';
 
 @Controller('issues')
 export class IssuesController {
-  constructor(private readonly issuesService: IssuesService) { }
+  constructor(private readonly issuesService: IssuesService) {}
 
   /**
    * POST / => Create Issue
@@ -62,39 +63,51 @@ export class IssuesController {
     files: Express.Multer.File[],
     @Body() createIssuesData,
   ) {
-
     if (!createIssuesData.node && !createIssuesData.club) {
       throw new BadRequestException(
         'Invalid type parameter. Must be "node" or "club".',
       );
     }
 
+    const memberRole = await this.issuesService.getMemberRoles(
+      req.user._id,
+      createIssuesData,
+    );
 
     if (createIssuesData.publishedStatus === 'draft') {
-
       const dataToSave = {
         ...createIssuesData,
         createdBy: new Types.ObjectId(req.user._id),
         isActive: false,
-        files
-      }
-
-      return await this.issuesService.createIssue(dataToSave);
-
-    } else {
-      const dataToSave = {
-        ...createIssuesData,
-        createdBy: new Types.ObjectId(req.user._id),
-        publishedBy: new Types.ObjectId(req.user._id),
-        publishedDate: new Date(),
-        isActive: true,
-        version: 1,
-        files
-      }
+        files,
+      };
 
       return await this.issuesService.createIssue(dataToSave);
     }
 
+    if (memberRole !== 'admin') {
+      const dataToSave = {
+        ...createIssuesData,
+        createdBy: new Types.ObjectId(req.user._id),
+        isActive: false,
+        files,
+        publishedStatus: 'proposed',
+      };
+
+      return await this.issuesService.createIssue(dataToSave);
+    }
+
+    const dataToSave = {
+      ...createIssuesData,
+      createdBy: new Types.ObjectId(req.user._id),
+      publishedBy: new Types.ObjectId(req.user._id),
+      publishedDate: new Date(),
+      isActive: true,
+      version: 1,
+      files,
+    };
+
+    return await this.issuesService.createIssue(dataToSave);
   }
 
   @UseInterceptors(
@@ -123,9 +136,8 @@ export class IssuesController {
       }),
     )
     files: Express.Multer.File[],
-    @Body() updateIssuesData
+    @Body() updateIssuesData,
   ) {
-
     const fileObjects = files.map((singleFile) => ({
       buffer: singleFile.buffer,
       originalname: singleFile.originalname,
@@ -137,28 +149,53 @@ export class IssuesController {
       ...updateIssuesData,
       updatedBy: new Types.ObjectId(req.user._id),
       updatedDate: new Date(),
-    }
+    };
 
-    return await this.issuesService.updateIssue(new Types.ObjectId(req.user._id), dataToSave, fileObjects);
+    return await this.issuesService.updateIssue(
+      new Types.ObjectId(req.user._id),
+      dataToSave,
+      fileObjects,
+    );
   }
 
   @Get('get-all-active-issues')
   async getAllActiveIssues(
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
-    @Query('entityId') entityId: string
+    @Query('entityId') entityId: string,
   ) {
-    return await this.issuesService.getAllActiveIssues(entity, new Types.ObjectId(entityId));
+    return await this.issuesService.getAllActiveIssues(
+      entity,
+      new Types.ObjectId(entityId),
+    );
   }
 
   @Get('get-my-issues')
   async getMyIssues(
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
-    @Query('entityId') entityId: string
+    @Query('entityId') entityId: string,
   ) {
-    return await this.issuesService.getMyIssues(new Types.ObjectId(req.user._id), entity, new Types.ObjectId(entityId));
+    return await this.issuesService.getMyIssues(
+      new Types.ObjectId(req.user._id),
+      entity,
+      new Types.ObjectId(entityId),
+    );
   }
 
-}
+  @Post('adopt-issue/:issueId')
+  async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
+    return await this.issuesService.adoptIssueAndPropose(
+      new Types.ObjectId(req.user._id),
+      data,
+    );
+  }
 
+  @Post('adopt-proposed-issue/:issueId')
+  async adoptProposedIssue(@Req() req: Request, @Query('issueId') issueId) {
+    return this.issuesService.adoptProposedIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+}
