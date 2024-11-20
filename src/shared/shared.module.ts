@@ -22,6 +22,7 @@ import {
 } from './entities/report-offense.entity';
 import { Node_, NodeSchema } from './entities/node.entity';
 import { Issues, IssuesSchema } from './entities/issues.entity';
+import { Debate, DebateSchema } from './entities/debate.entity';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { Issues, IssuesSchema } from './entities/issues.entity';
       { name: Reports.name, schema: ReportsSchema },
       { name: ReportOffence.name, schema: ReportOffenceSchema },
       { name: Issues.name, schema: IssuesSchema },
+      { name: Debate.name, schema: DebateSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

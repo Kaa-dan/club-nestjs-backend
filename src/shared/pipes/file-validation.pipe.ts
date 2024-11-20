@@ -22,10 +22,8 @@ interface FileValidationConfig {
 
 @Injectable()
 export class FileValidationPipe implements PipeTransform {
-  constructor(private config: Record<string, FileValidationConfig>) { }
+  constructor(private config: Record<string, FileValidationConfig>) {}
   transform(value: any, metadata: ArgumentMetadata) {
-    console.log('Received value:', value);
-
     // Handle array of files directly
     if (Array.isArray(value)) {
       console.log('Processing array of files');
@@ -35,15 +33,12 @@ export class FileValidationPipe implements PipeTransform {
 
     // If the value is not an object or null/undefined, return
     if (!value || typeof value !== 'object') {
-      console.log('Value is not an object:', value);
       return value;
     }
 
-    console.log('Config:', this.config);
     const fileFields = Object.keys(this.config);
 
     for (const field of fileFields) {
-      console.log(`Validating field: ${field}`);
       const fieldConfig = this.config[field];
 
       // For single file or array of files
@@ -61,10 +56,7 @@ export class FileValidationPipe implements PipeTransform {
   }
 
   private validateFiles(files: Express.Multer.File[], fieldName: string) {
-    console.log(`Validating files for field ${fieldName}:`, files);
-
     const config = this.config[fieldName];
-    console.log("config", config);
     if (!config) {
       throw new BadRequestException(
         `No configuration found for field ${fieldName}`,
@@ -100,5 +92,4 @@ export class FileValidationPipe implements PipeTransform {
 
     return files;
   }
-
 }
