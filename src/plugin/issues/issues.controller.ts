@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UploadedFiles,
+  UseGuards,
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
@@ -69,6 +70,7 @@ export class IssuesController {
       );
     }
 
+    const memberRole = await this.issuesService.getMemberRoles(req.user._id, createIssuesData);
 
     if (createIssuesData.publishedStatus === 'draft') {
 
@@ -81,19 +83,32 @@ export class IssuesController {
 
       return await this.issuesService.createIssue(dataToSave);
 
-    } else {
+    }
+
+    if (memberRole !== 'admin') {
       const dataToSave = {
         ...createIssuesData,
         createdBy: new Types.ObjectId(req.user._id),
-        publishedBy: new Types.ObjectId(req.user._id),
-        publishedDate: new Date(),
-        isActive: true,
-        version: 1,
-        files
+        isActive: false,
+        files,
+        publishedStatus: 'proposed'
       }
 
       return await this.issuesService.createIssue(dataToSave);
     }
+
+    const dataToSave = {
+      ...createIssuesData,
+      createdBy: new Types.ObjectId(req.user._id),
+      publishedBy: new Types.ObjectId(req.user._id),
+      publishedDate: new Date(),
+      isActive: true,
+      version: 1,
+      files
+    }
+
+    return await this.issuesService.createIssue(dataToSave);
+
 
   }
 
