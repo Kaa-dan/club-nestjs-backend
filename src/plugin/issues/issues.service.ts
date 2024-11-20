@@ -11,7 +11,7 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateIssuesDto } from './dto/create-issue.dto';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
-import { publish } from 'rxjs';
+import { async, publish } from 'rxjs';
 
 interface FileObject {
   buffer: Buffer;
@@ -184,16 +184,18 @@ export class IssuesService {
    */
   async getAllActiveIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
     try {
-      let query = {}; // Initialize the query object
+      let query = {};
       if (entity === 'node') {
         query = {
           node: entityId,
           isActive: true,
+          status: 'published',
         };
       } else {
         query = {
           club: entityId,
           isActive: true,
+          status: 'published',
         };
       }
       return await this.issuesModel
@@ -206,6 +208,25 @@ export class IssuesService {
         error,
       );
     }
+  }
+
+  async getAllIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
+    try {
+      let query = {};
+      if (entity === 'node') {
+        query = {
+          node: entityId,
+        };
+      } else {
+        query = {
+          club: entityId,
+        };
+      }
+      return await this.issuesModel
+        .find(query)
+        .populate('createdBy', '-password')
+        .exec();
+    } catch (error) {}
   }
 
   /**
@@ -243,6 +264,25 @@ export class IssuesService {
     }
   }
 
+  async getGlobalActiveIssues() {
+    try {
+      return await this.issuesModel
+        .find({
+          isActive: true,
+
+          publishedStatus: 'published',
+        })
+        .populate('createdBy', '-password')
+        .populate('node')
+        .populate('club')
+        .exec();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {

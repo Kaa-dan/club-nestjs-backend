@@ -170,6 +170,18 @@ export class IssuesController {
     );
   }
 
+  @Get('all-issues')
+  async getAllIssues(
+    @Req() req: Request,
+    @Query('entity') entity: 'node' | 'club',
+    @Query('entityId') entityId: string,
+  ) {
+    return await this.issuesService.getAllIssues(
+      entity,
+      new Types.ObjectId(entityId),
+    );
+  }
+
   @Get('get-my-issues')
   async getMyIssues(
     @Req() req: Request,
@@ -182,7 +194,10 @@ export class IssuesController {
       new Types.ObjectId(entityId),
     );
   }
-
+  @Get('global-active-issues')
+  async getGlobalActiveIssues() {
+    return await this.issuesService.getGlobalActiveIssues();
+  }
   @Post('adopt-issue/:issueId')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
     return await this.issuesService.adoptIssueAndPropose(
