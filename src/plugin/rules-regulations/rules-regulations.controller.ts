@@ -84,7 +84,7 @@ export class RulesRegulationsController {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
-          required: true,
+          required: false,
         },
       }),
     )
@@ -687,4 +687,31 @@ export class RulesRegulationsController {
       new Types.ObjectId(commentId),
     );
   }
+
+
+ /**
+   * Propose rules for the club
+   * @param req - Express request object
+   * @param commentId - ID of the comment to delete
+   * @returns Promise containing the result of comment deletion
+   */
+
+ @Put('propose-rule')
+ async proposeRules(@Req() req:Request,@Body() data
+){
+  const userId = req.user._id
+ return await this.rulesRegulationsService.proposeRules(userId,data)
+ }
+
+  /**
+   * Get all the clubs and node of the user with role of the user
+   * @param req - Express request object
+   * @returns Promise containing the result of the data
+   */
+  
+  @Get('get-all-clubs-nodes-role')
+  async getAllClubsAndNodesWithRole (@Req() req:Request){
+  return this.rulesRegulationsService.getAllClubsAndNodesWithRole(req.user._id)
+  }
+
 }

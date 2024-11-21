@@ -75,10 +75,14 @@ export class CreateIssuesDto {
   )
   whoShouldAddress: Types.ObjectId[];
 
+  // @IsOptional()
+  // @ValidateNested({ each: true })
+  // @Type(() => FileDto)
+  // files: FileDto[];
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => FileDto)
-  files: FileDto[];
+  // @Type(() => any)
+  files: any[];
 
   @IsBoolean()
   isPublic: boolean;
