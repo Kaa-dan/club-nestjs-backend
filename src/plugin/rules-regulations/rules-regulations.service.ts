@@ -42,7 +42,7 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-    @InjectModel(ProposeRulesAndRegulation.name) private readonly ProposeRulesAndRegulationModel :Model<ProposeRulesAndRegulation>
+    @InjectModel(ProposeRulesAndRegulation.name) private readonly ProposeRulesAndRegulationModel: Model<ProposeRulesAndRegulation>
   ) { }
 
   /*
@@ -316,17 +316,17 @@ export class RulesRegulationsService {
       const existingRule = await this.rulesregulationModel.findById(
         dataToSave.rulesId,
       );
-  
+
       console.log({ existingRule });
-      
+
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }
-  
+
       // Create the new rule document without the _id field
       const ruleData = existingRule.toObject();
       delete ruleData._id;
-  
+
       // Prepare base data for the new rule
       const baseRuleData = {
         ...ruleData,
@@ -336,19 +336,19 @@ export class RulesRegulationsService {
         publishedDate: new Date(),
         version: 1,
       };
-  
+
       console.log({ baseRuleData });
-  
+
       let updateOperation;
       let newRule;
-  
+
       if (dataToSave.type === 'club') {
         // First check if this club is already in adoptedClubs
         const alreadyAdopted = await this.rulesregulationModel.findOne({
           _id: dataToSave.rulesId,
           'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId)
         });
-  
+
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
@@ -366,20 +366,20 @@ export class RulesRegulationsService {
         } else {
           updateOperation = Promise.resolve(existingRule);
         }
-  
+
         // Create new rule for the club
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
           club: new Types.ObjectId(dataToSave.clubId),
         });
-  
+
       } else if (dataToSave.type === 'node') {
         // First check if this node is already in adoptedNodes
         const alreadyAdopted = await this.rulesregulationModel.findOne({
           _id: dataToSave.rulesId,
           'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId)
         });
-  
+
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
@@ -397,31 +397,31 @@ export class RulesRegulationsService {
         } else {
           updateOperation = Promise.resolve(existingRule);
         }
-  
+
         // Create new rule for the node
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
           node: dataToSave.nodeId,
         });
-  
+
       } else {
         throw new BadRequestException('Invalid type provided');
       }
-  
+
       // Execute both operations in parallel
       const [updatedParent, savedRule] = await Promise.all([
         updateOperation,
         newRule.save(),
       ]);
-  
+
       if (!updatedParent || !savedRule) {
         throw new InternalServerErrorException(
           'Failed to save or update rules',
         );
       }
-  
+
       return savedRule;
-  
+
     } catch (error) {
       console.log({ error });
       if (
@@ -462,7 +462,7 @@ export class RulesRegulationsService {
                   $expr: {
                     $and: [
                       { $eq: ['$_id', rulesId] },
-                      {                                               
+                      {
                         $not: [
                           {
                             $in: [
@@ -823,79 +823,79 @@ export class RulesRegulationsService {
     }
   }
 
- /**
-   * Propose rules for the club
-   * @param req - Express request object
-   * @param commentId - ID of the comment to delete
-   * @returns Promise containing the result of comment deletion
-   */
- 
+  /**
+    * Propose rules for the club
+    * @param req - Express request object
+    * @param commentId - ID of the comment to delete
+    * @returns Promise containing the result of comment deletion
+    */
 
- async proposeRules(userId: string, data): Promise<ProposeRulesAndRegulation> {
-  try {
-    // Validate required fields
-    if (!userId || !data.club || !data.rulesAndRegulation) {
-      throw new BadRequestException('Required fields are missing');
+
+  async proposeRules(userId: string, data): Promise<ProposeRulesAndRegulation> {
+    try {
+      // Validate required fields
+      if (!userId || !data.club || !data.rulesAndRegulation) {
+        throw new BadRequestException('Required fields are missing');
+      }
+
+      // Convert string IDs to ObjectId 
+      const clubId = typeof data.club === 'string' ? new Types.ObjectId(data.club) : data.club;
+      const rulesId = typeof data.rulesAndRegulation === 'string' ?
+        new Types.ObjectId(data.rulesAndRegulation) : data.rulesAndRegulation;
+      const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+
+      // Create new proposal
+      const newProposal = await this.ProposeRulesAndRegulationModel.create({
+        club: clubId,
+        proposedBy: userObjectId,
+        rulesAndRegulation: rulesId,
+        status: 'pending'
+      });
+
+      // returning newly created proposal 
+      const populatedProposal = await newProposal.populate([
+        { path: 'club' },
+        { path: 'proposedBy' },
+        { path: 'rulesAndRegulation' }
+      ]);
+
+      return populatedProposal;
+
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      if (error.name === 'ValidationError') {
+        throw new BadRequestException(error.message);
+      }
+      if (error.name === 'CastError') {
+        throw new BadRequestException('Invalid ID format');
+      }
+      throw new Error(`Failed to propose rules: ${error.message}`);
     }
-
-    // Convert string IDs to ObjectId 
-    const clubId = typeof data.club === 'string' ? new Types.ObjectId(data.club) : data.club;
-    const rulesId = typeof data.rulesAndRegulation === 'string' ? 
-      new Types.ObjectId(data.rulesAndRegulation) : data.rulesAndRegulation;
-    const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
-
-    // Create new proposal
-    const newProposal = await this.ProposeRulesAndRegulationModel.create({
-      club: clubId,
-      proposedBy: userObjectId,
-      rulesAndRegulation: rulesId,
-      status: 'pending' 
-    });
-
-    // returning newly created proposal 
-    const populatedProposal = await newProposal.populate([
-      { path: 'club' },
-      { path: 'proposedBy' },
-      { path: 'rulesAndRegulation' }
-    ]);
-
-    return populatedProposal;
-
-  } catch (error) {
-    if (error instanceof BadRequestException) {
-      throw error;
-    }
-    if (error.name === 'ValidationError') {
-      throw new BadRequestException(error.message);
-    }
-    if (error.name === 'CastError') {
-      throw new BadRequestException('Invalid ID format');
-    }
-    throw new Error(`Failed to propose rules: ${error.message}`);
   }
-}
 
 
- /**
-   * Get all the clubs and node of the user with role of the user
-   * @returns Promise containing the result of the data
-   */
-async getAllClubsAndNodesWithRole(userId:Types.ObjectId){
-try {
-  const clubResponse = await this.clubMembersModel.find({user:userId,status:"MEMBER"}).populate(Club.name)
+  /**
+    * Get all the clubs and node of the user with role of the user
+    * @returns Promise containing the result of the data
+    */
+  async getAllClubsAndNodesWithRole(userId: Types.ObjectId) {
+    try {
+      const clubResponse = await this.clubMembersModel.find({ user: userId, status: "MEMBER" }).populate(Club.name)
 
-  const nodeResponse = await this.nodeMembersModel.find({user:userId}).populate(Node.name)
+      const nodeResponse = await this.nodeMembersModel.find({ user: userId }).populate(Node.name)
 
 
-  return {
-    data:{clubResponse,nodeResponse},
-    status:true,
-    message:'club fetched sucessfully'
+      return {
+        data: { clubResponse, nodeResponse },
+        status: true,
+        message: 'club fetched sucessfully'
+      }
+    } catch (error) {
+      throw new BadRequestException('something went wrong')
+    }
   }
-} catch (error) {
-  throw new BadRequestException('something went wrong')
-}
-}
 
 
   //------------------------

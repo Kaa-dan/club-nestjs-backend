@@ -43,13 +43,13 @@ export class Issues extends Document {
     type: [
       {
         url: String,
-        originalName: String,
+        originalname: String,
         mimetype: String,
         size: Number,
       },
     ],
   })
-  files: { url: string; originalName: string; mimetype: string; size: number };
+  files: { url: string; originalname: string; mimetype: string; size: number };
 
   @Prop({ default: false })
   isPublic: boolean;
