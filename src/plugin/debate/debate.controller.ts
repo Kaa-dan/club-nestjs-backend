@@ -11,6 +11,8 @@ import {
   BadRequestException,
   Query,
   Get,
+  Param,
+  Patch,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -198,6 +200,31 @@ export class DebateController {
       return result;
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
+      throw error;
+    }
+  }
+
+  @Patch(':debateId/publish')
+  async publishDebate(
+    @Param('debateId') debateId: string,
+    @Body('userId') userId: string,
+    @Body('entityId') entityId: string,
+    @Body('entityType') entityType: 'node' | 'club',
+  ) {
+    try {
+      const updatedDebate = await this.debateService.publishDebate(
+        debateId,
+        userId,
+        entityId,
+        entityType,
+      );
+
+      return {
+        message: 'Debate published successfully.',
+        data: updatedDebate,
+      };
+    } catch (error) {
+      console.error('Error publishing debate:', error);
       throw error;
     }
   }

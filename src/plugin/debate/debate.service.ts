@@ -3,6 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -507,6 +508,57 @@ export class DebateService {
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
       throw new Error(`Error while fetching ongoing debates: ${error.message}`);
+    }
+  }
+
+  async publishDebate(
+    debateId: string,
+    userId: string,
+    entityId: string,
+    entityType: 'node' | 'club',
+  ): Promise<Debate> {
+    try {
+      // Find the debate by ID
+      const debate = await this.debateModel.findById(debateId);
+      if (!debate) {
+        throw new NotFoundException('Debate not found.');
+      }
+
+      // Check if the entity type and ID match the debate's club or node
+      if (
+        (entityType === 'node' && !debate.node?.equals(entityId)) ||
+        (entityType === 'club' && !debate.club?.equals(entityId))
+      ) {
+        throw new UnauthorizedException(
+          'This debate does not belong to the specified entity.',
+        );
+      }
+
+      // Check if the user is authorized to publish the debate
+      const membershipModel: any =
+        entityType === 'node' ? this.nodeMembersModel : this.clubMembersModel;
+
+      const membership = await membershipModel.findOne({
+        [entityType]: new Types.ObjectId(entityId),
+        user: new Types.ObjectId(userId),
+        role: 'admin', // Only admins can publish debates
+        status: 'MEMBER',
+      });
+
+      if (!membership) {
+        throw new UnauthorizedException(
+          'You are not authorized to publish this debate.',
+        );
+      }
+
+      // Update the debate's publishedStatus and publishedBy
+      debate.publishedStatus = 'published';
+      debate.publishedBy = new Types.ObjectId(userId);
+      await debate.save();
+
+      return debate;
+    } catch (error) {
+      throw error; // Let the caller handle errors
     }
   }
 }
