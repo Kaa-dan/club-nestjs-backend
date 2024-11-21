@@ -10,7 +10,7 @@ import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class GoogleSignupService {
-  constructor(@InjectModel('users') private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =

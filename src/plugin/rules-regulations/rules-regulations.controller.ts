@@ -22,6 +22,7 @@ import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
 import { type } from 'node:os';
 import { publish } from 'rxjs';
+import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -35,7 +36,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) {}
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -83,7 +84,7 @@ export class RulesRegulationsController {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
-          required: true,
+          required: false,
         },
       }),
     )
@@ -376,7 +377,7 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
-      console.log(data);
+      // console.log(data);
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
@@ -401,7 +402,6 @@ export class RulesRegulationsController {
       );
     } catch (error) {
       console.log('errrrr ', error);
-
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -588,7 +588,7 @@ export class RulesRegulationsController {
    */
   @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
-    return this.commentService.getCommentsByEntity('RulesRegulations', ruleId);
+    return this.commentService.getCommentsByEntity(RulesRegulations.name, ruleId);
   }
 
   /**
@@ -621,7 +621,7 @@ export class RulesRegulationsController {
     file: Express.Multer.File[],
     @Body() createCommentData: any,
   ) {
-    createCommentData.entityType = 'RulesRegulations';
+    createCommentData.entityType = RulesRegulations.name;
     const userId = new Types.ObjectId(req.user._id);
     return await this.commentService.createComment(
       createCommentData,
@@ -672,4 +672,31 @@ export class RulesRegulationsController {
       new Types.ObjectId(commentId),
     );
   }
+
+
+ /**
+   * Propose rules for the club
+   * @param req - Express request object
+   * @param commentId - ID of the comment to delete
+   * @returns Promise containing the result of comment deletion
+   */
+
+ @Put('propose-rule')
+ async proposeRules(@Req() req:Request,@Body() data
+){
+  const userId = req.user._id
+ return await this.rulesRegulationsService.proposeRules(userId,data)
+ }
+
+  /**
+   * Get all the clubs and node of the user with role of the user
+   * @param req - Express request object
+   * @returns Promise containing the result of the data
+   */
+  
+  @Get('get-all-clubs-nodes-role')
+  async getAllClubsAndNodesWithRole (@Req() req:Request){
+  return this.rulesRegulationsService.getAllClubsAndNodesWithRole(req.user._id)
+  }
+
 }
