@@ -4,10 +4,11 @@ import { User } from "./user.entity";
 import { Club } from "./club.entity";
 import { Node_ } from "./node.entity";
 import { RulesRegulations } from "./rules-requlations.entity";
+import { Issues } from "./issues.entity";
 
 interface IEntity {
     entityId: Types.ObjectId;
-    entityType: typeof Node_.name | typeof Club.name | typeof RulesRegulations.name;
+    entityType: typeof Node_.name | typeof Club.name | typeof RulesRegulations.name | typeof Issues.name;
 }
 
 interface IAttachment {
@@ -24,7 +25,7 @@ export class Comment extends Document {
     @Prop({
         type: {
             entityId: { type: Types.ObjectId, required: true, refPath: 'entity.entityType' },
-            entityType: { type: String, enum: [Node_.name, Club.name, RulesRegulations.name], required: true },
+            entityType: { type: String, enum: [Node_.name, Club.name, RulesRegulations.name, Issues.name], required: true },
         },
         _id: false,
         required: true,
