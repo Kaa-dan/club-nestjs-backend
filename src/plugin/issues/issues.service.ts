@@ -14,6 +14,7 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async, publish } from 'rxjs';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from 'src/shared/entities/club.entity';
+import { title } from 'process';
 
 interface FileObject {
   buffer: Buffer;
@@ -370,29 +371,35 @@ export class IssuesService {
 
   async adoptIssueAndPropose(userId: Types.ObjectId, data) {
     try {
-      let clubOrNode: null | string = null;
+      let clubOrNode: null | string = data?.club ? 'club' : 'node';
+
+      console.log(data, 'data');
 
       if (!clubOrNode) throw new BadRequestException('Invalid club or node');
       const role = await this.getMemberRoles(userId, data);
       if (role === 'admin') {
         if (data.club) {
-          clubOrNode = 'club';
           await this.issuesModel.findByIdAndUpdate(
             data.issueId,
             {
               $addToSet: {
-                adoptedClubs: data.club,
+                adoptedClubs: {
+                  club: new Types.ObjectId(data.club),
+                  date: new Date()
+                },
               },
             },
             { new: true }, // Returns the updated document
           );
         } else if (data.node) {
-          clubOrNode = 'node';
           await this.issuesModel.findByIdAndUpdate(
             data.issueId,
             {
               $addToSet: {
-                adoptedNodes: data.club,
+                adoptedNodes: {
+                  node: new Types.ObjectId(data.node),
+                  date: new Date(),
+                },
               },
             },
             { new: true }, // Returns the updated document
@@ -400,22 +407,46 @@ export class IssuesService {
         }
         const existingIssue = await this.issuesModel.findById(data.issueId);
         // Creating a new object
+        // const newIssueData = {
+        //   ...existingIssue.toObject(), // Converting to plain object
+        //   publishedBy: userId,
+        //   publishedDate: new Date(),
+        //   version: 1,
+        //   isActive: true,
+        //   publishedStatus: 'published',
+        //   ...(clubOrNode === 'club'
+        //     ? { club: new Types.ObjectId(data.club) }
+        //     : { node: new Types.ObjectId(data.node) }),
+        //   adoptedDate: new Date(),
+        //   adoptedFrom: existingIssue._id,
+        // };
+
         const newIssueData = {
-          ...existingIssue.toObject(), // Converting to plain object
-          publishedBy: userId,
-          publishedDate: new Date(),
-          version: 1,
-          isAcitve: true,
-          publishedStatus: 'published',
+          title: existingIssue.title,
+          issueType: existingIssue.issueType,
+          whereOrWho: existingIssue.whereOrWho,
+          deadline: existingIssue.deadline,
+          reasonOfDeadline: existingIssue.reasonOfDeadline,
+          significance: existingIssue.significance,
+          description: existingIssue.description,
+          files: existingIssue.files,
+          isPublic: existingIssue.isPublic,
+          isAnonymous: existingIssue.isAnonymous,
           ...(clubOrNode === 'club'
             ? { club: new Types.ObjectId(data.club) }
             : { node: new Types.ObjectId(data.node) }),
+          createdBy: userId,
+          isActive: true,
+          publishedStatus: 'published',
+          publishedBy: userId,
+          publishedDate: new Date(),
+          version: 1,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
-        };
+        }
 
         // Removing fields
-        delete newIssueData._id;
+        // delete newIssueData._id;
         // delete newIssueData.__v;
 
         // creating new fields with modified data
@@ -425,21 +456,51 @@ export class IssuesService {
       } else if (role === 'member') {
         const existingIssue = await this.issuesModel.findById(data.issueId);
         // Creating a new object
+        // const newIssueData = {
+        //   ...existingIssue.toObject(), // Converting to plain object
+        //   publishedBy: userId,
+        //   version: 1,
+        //   isActive: false,
+        //   publishedStatus: 'proposed',
+        //   ...(clubOrNode === 'club'
+        //     ? { club: new Types.ObjectId(data.club) }
+        //     : { node: new Types.ObjectId(data.node) }),
+        //   adoptedDate: new Date(),
+        //   adoptedFrom: existingIssue._id,
+        // };
+
         const newIssueData = {
-          ...existingIssue.toObject(), // Converting to plain object
-          publishedBy: userId,
-          version: 1,
-          isAcitve: false,
-          publishedStatus: 'proposed',
+          title: existingIssue.title,
+          issueType: existingIssue.issueType,
+          whereOrWho: existingIssue.whereOrWho,
+          deadline: existingIssue.deadline,
+          reasonOfDeadline: existingIssue.reasonOfDeadline,
+          significance: existingIssue.significance,
+          description: existingIssue.description,
+          files: existingIssue.files,
+          isPublic: existingIssue.isPublic,
+          isAnonymous: existingIssue.isAnonymous,
           ...(clubOrNode === 'club'
             ? { club: new Types.ObjectId(data.club) }
             : { node: new Types.ObjectId(data.node) }),
+          createdBy: userId,
+          publishedStatus: 'proposed',
+          isActive: false,
+          version: 1,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
-        };
+        }
 
         // Removing fields
-        delete newIssueData._id;
+        // delete newIssueData._id;
+        // delete newIssueData.views;
+        // delete newIssueData.relevant;
+        // delete newIssueData.irrelevant;
+        // delete newIssueData.adoptedClubs;
+        // delete newIssueData.adoptedNodes;
+        // delete newIssueData.createdBy;
+        // delete newIssueData.updatedDate;
+        // delete newIssueData.olderVersions;
         // delete newIssueData.__v;
 
         // creating new fields with modified data
@@ -450,6 +511,7 @@ export class IssuesService {
 
       // return adoptedIssue;
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
@@ -662,9 +724,63 @@ export class IssuesService {
       const memberClubs = await this.clubModel.aggregate([
         {
           $match: {
-            _id: { $nin: adoptedClubs },
+            _id: {
+              $nin: [
+                ...adoptedClubs,
+                issue.club
+              ].filter(Boolean)
+            },
           }
         },
+        {
+          // First lookup to check adoptedFrom in issues
+          $lookup: {
+            from: 'issues',
+            let: { clubId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$club', '$$clubId'] },
+                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'adoptedFromIssues'
+          }
+        },
+        {
+          $match: {
+            adoptedFromIssues: { $size: 0 } // Exclude clubs that have adopted from this issue
+          }
+        },
+        // {
+        //   $lookup: {
+        //     from: 'issues',
+        //     let: { clubId: '$_id' },
+        //     pipeline: [
+        //       {
+        //         $match: {
+        //           $expr: {
+        //             $and: [
+        //               { $eq: ['$club', '$$clubId'] },
+        //               { $eq: ['$createdBy', new Types.ObjectId(userId)] }
+        //             ]
+        //           }
+        //         }
+        //       }
+        //     ],
+        //     as: 'createdByIssues'
+        //   }
+        // },
+        // {
+        //   $match: {
+        //     createdByIssues: { $size: 0 } // Exclude nodes that have adopted from this issue
+        //   }
+        // },
         {
           $lookup: {
             from: 'clubmembers',
@@ -703,9 +819,58 @@ export class IssuesService {
       const memberNodes = await this.nodeModel.aggregate([
         {
           $match: {
-            _id: { $nin: adoptedNodes },
+            _id: {
+              $nin: [
+                ...adoptedNodes,
+                issue.node
+              ].filter(Boolean)
+            },
           }
         },
+        {
+          // Add lookup to check adoptedFrom in issues
+          $lookup: {
+            from: 'issues',
+            let: { nodeId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$node', '$$nodeId'] },
+                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'adoptedFromIssues'
+          }
+        },
+        // {
+        //   $lookup: {
+        //     from: 'issues',
+        //     let: { nodeId: '$_id' },
+        //     pipeline: [
+        //       {
+        //         $match: {
+        //           $expr: {
+        //             $and: [
+        //               { $eq: ['$node', '$$nodeId'] },
+        //               { $eq: ['$createdBy', new Types.ObjectId(userId)] }
+        //             ]
+        //           }
+        //         }
+        //       }
+        //     ],
+        //     as: 'createdByIssues'
+        //   }
+        // },
+        // {
+        //   $match: {
+        //     createdByIssues: { $size: 0 } // Exclude nodes that have adopted from this issue
+        //   }
+        // },
         {
           $lookup: {
             from: 'nodemembers',

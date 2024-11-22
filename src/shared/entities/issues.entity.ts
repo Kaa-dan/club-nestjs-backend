@@ -33,6 +33,7 @@ export class Issues extends Document {
   @Prop({
     type: [Types.ObjectId],
     ref: User.name,
+    required: false,
   })
   whoShouldAddress: Types.ObjectId[];
 
@@ -107,6 +108,12 @@ export class Issues extends Document {
   publishedDate: Date;
   updatedDate: Date;
   adoptedDate: Date;
+  @Prop({
+    type: Types.ObjectId,
+    ref: Issues.name,
+    default: null,
+    required: false,
+  })
   adoptedFrom: null | Types.ObjectId;
 
   @Prop([
