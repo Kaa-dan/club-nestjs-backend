@@ -22,7 +22,11 @@ import {
 } from './entities/report-offense.entity';
 import { Node_, NodeSchema } from './entities/node.entity';
 import { Issues, IssuesSchema } from './entities/issues.entity';
-import { ProposeRulesAndRegulation, ProposeRulesAndRegulationSchema } from './entities/propose-rulesAndRegulations';
+import {
+  ProposeRulesAndRegulation,
+  ProposeRulesAndRegulationSchema,
+} from './entities/propose-rulesAndRegulations';
+import { Debate, DebateSchema } from './entities/debate.entity';
 
 @Module({
   imports: [
@@ -39,7 +43,11 @@ import { ProposeRulesAndRegulation, ProposeRulesAndRegulationSchema } from './en
       { name: Reports.name, schema: ReportsSchema },
       { name: ReportOffence.name, schema: ReportOffenceSchema },
       { name: Issues.name, schema: IssuesSchema },
-      {name:ProposeRulesAndRegulation.name,schema:ProposeRulesAndRegulationSchema}
+      {
+        name: ProposeRulesAndRegulation.name,
+        schema: ProposeRulesAndRegulationSchema,
+      },
+      { name: Debate.name, schema: DebateSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

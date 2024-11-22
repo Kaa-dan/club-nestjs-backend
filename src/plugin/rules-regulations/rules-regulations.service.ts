@@ -16,6 +16,8 @@ import { ReportOffence } from 'src/shared/entities/report-offense.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { ProposeRulesAndRegulation } from 'src/shared/entities/propose-rulesAndRegulations';
+import { type } from 'node:os';
+import { async } from 'rxjs';
 
 interface FileObject {
   buffer: Buffer;
@@ -42,8 +44,9 @@ export class RulesRegulationsService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ReportOffence.name)
     private readonly reportOffenceModel: Model<ReportOffence>,
-    @InjectModel(ProposeRulesAndRegulation.name) private readonly ProposeRulesAndRegulationModel: Model<ProposeRulesAndRegulation>
-  ) { }
+    @InjectModel(ProposeRulesAndRegulation.name)
+    private readonly ProposeRulesAndRegulationModel: Model<ProposeRulesAndRegulation>,
+  ) {}
 
   /*
   @Param type :strgin  "node"|"club"
@@ -72,9 +75,8 @@ export class RulesRegulationsService {
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
-    let fileObjects = null
+    let fileObjects = null;
     if (files) {
-
       //creating promises to upload to S3 bucket
       const uploadPromises = files.map((file: FileObject) =>
         this.uploadFile({
@@ -93,11 +95,9 @@ export class RulesRegulationsService {
         mimetype: files[index].mimetype,
         size: files[index].size,
       }));
-
     }
 
     try {
-
       const dataToSave = {
         ...restData,
         node: node ? new Types.ObjectId(node) : null,
@@ -177,9 +177,24 @@ export class RulesRegulationsService {
         throw new Error('Document not found');
       }
 
-      const { files, ...restData } = dataToSave;
-      // Handle file uploads
+      const { tags, files, ...restData } = dataToSave;
 
+      // Parse and validate `tags`
+      let parsedTags = tags;
+      if (typeof tags === 'string') {
+        try {
+          parsedTags = JSON.parse(tags); // Parse if tags is a JSON string
+        } catch (error) {
+          console.error('Error parsing tags:', error);
+          throw new BadRequestException('Invalid format for tags');
+        }
+      }
+
+      if (!Array.isArray(parsedTags)) {
+        throw new BadRequestException('Tags must be an array');
+      }
+
+      // Handle file uploads
       const uploadedFiles = await Promise.all(
         updateFiles.map((singlefile) => this.uploadFile(singlefile)),
       );
@@ -191,18 +206,21 @@ export class RulesRegulationsService {
         mimetype: uploadedFile.mimetype,
         size: uploadedFile.size,
       }));
-      //merging older files with new files
-      const mergedFiles = [...files, ...fileObjects];
+
+      // Merging older files with new files
+      const mergedFiles = [...(files ?? []), ...fileObjects];
 
       if (currentVersion.publishedStatus === 'draft') {
         const updateData = await this.rulesregulationModel.findByIdAndUpdate(
           dataToSave._id,
           {
             $set: {
-              restData,
+              tags: parsedTags, // Ensure tags is saved as an array
+              ...restData, // Spread the rest of the data
               files: mergedFiles,
             },
           },
+          { new: true, runValidators: true },
         );
         return updateData;
       } else {
@@ -213,13 +231,14 @@ export class RulesRegulationsService {
           files: mergedFiles,
         };
 
-        //Update the current document with new data
+        // Update the current document with new data
         const updatedDocument =
           await this.rulesregulationModel.findByIdAndUpdate(
             dataToSave._id,
             {
               $set: {
                 ...restData,
+                tags: parsedTags, // Ensure tags is saved as an array
                 version: (currentVersion.version || 1) + 1,
                 publishedBy: userId,
                 updatedDate: new Date(),
@@ -245,7 +264,7 @@ export class RulesRegulationsService {
 
   async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
     try {
-      console.log({ forId, type });
+      console.log({ hehe: forId, type });
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
@@ -290,7 +309,13 @@ export class RulesRegulationsService {
         };
       }
 
-      return await this.rulesregulationModel.find(query).exec();
+      return await this.rulesregulationModel
+        .find(query)
+        .populate({
+          path: 'createdBy',
+          select: '-password',
+        })
+        .exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
@@ -346,7 +371,7 @@ export class RulesRegulationsService {
         // First check if this club is already in adoptedClubs
         const alreadyAdopted = await this.rulesregulationModel.findOne({
           _id: dataToSave.rulesId,
-          'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId)
+          'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId),
         });
 
         if (!alreadyAdopted) {
@@ -372,12 +397,11 @@ export class RulesRegulationsService {
           ...baseRuleData,
           club: new Types.ObjectId(dataToSave.clubId),
         });
-
       } else if (dataToSave.type === 'node') {
         // First check if this node is already in adoptedNodes
         const alreadyAdopted = await this.rulesregulationModel.findOne({
           _id: dataToSave.rulesId,
-          'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId)
+          'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId),
         });
 
         if (!alreadyAdopted) {
@@ -401,9 +425,8 @@ export class RulesRegulationsService {
         // Create new rule for the node
         newRule = new this.rulesregulationModel({
           ...baseRuleData,
-          node: dataToSave.nodeId,
+          node: new Types.ObjectId(dataToSave.nodeId),
         });
-
       } else {
         throw new BadRequestException('Invalid type provided');
       }
@@ -421,7 +444,6 @@ export class RulesRegulationsService {
       }
 
       return savedRule;
-
     } catch (error) {
       console.log({ error });
       if (
@@ -824,12 +846,11 @@ export class RulesRegulationsService {
   }
 
   /**
-    * Propose rules for the club
-    * @param req - Express request object
-    * @param commentId - ID of the comment to delete
-    * @returns Promise containing the result of comment deletion
-    */
-
+   * Propose rules for the club
+   * @param req - Express request object
+   * @param commentId - ID of the comment to delete
+   * @returns Promise containing the result of comment deletion
+   */
 
   async proposeRules(userId: string, data): Promise<ProposeRulesAndRegulation> {
     try {
@@ -838,29 +859,34 @@ export class RulesRegulationsService {
         throw new BadRequestException('Required fields are missing');
       }
 
-      // Convert string IDs to ObjectId 
-      const clubId = typeof data.club === 'string' ? new Types.ObjectId(data.club) : data.club;
-      const rulesId = typeof data.rulesAndRegulation === 'string' ?
-        new Types.ObjectId(data.rulesAndRegulation) : data.rulesAndRegulation;
-      const userObjectId = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+      // Convert string IDs to ObjectId
+      const clubId =
+        typeof data.club === 'string'
+          ? new Types.ObjectId(data.club)
+          : data.club;
+      const rulesId =
+        typeof data.rulesAndRegulation === 'string'
+          ? new Types.ObjectId(data.rulesAndRegulation)
+          : data.rulesAndRegulation;
+      const userObjectId =
+        typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
 
       // Create new proposal
       const newProposal = await this.ProposeRulesAndRegulationModel.create({
         club: clubId,
         proposedBy: userObjectId,
         rulesAndRegulation: rulesId,
-        status: 'pending'
+        status: 'pending',
       });
 
-      // returning newly created proposal 
+      // returning newly created proposal
       const populatedProposal = await newProposal.populate([
         { path: 'club' },
         { path: 'proposedBy' },
-        { path: 'rulesAndRegulation' }
+        { path: 'rulesAndRegulation' },
       ]);
 
       return populatedProposal;
-
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -875,28 +901,29 @@ export class RulesRegulationsService {
     }
   }
 
-
   /**
-    * Get all the clubs and node of the user with role of the user
-    * @returns Promise containing the result of the data
-    */
+   * Get all the clubs and node of the user with role of the user
+   * @returns Promise containing the result of the data
+   */
   async getAllClubsAndNodesWithRole(userId: Types.ObjectId) {
     try {
-      const clubResponse = await this.clubMembersModel.find({ user: userId, status: "MEMBER" }).populate(Club.name)
+      const clubResponse = await this.clubMembersModel
+        .find({ user: userId, status: 'MEMBER' })
+        .populate(Club.name);
 
-      const nodeResponse = await this.nodeMembersModel.find({ user: userId }).populate(Node.name)
-
+      const nodeResponse = await this.nodeMembersModel
+        .find({ user: userId })
+        .populate(Node.name);
 
       return {
         data: { clubResponse, nodeResponse },
         status: true,
-        message: 'club fetched sucessfully'
-      }
+        message: 'club fetched sucessfully',
+      };
     } catch (error) {
-      throw new BadRequestException('something went wrong')
+      throw new BadRequestException('something went wrong');
     }
   }
-
 
   //------------------------
   //handling file uploads
@@ -916,5 +943,4 @@ export class RulesRegulationsService {
       );
     }
   }
-
 }
