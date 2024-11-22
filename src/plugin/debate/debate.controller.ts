@@ -24,6 +24,8 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { AdoptDebateDto } from './dto/adopte.dto';
+import { DebateArgument } from 'src/shared/entities/debte-argument';
+import { CreateDebateArgumentDto } from './dto/argument.dto';
 
 @Controller('debate')
 export class DebateController {
@@ -292,12 +294,17 @@ export class DebateController {
     }
   }
 
-  @Get('view/:id')
-  async viewDebate(@Param('id') id: string) {
-    try {
-      return this.debateService.getDebateById(id);
-    } catch (error) {
-      throw error;
-    }
+  @Get('argument/:debateId')
+  async getArgumentsByDebate(@Param('debateId') debateId: string) {
+    return this.debateService.getArgumentsByDebate(debateId);
+  }
+
+  @Post('create-argument')
+  async createArgument(
+    @Req() req: Request,
+    @Body() createDebateArgumentDto: CreateDebateArgumentDto,
+  ): Promise<DebateArgument> {
+    const userId = req.user._id;
+    return this.debateService.createArgument(createDebateArgumentDto);
   }
 }

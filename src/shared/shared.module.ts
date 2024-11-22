@@ -27,6 +27,10 @@ import {
   ProposeRulesAndRegulationSchema,
 } from './entities/propose-rulesAndRegulations';
 import { Debate, DebateSchema } from './entities/debate.entity';
+import {
+  DebateArgument,
+  DebateArgumentSchema,
+} from './entities/debte-argument';
 
 @Module({
   imports: [
@@ -48,6 +52,7 @@ import { Debate, DebateSchema } from './entities/debate.entity';
         schema: ProposeRulesAndRegulationSchema,
       },
       { name: Debate.name, schema: DebateSchema },
+      { name: DebateArgument.name, schema: DebateArgumentSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

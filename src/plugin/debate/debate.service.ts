@@ -12,12 +12,16 @@ import { Debate } from 'src/shared/entities/debate.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateDebateDto } from './dto/create.dto';
+import { DebateArgument } from 'src/shared/entities/debte-argument';
+import { CreateDebateArgumentDto } from './dto/argument.dto';
 @Injectable()
 export class DebateService {
   constructor(
     @InjectModel(Debate.name) private debateModel: Model<Debate>,
     @InjectModel(ClubMembers.name) private clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(DebateArgument.name)
+    private debateArgumentModel: Model<DebateArgument>,
     private readonly s3FileUpload: UploadService,
   ) {}
 
@@ -685,14 +689,46 @@ export class DebateService {
     };
   }
 
-  async getDebateById(id: string): Promise<Debate> {
-    const debate = await this.debateModel
-      .findById(id)
-      .populate('createdBy')
-      .exec();
-    if (!debate) {
-      throw new NotFoundException('Debate not found');
+  async createArgument(
+    createDebateArgumentDto: CreateDebateArgumentDto,
+  ): Promise<DebateArgument> {
+    const { debate, participantUser, participantSide, content } =
+      createDebateArgumentDto;
+    try {
+      const newArgument = new this.debateArgumentModel({
+        debate,
+        participant: {
+          user: participantUser,
+          side: participantSide,
+        },
+        content,
+      });
+      return newArgument.save();
+    } catch (error) {
+      throw error;
     }
-    return debate;
+  }
+  async getArgumentsByDebate(debateId: string) {
+    try {
+      const debateArguments = await this.debateArgumentModel
+        .find({
+          debate: debateId,
+        })
+        .populate('participant.user', 'name email') // Populate user details if necessary
+        .exec();
+
+      if (!debateArguments || debateArguments.length === 0) {
+        throw new NotFoundException(
+          `No arguments found for debate with ID ${debateId}`,
+        );
+      }
+
+      return arguments;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch debate arguments',
+        error.message,
+      );
+    }
   }
 }
