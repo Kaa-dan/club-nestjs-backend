@@ -102,7 +102,7 @@ export class RulesRegulations extends Document {
   @Prop({})
   publishedDate: Date;
 
-  @Prop({ required: true, ref: User.name })
+  @Prop({ required: false, ref: User.name })
   publishedBy: Types.ObjectId;
 
   @Prop()
