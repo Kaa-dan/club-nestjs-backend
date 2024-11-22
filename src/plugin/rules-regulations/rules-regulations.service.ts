@@ -342,6 +342,8 @@ export class RulesRegulationsService {
         dataToSave.rulesId,
       );
 
+      console.log({ existingRule });
+
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }

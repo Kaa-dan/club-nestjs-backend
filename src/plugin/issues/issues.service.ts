@@ -12,6 +12,8 @@ import { CreateIssuesDto } from './dto/create-issue.dto';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async, publish } from 'rxjs';
+import { Node_ } from 'src/shared/entities/node.entity';
+import { Club } from 'src/shared/entities/club.entity';
 
 interface FileObject {
   buffer: Buffer;
@@ -30,6 +32,11 @@ export class IssuesService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(Node_.name)
+    private readonly nodeModel: Model<Node_>,
+    @InjectModel(Club.name)
+    private readonly clubModel: Model<Club>,
+
   ) { }
 
   /**
@@ -204,6 +211,7 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -227,7 +235,13 @@ export class IssuesService {
         .find(query)
         .populate('createdBy', '-password')
         .exec();
-    } catch (error) { }
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
   }
 
   /**
@@ -258,6 +272,7 @@ export class IssuesService {
       }
       return await this.issuesModel.find(query).exec();
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -278,12 +293,36 @@ export class IssuesService {
         .populate('club')
         .exec();
     } catch (error) {
+      console.log(error)
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
       );
     }
   }
+
+
+  async getIssue(issueId: Types.ObjectId) {
+    try {
+      const response = await this.issuesModel
+        .findById(issueId)
+        .populate('createdBy', '-password')
+        .populate('whoShouldAddress')
+        .populate('node')
+        .populate('club')
+        .exec();
+
+      console.log(response, 'ice')
+      return response
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException(
+        'Error while getting specific issue',
+        error,
+      );
+    }
+  }
+
   //handling file uploads
   private async uploadFile(file: Express.Multer.File) {
     try {
@@ -296,6 +335,7 @@ export class IssuesService {
       );
       return response;
     } catch (error) {
+      console.log(error);
       throw new BadRequestException(
         'Failed to upload file. Please try again later.',
       );
@@ -484,4 +524,242 @@ export class IssuesService {
       );
     }
   }
+
+  /**
+   * Like an issue.
+   * @param userId The id of the user to like the issue for
+   * @param issueId The id of the issue to like
+   * @throws `BadRequestException` if the issueId is invalid
+   * @throws `NotFoundException` if the issue is not found
+   * @throws `InternalServerErrorException` if there is an error while liking the issue
+   * @returns The updated issue document
+   */
+  async likeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
+    try {
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found')
+      }
+
+      const issue = await this.issuesModel.findById(issueId);
+      if (!issue) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      const alreadyLiked = issue.relevant.some(
+        (like) => like.user.equals(userId)
+      );
+
+      if (alreadyLiked) {
+        return await this.issuesModel.findByIdAndUpdate(
+          issueId,
+          { $pull: { relevant: { user: userId } } },
+          { new: true }
+        )
+      }
+
+      return await this.issuesModel.findByIdAndUpdate(
+        issueId,
+        {
+          $addToSet: { relevant: { user: userId, date: new Date() } },
+          $pull: { irrelevant: { user: userId } }
+        },
+        { new: true }
+      )
+
+    } catch (error) {
+
+      console.log(error)
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while adopting issue',
+        error,
+      )
+
+    }
+  }
+
+  /**
+   * Dislike an issue.
+   * @param userId The id of the user to dislike the issue for
+   * @param issueId The id of the issue to dislike
+   * @throws `BadRequestException` if the issueId is invalid
+   * @throws `NotFoundException` if the issue is not found
+   * @throws `InternalServerErrorException` if there is an error while disliking the issue
+   * @returns The updated issue document
+   */
+  async dislikeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
+    try {
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found')
+      }
+
+      const issue = await this.issuesModel.findById(issueId);
+      if (!issue) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      const alreadyDisliked = issue.irrelevant.some(
+        (dislike) => dislike.user.equals(userId)
+      );
+
+      if (alreadyDisliked) {
+        return await this.issuesModel.findByIdAndUpdate(
+          issueId,
+          { $pull: { irrelevant: { user: userId } } },
+          { new: true }
+        )
+      }
+
+      return await this.issuesModel.findByIdAndUpdate(
+        issueId,
+        {
+          $addToSet: { irrelevant: { user: userId, date: new Date() } },
+          $pull: { relevant: { user: userId } }
+        },
+        { new: true }
+      )
+
+    } catch (error) {
+
+      console.log(error)
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while adopting issue',
+        error,
+      )
+    }
+  }
+
+
+  async getClubsNodesNotAdopted(userId: Types.ObjectId, issueId: Types.ObjectId) {
+    try {
+
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found')
+      }
+
+      const issue = await this.issuesModel.findById(issueId);
+
+      if (!issue) {
+        throw new NotFoundException('Issue not found')
+      }
+
+      let adoptedClubs: Types.ObjectId[] = [];
+      let adoptedNodes: Types.ObjectId[] = [];
+
+      adoptedClubs = issue.adoptedClubs.map(club => club.club);
+      adoptedNodes = issue.adoptedNodes.map(node => node.node);
+
+      // Find clubs where user is a member but hasn't adopted the issue
+      const memberClubs = await this.clubModel.aggregate([
+        {
+          $match: {
+            _id: { $nin: adoptedClubs },
+          }
+        },
+        {
+          $lookup: {
+            from: 'clubmembers',
+            let: { clubId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$club', '$$clubId'] },
+                      { $eq: ['$user', new Types.ObjectId(userId)] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'userMembership'
+          }
+        },
+        {
+          $match: {
+            userMembership: { $not: { $size: 0 } } // Clubs where user is a member
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            userRole: { $arrayElemAt: ['$userMembership.role', 0] } // Include user's role
+          }
+        }
+      ]);
+
+      // Find nodes where user is a member but hasn't adopted the issue
+      const memberNodes = await this.nodeModel.aggregate([
+        {
+          $match: {
+            _id: { $nin: adoptedNodes },
+          }
+        },
+        {
+          $lookup: {
+            from: 'nodemembers',
+            let: { nodeId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$node', '$$nodeId'] },
+                      { $eq: ['$user', new Types.ObjectId(userId)] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'userMembership'
+          }
+        },
+        {
+          $match: {
+            userMembership: { $not: { $size: 0 } } // Nodes where user is a member
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            description: 1,
+            userRole: { $arrayElemAt: ['$userMembership.role', 0] } // Include user's role
+          }
+        }
+      ]);
+
+      return {
+        clubs: memberClubs,
+        nodes: memberNodes
+      };
+
+
+    } catch (error) {
+
+      console.log(error)
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while getting clubs and nodes not adopted',
+        error
+      )
+    }
+  }
+
+
 }
