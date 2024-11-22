@@ -6,14 +6,25 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
+import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { Issues } from 'src/shared/entities/issues.entity';
 
-@Controller('comment')
+@Controller('comments')
 export class CommentController {
     constructor(private readonly commentService: CommentService) { }
 
     @Get()
     async getAllComments() {
         return await this.commentService.getAllComments();
+    }
+
+    @Get(':entityType/:entityId')
+    async getCommentsByEntity(@Param('entityType') entityType: string, @Param('entityId') entityId: Types.ObjectId) {
+        const entity =
+            entityType === 'rules' ? RulesRegulations.name
+                : entityType === 'issues' ? Issues.name
+                    : "";
+        return this.commentService.getCommentsByEntity(entity, entityId);
     }
 
     @UseInterceptors(
@@ -41,24 +52,27 @@ export class CommentController {
         file: Express.Multer.File[],
         @Body() createCommentDto: CreateCommentDto,
     ) {
-        // console.log(file[0], 'file')
+        const entity = createCommentDto.entityType === 'rules' ? RulesRegulations.name
+            : createCommentDto.entityType === 'issues' ? Issues.name
+                : "";
+        createCommentDto.entityType = entity;
         const userId = new Types.ObjectId(req.user._id);
         return await this.commentService.createComment(createCommentDto, userId, file[0]);
     }
 
-    @Put(':id/like')
+    @Put('like/:id')
     async likeComment(@Req() req, @Param('id') commentId: string) {
         const userId = new Types.ObjectId(req.user._id);
         return await this.commentService.likeComment(new Types.ObjectId(commentId), userId);
     }
 
-    @Put(':id/dislike')
+    @Put('dislike/:id')
     async dislikeComment(@Req() req, @Param('id') commentId: string) {
         const userId = new Types.ObjectId(req.user._id);
         return await this.commentService.dislikeComment(new Types.ObjectId(commentId), userId);
     }
 
-    @Put(':id/delete')
+    @Put('delete/:id')
     async deleteComment(@Req() req, @Param('id') commentId: string) {
         return await this.commentService.deleteComment(new Types.ObjectId(commentId));
     }

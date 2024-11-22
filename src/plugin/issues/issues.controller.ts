@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Put,
   Query,
@@ -19,10 +20,14 @@ import e, { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
+import { Issues } from 'src/shared/entities/issues.entity';
 
 @Controller('issues')
 export class IssuesController {
-  constructor(private readonly issuesService: IssuesService) {}
+  constructor(
+    private readonly issuesService: IssuesService,
+
+  ) { }
 
   /**
    * POST / => Create Issue
@@ -80,6 +85,7 @@ export class IssuesController {
         createdBy: new Types.ObjectId(req.user._id),
         isActive: false,
         files,
+        whoShouldAddress: createIssuesData.whoShouldAddress.split(',')
       };
 
       return await this.issuesService.createIssue(dataToSave);
@@ -92,6 +98,7 @@ export class IssuesController {
         isActive: false,
         files,
         publishedStatus: 'proposed',
+        whoShouldAddress: createIssuesData.whoShouldAddress.split(',')
       };
 
       return await this.issuesService.createIssue(dataToSave);
@@ -105,6 +112,7 @@ export class IssuesController {
       isActive: true,
       version: 1,
       files,
+      whoShouldAddress: createIssuesData.whoShouldAddress.split(',')
     };
 
     return await this.issuesService.createIssue(dataToSave);
@@ -156,6 +164,11 @@ export class IssuesController {
       dataToSave,
       fileObjects,
     );
+  }
+
+  @Get('get-issue/:issueId')
+  async getIssue(@Req() req: Request, @Param('issueId') issueId) {
+    return await this.issuesService.getIssue(new Types.ObjectId(issueId));
   }
 
   @Get('get-all-active-issues')
@@ -213,4 +226,34 @@ export class IssuesController {
       new Types.ObjectId(issueId),
     );
   }
+
+  @Put('like/:issueId')
+  async likeIssue(@Req() req: Request, @Param('issueId') issueId) {
+    console.log("like")
+    return await this.issuesService.likeIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
+  @Put('dislike/:issueId')
+  async dislikeIssue(@Req() req: Request, @Param('issueId') issueId) {
+    console.log("dislike")
+    return await this.issuesService.dislikeIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
+  @Get('get-clubs-and-nodes-not-adopted/:issueId')
+  async getClubsNodesNotAdopted(
+    @Req() req: Request,
+    @Param('issueId') issueId
+  ) {
+    return await this.issuesService.getClubsNodesNotAdopted(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
 }
