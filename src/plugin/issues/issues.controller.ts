@@ -220,11 +220,20 @@ export class IssuesController {
   }
 
   @Post('adopt-proposed-issue/:issueId')
-  async adoptProposedIssue(@Req() req: Request, @Query('issueId') issueId) {
+  async adoptProposedIssue(@Req() req: Request, @Param('issueId') issueId) {
     return this.issuesService.adoptProposedIssue(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),
     );
+  }
+
+  @Get('proposed-issues/:entity/:entityId')
+  async getProposedIssues(
+    @Req() req: Request,
+    @Param('entity') entity,
+    @Param('entityId') entityId
+  ) {
+    return this.issuesService.getProposedIssues(entity, new Types.ObjectId(entityId));
   }
 
   @Put('like/:issueId')

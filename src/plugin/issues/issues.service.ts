@@ -587,6 +587,12 @@ export class IssuesService {
     }
   }
 
+
+  async getProposedIssues(entity, entityId) {
+    console.log(entity, "entity")
+    console.log(entityId, "entityId")
+  }
+
   /**
    * Like an issue.
    * @param userId The id of the user to like the issue for
