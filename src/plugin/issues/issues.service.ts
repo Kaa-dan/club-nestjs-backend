@@ -587,6 +587,29 @@ export class IssuesService {
     }
   }
 
+
+  async getProposedIssues(entity, entityId: Types.ObjectId) {
+    try {
+      if (entity === 'node') {
+        return await this.issuesModel
+          .find({ node: entityId, publishedStatus: 'proposed' })
+          .populate('createdBy', '-password')
+          .exec();
+      } else {
+        return await this.issuesModel
+          .find({ club: entityId, publishedStatus: 'proposed' })
+          .populate('createdBy', '-password')
+          .exec();
+      }
+    } catch (error) {
+      console.log(error)
+      throw new InternalServerErrorException(
+        'Error while getting proposed issues',
+        error,
+      );
+    }
+  }
+
   /**
    * Like an issue.
    * @param userId The id of the user to like the issue for
