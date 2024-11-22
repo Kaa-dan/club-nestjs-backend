@@ -211,7 +211,7 @@ export class IssuesController {
   async getGlobalActiveIssues() {
     return await this.issuesService.getGlobalActiveIssues();
   }
-  @Post('adopt-issue/:issueId')
+  @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
     return await this.issuesService.adoptIssueAndPropose(
       new Types.ObjectId(req.user._id),
