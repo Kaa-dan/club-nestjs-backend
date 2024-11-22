@@ -347,7 +347,10 @@ export class DebateService {
       }
 
       // Fetch debates matching the query
-      const debates = await this.debateModel.find(query).exec();
+      const debates = await this.debateModel
+        .find(query)
+        .populate('createdBy')
+        .exec();
 
       // Check if no debates are found and throw an error
       if (!debates || debates.length === 0) {
@@ -373,7 +376,7 @@ export class DebateService {
   async getOngoingPublicGlobalDebates(): Promise<Debate[]> {
     try {
       const currentTime = new Date(); // Current date and time
-      const debates = await this.debateModel.find(); // Fetch all debates
+      const debates = await this.debateModel.find().populate('createdBy'); // Fetch all debates
       console.log({ debates });
 
       // Filter debates based on conditions
@@ -433,7 +436,10 @@ export class DebateService {
       }
 
       // Fetch all debates created by the user (no date filtering yet)
-      const debates = await this.debateModel.find(query).exec();
+      const debates = await this.debateModel
+        .find(query)
+        .populate('createdBy')
+        .exec();
 
       // Check if no debates are found and throw an error
       if (!debates || debates.length === 0) {
@@ -496,6 +502,7 @@ export class DebateService {
           createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
           closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
         })
+        .populate('createdBy')
         .exec();
 
       // If no ongoing debates found, throw an exception
