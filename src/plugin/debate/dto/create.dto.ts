@@ -33,11 +33,6 @@ export class CreateDebateDto {
   @Type(() => Date)
   closingDate?: Date;
 
-  @IsOptional()
-  @IsDate()
-  @Type(() => Date)
-  openingDate?: Date;
-
   @IsString()
   significance: string;
 
@@ -75,4 +70,8 @@ export class CreateDebateDto {
   @IsOptional()
   @IsString()
   publishedStatus?: TPublishedStatus;
+  @IsOptional()
+  @IsDate()
+  @Type(() => Date)
+  createdAt;
 }

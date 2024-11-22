@@ -13,6 +13,8 @@ import {
   Get,
   Param,
   Patch,
+  InternalServerErrorException,
+  Put,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -95,6 +97,8 @@ export class DebateController {
 
   @Post('adopt')
   async adoptDebate(@Body() body: AdoptDebateDto, @Req() req: any) {
+    console.log({ body });
+
     try {
       const userId = req.user._id; // Extract the authenticated user's ID
       console.log({ userId });
@@ -152,6 +156,7 @@ export class DebateController {
         userId,
         entityId,
       });
+      console.log({ result });
 
       // Return the result to the client
       return result;
@@ -168,10 +173,9 @@ export class DebateController {
     @Req() req: Request,
   ) {
     try {
-      const userId = req.user._id;
       return await this.debateService.myDebatesByStatus({
         entity,
-        userId,
+
         entityId,
       });
     } catch (error) {
@@ -181,8 +185,10 @@ export class DebateController {
   @Get('ongoing')
   async getOngoingDebates(
     @Query('entityId') entityId: string,
-    @Query('entityType') entityType: 'club' | 'node',
+    @Query('entity') entityType: 'club' | 'node',
   ) {
+    console.log({ entityId, entityType });
+
     try {
       if (!entityId || !entityType) {
         throw new BadRequestException(
@@ -201,6 +207,25 @@ export class DebateController {
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
       throw error;
+    }
+  }
+
+  @Get('global')
+  async getOngoingPublicGlobalDebates() {
+    try {
+      const ongoingDebates =
+        await this.debateService.getOngoingPublicGlobalDebates();
+      return {
+        message: 'Ongoing public global debates fetched successfully',
+        data: ongoingDebates,
+      };
+    } catch (error) {
+      throw new HttpException(
+        {
+          message: error.message || 'An error occurred while fetching debates.',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -225,6 +250,53 @@ export class DebateController {
       };
     } catch (error) {
       console.error('Error publishing debate:', error);
+      throw error;
+    }
+  }
+
+  @Put('create-views')
+  async createViewsForRulesAndRegulations(
+    @Req() req: Request,
+    @Body('rulesId') rulesId: Types.ObjectId,
+  ) {
+    try {
+      console.log({ rulesId });
+      return await this.debateService.createViewsForRulesAndRegulations(
+        req.user._id,
+        rulesId,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while liking rules-regulations',
+        error,
+      );
+    }
+  }
+
+  @Get('get-clubs-nodes-notadopted/:debateId')
+  async getClubsNodesNotAdopted(
+    @Req() req: Request,
+    @Param('debateId') rulesId: Types.ObjectId,
+  ) {
+    try {
+      return await this.debateService.getNonAdoptedClubsAndNodes(
+        req.user._id,
+        new Types.ObjectId(rulesId),
+      );
+    } catch (error) {
+      console.log('errrrr ', error);
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  @Get('view/:id')
+  async viewDebate(@Param('id') id: string) {
+    try {
+      return this.debateService.getDebateById(id);
+    } catch (error) {
       throw error;
     }
   }

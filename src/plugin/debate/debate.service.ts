@@ -30,9 +30,12 @@ export class DebateService {
         node,
         closingDate,
         openingDate,
+        tags,
         ...rest
       } = createDebateDto;
       console.log({ createDebateDto });
+      const parsedTags = JSON.parse(tags);
+      console.log({ parsedTags });
 
       // Ensure either club or node is provided, not both
       if (!club && !node) {
@@ -116,6 +119,7 @@ export class DebateService {
         club: section === 'club' ? new Types.ObjectId(sectionId) : null, // Assign club if section is club
         openingDate,
         closingDate,
+        tags: parsedTags,
         createdBy: userId,
         publishedStatus,
         publishedBy,
@@ -370,21 +374,22 @@ export class DebateService {
     try {
       const currentTime = new Date(); // Current date and time
       const debates = await this.debateModel.find(); // Fetch all debates
+      console.log({ debates });
 
       // Filter debates based on conditions
-      const ongoingPublicGlobalDebates = debates.filter(
-        (debate: CreateDebateDto) => {
-          const startTime = new Date(debate.closingDate); // Debate start time
-          const endTime = new Date(debate.openingDate); // Debate end time
+      const ongoingPublicGlobalDebates = debates.filter((debate: any) => {
+        const startTime = new Date(debate.createdAt); // Debate start time (createdAt)
+        const endTime = new Date(debate.closingDate); // Debate end time (closingDate)
 
-          const isOngoing = startTime <= currentTime && endTime > currentTime;
-          return debate.isPublic && isOngoing;
-        },
-      );
+        // Debate is ongoing if the current time is between startTime and endTime
+        const isOngoing = startTime <= currentTime && currentTime < endTime;
+        return debate.isPublic && isOngoing;
+      });
+      console.log({ ongoingPublicGlobalDebates });
 
       // If no debates match the criteria, throw an error
       if (ongoingPublicGlobalDebates.length === 0) {
-        throw new Error('No ongoing public global debates found.');
+        throw new NotFoundException('No ongoing public global debates found.');
       }
 
       return ongoingPublicGlobalDebates;
@@ -395,18 +400,16 @@ export class DebateService {
 
   async myDebatesByStatus({
     entity,
-    userId,
+
     entityId,
   }: {
     entity: 'club' | 'node'; // Define entity type
-    userId: string;
+
     entityId?: string; // This will hold either clubId or nodeId based on entity
   }) {
     try {
       // Build the base query object to find debates created by the user
-      const query: any = {
-        createdBy: new Types.ObjectId(userId), // Ensure the user is the creator of the debate
-      };
+      const query: any = {};
 
       // Add the entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
@@ -441,8 +444,8 @@ export class DebateService {
       const currentTime = new Date();
 
       // Split debates into ongoing and expired based on date logic
-      const ongoingDebates = debates.filter((debate) => {
-        const openingDate = new Date(debate.openingDate);
+      const ongoingDebates = debates.filter((debate: any) => {
+        const openingDate = new Date(debate.createdAt);
         const closingDate = new Date(debate.closingDate);
         return openingDate <= currentTime && closingDate >= currentTime;
       });
@@ -486,18 +489,20 @@ export class DebateService {
         query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
       }
 
-      // Filter for ongoing debates (i.e., startTime <= currentTime and endTime > currentTime)
+      // Fetch ongoing debates
       const ongoingDebates = await this.debateModel
         .find({
           ...query,
-          openingDate: { $lte: currentTime }, // Debate has started
-          closingDate: { $gt: currentTime }, // Debate is not yet closed
+          createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
+          closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
         })
         .exec();
 
       // If no ongoing debates found, throw an exception
       if (!ongoingDebates || ongoingDebates.length === 0) {
-        throw new Error(`No ongoing debates found for the ${entityType}.`);
+        throw new NotFoundException(
+          `No ongoing debates found for the ${entityType}.`,
+        );
       }
 
       // Return the ongoing debates
@@ -560,5 +565,127 @@ export class DebateService {
     } catch (error) {
       throw error; // Let the caller handle errors
     }
+  }
+
+  async createViewsForRulesAndRegulations(
+    userId: Types.ObjectId,
+    rulesRegulationId: Types.ObjectId,
+  ) {
+    console.log({ userId });
+
+    try {
+      // Check if the user has already liked
+      const rulesRegulation = await this.debateModel.findOne({
+        _id: rulesRegulationId,
+        views: userId,
+      });
+
+      if (rulesRegulation) {
+        throw new BadRequestException(
+          'User has already viewed this rules regulation',
+        );
+      }
+
+      // Update the document: Add to relevant array and remove from irrelevant if exists
+      const updatedRulesRegulation = await this.debateModel
+        .findByIdAndUpdate(
+          rulesRegulationId,
+          {
+            // Add to relevant array if not exists
+            $addToSet: { views: { user: userId } },
+          },
+          { new: true },
+        )
+        .exec();
+
+      if (!updatedRulesRegulation) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      return { message: 'Viewed successfully' };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Error while viewing rules-regulations',
+        error,
+      );
+    }
+  }
+
+  async getNonAdoptedClubsAndNodes(userId: string, debateId: Types.ObjectId) {
+    // Fetch all clubs the user is part of (status: 'MEMBER') and include the role and name
+    const userClubs = await this.clubMembersModel
+      .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
+      .populate('club', 'name') // Populate club name
+      .select('club role') // Include role in the query
+      .lean();
+
+    const userClubIds = userClubs.map((club) => club.club._id.toString());
+    const userClubDetails = userClubs.reduce((acc, club: any) => {
+      acc[club.club._id.toString()] = { role: club.role, name: club.club.name };
+      return acc;
+    }, {});
+
+    // Fetch all nodes the user is part of (status: 'MEMBER') and include the role and name
+    const userNodes = await this.nodeMembersModel
+      .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
+      .populate('node', 'name') // Populate node name
+      .select('node role') // Include role in the query
+      .lean();
+
+    const userNodeIds = userNodes.map((node) => node.node._id.toString());
+    const userNodeDetails = userNodes.reduce((acc, node: any) => {
+      acc[node.node._id.toString()] = { role: node.role, name: node.node.name };
+      return acc;
+    }, {});
+
+    // Fetch the debate and its adopted clubs/nodes
+    const debate = await this.debateModel
+      .findById(debateId)
+      .select('adoptedClubs adoptedNodes')
+      .lean();
+
+    if (!debate) {
+      throw new NotFoundException('Debate not found');
+    }
+
+    const adoptedClubIds = debate?.adoptedClubs?.map((adopted) =>
+      adopted.club.toString(),
+    );
+    const adoptedNodeIds = debate?.adoptedNodes?.map((adopted) =>
+      adopted.node.toString(),
+    );
+
+    // Find non-adopted clubs and nodes by filtering out the adopted ones
+    const nonAdoptedClubs = userClubIds
+      .filter((clubId) => !adoptedClubIds.includes(clubId))
+      .map((clubId) => ({
+        clubId,
+        role: userClubDetails[clubId].role, // Return the role for the club
+        name: userClubDetails[clubId].name, // Return the name for the club
+      }));
+
+    const nonAdoptedNodes = userNodeIds
+      .filter((nodeId) => !adoptedNodeIds.includes(nodeId))
+      .map((nodeId) => ({
+        nodeId,
+        role: userNodeDetails[nodeId].role, // Return the role for the node
+        name: userNodeDetails[nodeId].name, // Return the name for the node
+      }));
+
+    return {
+      nonAdoptedClubs,
+      nonAdoptedNodes,
+    };
+  }
+
+  async getDebateById(id: string): Promise<Debate> {
+    const debate = await this.debateModel
+      .findById(id)
+      .populate('createdBy')
+      .exec();
+    if (!debate) {
+      throw new NotFoundException('Debate not found');
+    }
+    return debate;
   }
 }

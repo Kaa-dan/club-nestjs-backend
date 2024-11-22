@@ -5,7 +5,10 @@ import { Club } from './club.entity';
 import { Node_ } from './node.entity';
 import { User } from './user.entity';
 import { Document } from 'mongoose';
-
+interface View {
+  user: Types.ObjectId;
+  date: Date;
+}
 @Schema({ timestamps: true })
 export class Debate extends Document {
   @Prop({ trim: true, required: true })
@@ -13,9 +16,6 @@ export class Debate extends Document {
 
   @Prop({ required: true })
   closingDate: Date;
-
-  @Prop({ required: true })
-  openingDate: Date;
 
   @Prop({ required: true })
   significance: string;
@@ -89,6 +89,14 @@ export class Debate extends Document {
     node: Types.ObjectId;
     date: Date;
   }[];
+
+  @Prop([
+    {
+      user: { type: Types.ObjectId, ref: User.name, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ])
+  views: View[];
 
   @Prop({ type: Types.ObjectId, ref: User.name })
   createdBy: Types.ObjectId;
