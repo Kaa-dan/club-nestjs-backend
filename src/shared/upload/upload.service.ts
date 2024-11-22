@@ -11,6 +11,7 @@ import { ENV } from 'src/utils/config/env.config';
 @Injectable()
 export class UploadService {
   private readonly s3Client: S3Client;
+  private readonly bucketEndpoint: string;
 
   constructor(private readonly configService: ConfigService) {
     this.s3Client = new S3Client({
@@ -20,6 +21,7 @@ export class UploadService {
       },
       region: ENV.AWS_REGION,
     });
+    this.bucketEndpoint = `${ENV.S3_BUCKET_NAME}.s3.amazonaws.com`;
   }
 
   private extractKeyFromUrl(url: string): string | null {
@@ -41,13 +43,11 @@ export class UploadService {
     url: string;
   }> {
     try {
-
       const fileExtension = path.extname(filename);
       const uniqueFileName = `${Date.now()}-${Math.round(
         Math.random() * 1e9,
       )}${fileExtension}`;
       const key = `${folder}/${uniqueFileName}`;
-
 
       const command = new PutObjectCommand({
         Bucket: ENV.S3_BUCKET_NAME,
@@ -58,14 +58,17 @@ export class UploadService {
 
       await this.s3Client.send(command);
 
-      const publicUrl = `https://s3.amazonaws.com/${ENV.S3_BUCKET_NAME}/${key}`;
+      // const publicUrl = `https://s3.amazonaws.com/${ENV.S3_BUCKET_NAME}/${key}`;
+      const publicUrl = `https://${this.bucketEndpoint}/${key}`;
       return {
         filename: key,
         url: publicUrl,
       };
     } catch (error) {
       console.log(error);
-      throw new InternalServerErrorException(`Failed to upload file: ${error.message ?? error}`);
+      throw new InternalServerErrorException(
+        `Failed to upload file: ${error.message ?? error}`,
+      );
     }
   }
 
@@ -85,7 +88,9 @@ export class UploadService {
         success: true,
       };
     } catch (error) {
-      throw new InternalServerErrorException(`Failed to delete file: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Failed to delete file: ${error.message}`,
+      );
     }
   }
 }
