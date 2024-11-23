@@ -11,10 +11,17 @@ import { UserResponseDto } from './dto/user.dto';
 import { plainToClass } from 'class-transformer';
 import { User } from 'src/shared/entities/user.entity';
 import { UserWithoutPassword } from './dto/user.type';
+import { AccessDto } from './dto/access.dto';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
+  ) { }
 
   async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
     try {
@@ -183,6 +190,198 @@ export class UserService {
       return { isLogged: true, user };
     } catch (error) {
 
+    }
+  }
+
+
+  /**
+   * Assigns admin role to a user in a specified entity (node or club).
+   * 
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the admin role.
+   * 
+   * @returns The updated node or club member document with the new admin role.
+   * 
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating admin access.
+   */
+  async makeAdmin(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto;
+
+      if (entity === 'node') {
+
+        const nodeMember = await this.nodeMembersModel.findOne({ node: new Types.ObjectId(entityId) });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'admin' } },
+          { new: true }
+        );
+
+      } else {
+
+        const clubMember = await this.clubMembersModel.findOne({ club: new Types.ObjectId(entityId) });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'admin' } },
+          { new: true }
+        );
+
+      }
+
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    }
+  }
+
+
+  /**
+   * Assigns moderator role to a user in a specified entity (node or club).
+   * 
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the moderator role.
+   * 
+   * @returns The updated node or club member document with the new moderator role.
+   * 
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating moderator access.
+   */
+  async makeModerator(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto
+
+      if (entity === 'node') {
+
+        const nodeMember = await this.nodeMembersModel.findOne({ node: new Types.ObjectId(entityId) });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'moderator' } },
+          { new: true }
+        );
+
+      } else {
+
+        const clubMember = await this.clubMembersModel.findOne({ club: new Types.ObjectId(entityId) });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'moderator' } },
+          { new: true }
+        )
+      }
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    }
+  }
+
+
+  /**
+   * Assigns member role to a user in a specified entity (node or club).
+   * 
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the member role.
+   * 
+   * @returns The updated node or club member document with the new member role.
+   * 
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating admin access.
+   */
+  async makeMember(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto
+
+      if (entity === 'node') {
+
+        const nodeMember = await this.nodeMembersModel.findOne({ node: new Types.ObjectId(entityId) });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'member' } },
+          { new: true }
+        );
+
+      } else {
+
+        const clubMember = await this.clubMembersModel.findOne({ club: new Types.ObjectId(entityId) });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(new Types.ObjectId(accessToUserId));
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'member' } },
+          { new: true }
+        )
+      }
+
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
     }
   }
 }

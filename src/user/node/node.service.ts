@@ -69,7 +69,7 @@ export class NodeService {
       const createNodeMember = new this.nodeMembersModel({
         node: nodeResponse._id,
         user: nodeResponse.createdBy,
-        role: 'admin',
+        role: 'owner',
         status: 'MEMBER',
       });
 
