@@ -30,7 +30,7 @@ import { Debate, DebateSchema } from './entities/debate.entity';
 import {
   DebateArgument,
   DebateArgumentSchema,
-} from './entities/debte-argument';
+} from './entities/debate-argument';
 
 @Module({
   imports: [

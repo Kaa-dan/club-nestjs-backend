@@ -12,7 +12,7 @@ import { Debate } from 'src/shared/entities/debate.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateDebateDto } from './dto/create.dto';
-import { DebateArgument } from 'src/shared/entities/debte-argument';
+import { DebateArgument } from 'src/shared/entities/debate-argument';
 import { CreateDebateArgumentDto } from './dto/argument.dto';
 @Injectable()
 export class DebateService {
@@ -689,17 +689,44 @@ export class DebateService {
     };
   }
 
-  async createArgument(
-    createDebateArgumentDto: CreateDebateArgumentDto,
-  ): Promise<DebateArgument> {
-    const { debate, participantUser, participantSide, content } =
-      createDebateArgumentDto;
+  async getDebateById(id: string): Promise<Debate> {
     try {
+      const debate = await this.debateModel
+        .findById(id)
+        .populate('createdBy')
+        .exec();
+      if (!debate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return debate;
+    } catch (error) {}
+  }
+  async createArgument(
+    createDebateArgumentDto,
+    file?: Express.Multer.File,
+  ): Promise<DebateArgument> {
+    const { userId, debateId, side, content } = createDebateArgumentDto;
+    try {
+      console.log({ file });
+
+      let url;
+      if (file) {
+        const uploadedFile = await this.s3FileUpload.uploadFile(
+          file[0].buffer,
+          file[0].originalname,
+          file[0].mimetype,
+          'comment',
+        );
+        if (uploadedFile) {
+          url = uploadedFile.url;
+        }
+      }
       const newArgument = new this.debateArgumentModel({
-        debate,
+        debate: new Types.ObjectId(debateId),
+        imageUrl: url,
         participant: {
-          user: participantUser,
-          side: participantSide,
+          user: new Types.ObjectId(userId),
+          side: side,
         },
         content,
       });
@@ -712,9 +739,9 @@ export class DebateService {
     try {
       const debateArguments = await this.debateArgumentModel
         .find({
-          debate: debateId,
+          debate: new Types.ObjectId(debateId),
         })
-        .populate('participant.user', 'name email') // Populate user details if necessary
+        .populate('participant.user', 'firstName profileImage ') // Populate user details if necessary
         .exec();
 
       if (!debateArguments || debateArguments.length === 0) {
@@ -723,12 +750,44 @@ export class DebateService {
         );
       }
 
-      return arguments;
+      return debateArguments;
     } catch (error) {
       throw new InternalServerErrorException(
         'Failed to fetch debate arguments',
         error.message,
       );
     }
+  }
+
+  async toggleVote(
+    argumentId: string,
+    userId: string,
+    voteType: 'relevant' | 'irrelevant',
+  ) {
+    // Define the opposite field
+    const opposite = voteType === 'relevant' ? 'irrelevant' : 'relevant';
+
+    // Remove the user from the opposite array first
+    await this.debateArgumentModel.findByIdAndUpdate(argumentId, {
+      $pull: { [opposite]: userId },
+    });
+
+    // Check if the user is already in the target array
+    const argument = await this.debateArgumentModel.findById(argumentId);
+    const isInTarget = argument[voteType].includes(new Types.ObjectId(userId));
+
+    // Toggle the user in the target array
+    const updateOperation = isInTarget
+      ? { $pull: { [voteType]: userId } } // Remove user if already in the array
+      : { $addToSet: { [voteType]: userId } }; // Add user if not in the array
+
+    // Perform the update
+    const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+      argumentId,
+      updateOperation,
+      { new: true }, // Return the updated document
+    );
+
+    return updatedArgument;
   }
 }

@@ -2,10 +2,11 @@ import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { Debate } from './debate.entity';
 import { User } from './user.entity';
+
 @Schema({ timestamps: true })
 export class DebateArgument extends Document {
   @Prop({ type: Types.ObjectId, ref: Debate.name, required: true })
-  debate: Types.ObjectId; // Reference to the Debate document
+  debate: Types.ObjectId;
 
   @Prop({
     type: {
@@ -15,15 +16,30 @@ export class DebateArgument extends Document {
     required: true,
   })
   participant: {
-    user: Types.ObjectId; // Reference to the User document
-    side: 'support' | 'against'; // Side chosen by the participant
+    user: Types.ObjectId;
+    side: 'support' | 'against';
   };
 
   @Prop({ type: String, required: true })
-  content: string; // The argument content
+  content: string;
 
   @Prop({ type: Date, default: Date.now })
-  timestamp: Date; // Timestamp of when the argument was created
+  timestamp: Date;
+
+  @Prop({ type: String, required: false }) // Add this for optional image URL
+  imageUrl?: string; // Use `?` to indicate that this property is optional
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: User.name }],
+    default: [],
+  })
+  relevant: Types.ObjectId[];
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: User.name }],
+    default: [],
+  })
+  irrelevant: Types.ObjectId[];
 }
 
 export const DebateArgumentSchema =

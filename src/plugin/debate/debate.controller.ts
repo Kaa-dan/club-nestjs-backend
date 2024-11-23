@@ -20,11 +20,14 @@ import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
 import { Request, Response } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { AdoptDebateDto } from './dto/adopte.dto';
-import { DebateArgument } from 'src/shared/entities/debte-argument';
+import { DebateArgument } from 'src/shared/entities/debate-argument';
 import { CreateDebateArgumentDto } from './dto/argument.dto';
 
 @Controller('debate')
@@ -294,17 +297,58 @@ export class DebateController {
     }
   }
 
+  @Get('view/:id')
+  async viewDebate(@Param('id') id: string) {
+    try {
+      return this.debateService.getDebateById(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   @Get('argument/:debateId')
   async getArgumentsByDebate(@Param('debateId') debateId: string) {
     return this.debateService.getArgumentsByDebate(debateId);
   }
 
+  @UseInterceptors(FilesInterceptor('file', 1, { storage: memoryStorage() }))
   @Post('create-argument')
   async createArgument(
     @Req() req: Request,
-    @Body() createDebateArgumentDto: CreateDebateArgumentDto,
+    @UploadedFiles(
+      new FileValidationPipe({
+        file: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: false,
+        },
+      }),
+    )
+    file: Express.Multer.File,
+
+    @Body() createDebateArgumentDto,
   ): Promise<DebateArgument> {
     const userId = req.user._id;
-    return this.debateService.createArgument(createDebateArgumentDto);
+    createDebateArgumentDto.userId = userId;
+    return this.debateService.createArgument(createDebateArgumentDto, file);
+  }
+
+  @Post('vote/:argumentId')
+  async toggleVote(
+    @Req() req: Request,
+    @Param('argumentId') argumentId: string,
+    @Body() body: { voteType: 'relevant' | 'irrelevant' },
+  ) {
+    const { voteType } = body;
+    const userId = req.user._id;
+    return this.debateService.toggleVote(argumentId, userId, voteType);
   }
 }

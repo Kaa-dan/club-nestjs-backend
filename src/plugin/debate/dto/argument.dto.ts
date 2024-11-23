@@ -3,17 +3,17 @@ import { IsNotEmpty, IsString, IsEnum, IsMongoId } from 'class-validator';
 export class CreateDebateArgumentDto {
   @IsMongoId()
   @IsNotEmpty()
-  debate: string; // ID of the debate
+  debate: string;
 
   @IsMongoId()
   @IsNotEmpty()
-  participantUser: string; // ID of the user posting the argument
+  participantUser: string;
 
   @IsEnum(['support', 'against'])
   @IsNotEmpty()
-  participantSide: 'support' | 'against'; // Side chosen by the participant
+  participantSide: 'support' | 'against';
 
   @IsString()
   @IsNotEmpty()
-  content: string; // Argument content
+  content: string;
 }
