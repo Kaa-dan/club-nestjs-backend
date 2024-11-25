@@ -4,6 +4,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -24,7 +25,6 @@ export class DebateService {
     private debateArgumentModel: Model<DebateArgument>,
     private readonly s3FileUpload: UploadService,
   ) {}
-
   async createDebate(createDebateDto, userId: string) {
     try {
       const {
@@ -35,11 +35,12 @@ export class DebateService {
         closingDate,
         openingDate,
         tags,
+        openingCommentsFor,
+        openingCommentsAgainst,
         ...rest
       } = createDebateDto;
-      console.log({ createDebateDto });
+
       const parsedTags = JSON.parse(tags);
-      console.log({ parsedTags });
 
       // Ensure either club or node is provided, not both
       if (!club && !node) {
@@ -51,11 +52,9 @@ export class DebateService {
         );
       }
 
-      // Determine section based on which id is provided
       const section = club ? 'club' : 'node';
       const sectionId = club || node;
 
-      // Handle file upload
       const uploadPromises = files?.map((file: any) =>
         this.uploadFile(
           {
@@ -69,7 +68,6 @@ export class DebateService {
 
       const uploadedFiles = await Promise.all(uploadPromises);
 
-      // Map the uploaded files to the appropriate file structure
       const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
         url: uploadedFile.url,
         originalname: files[index].originalName,
@@ -77,33 +75,28 @@ export class DebateService {
         size: files[index].size,
       }));
 
-      // Define the member check function based on the section type
       const getMember = async () => {
         if (section === 'club') {
           return this.clubMembersModel.findOne({
-            club: new Types.ObjectId(sectionId), // Search for membership in the specified club
+            club: new Types.ObjectId(sectionId),
             user: userId,
           });
         }
         return this.nodeMembersModel.findOne({
-          node: new Types.ObjectId(sectionId), // Search for membership in the specified node
+          node: new Types.ObjectId(sectionId),
           user: userId,
         });
       };
 
-      // Check if the user is a member of the specified club or node
       const member = await getMember();
-      console.log({ member });
 
       if (!member) {
         throw new NotFoundException(`User is not a member of the ${section}`);
       }
 
-      // Handle publication status
       let publishedStatus: 'draft' | 'published' | 'proposed' = 'proposed';
       let publishedBy: string | null = null;
 
-      // Only admins or moderators can publish the debate
       if (['admin', 'moderator'].includes(member.role)) {
         publishedStatus = requestedStatus === 'draft' ? 'draft' : 'published';
         if (publishedStatus === 'published') {
@@ -115,22 +108,52 @@ export class DebateService {
         throw new BadRequestException('Invalid published status');
       }
 
-      // Create the debate document, ensuring proper assignment of sectionId (club or node)
       const debate = new this.debateModel({
         ...rest,
-
-        node: section === 'node' ? new Types.ObjectId(sectionId) : null, // Assign node if section is node
-        club: section === 'club' ? new Types.ObjectId(sectionId) : null, // Assign club if section is club
+        node: section === 'node' ? new Types.ObjectId(sectionId) : null,
+        club: section === 'club' ? new Types.ObjectId(sectionId) : null,
         openingDate,
         closingDate,
         tags: parsedTags,
         createdBy: userId,
         publishedStatus,
         publishedBy,
-        files: fileObjects, // Store the file URLs from S3
+        files: fileObjects,
+        createdAt: new Date(),
       });
 
       const savedDebate = await debate.save();
+
+      // Save the opening comments in the DebateArgument collection
+      const debateArguments = [];
+
+      if (openingCommentsFor) {
+        debateArguments.push(
+          new this.debateArgumentModel({
+            debate: savedDebate._id,
+            participant: {
+              user: userId,
+              side: 'support',
+            },
+            content: openingCommentsFor,
+          }).save(),
+        );
+      }
+
+      if (openingCommentsAgainst) {
+        debateArguments.push(
+          new this.debateArgumentModel({
+            debate: savedDebate._id,
+            participant: {
+              user: userId,
+              side: 'against',
+            },
+            content: openingCommentsAgainst,
+          }).save(),
+        );
+      }
+
+      await Promise.all(debateArguments);
 
       const statusMessages = {
         draft: 'Debate saved as draft successfully.',
@@ -140,7 +163,6 @@ export class DebateService {
 
       return {
         message: statusMessages[publishedStatus],
-        data: savedDebate,
       };
     } catch (error) {
       console.error('Debate creation error:', error);
@@ -379,27 +401,11 @@ export class DebateService {
   // Fetch ongoing public global debates (not expired)
   async getOngoingPublicGlobalDebates(): Promise<Debate[]> {
     try {
-      const currentTime = new Date(); // Current date and time
-      const debates = await this.debateModel.find().populate('createdBy'); // Fetch all debates
-      console.log({ debates });
+      const debates = await this.debateModel
+        .find({ publishedStatus: 'published' })
+        .populate('createdBy'); // Fetch all debates
 
-      // Filter debates based on conditions
-      const ongoingPublicGlobalDebates = debates.filter((debate: any) => {
-        const startTime = new Date(debate.createdAt); // Debate start time (createdAt)
-        const endTime = new Date(debate.closingDate); // Debate end time (closingDate)
-
-        // Debate is ongoing if the current time is between startTime and endTime
-        const isOngoing = startTime <= currentTime && currentTime < endTime;
-        return debate.isPublic && isOngoing;
-      });
-      console.log({ ongoingPublicGlobalDebates });
-
-      // If no debates match the criteria, throw an error
-      if (ongoingPublicGlobalDebates.length === 0) {
-        throw new NotFoundException('No ongoing public global debates found.');
-      }
-
-      return ongoingPublicGlobalDebates;
+      return debates;
     } catch (error) {
       throw error;
     }
@@ -422,12 +428,14 @@ export class DebateService {
       if (entity === 'club') {
         if (entityId) {
           query.club = new Types.ObjectId(entityId); // Filter by clubId
+          query.publishedStatus = 'published';
         } else {
           throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
           query.node = new Types.ObjectId(entityId); // Filter by nodeId
+          query.publishedStatus = 'published';
         } else {
           throw new BadRequestException(
             'nodeId is required for node entity type.',
@@ -450,26 +458,10 @@ export class DebateService {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Current date and time
-      const currentTime = new Date();
-
-      // Split debates into ongoing and expired based on date logic
-      const ongoingDebates = debates.filter((debate: any) => {
-        const openingDate = new Date(debate.createdAt);
-        const closingDate = new Date(debate.closingDate);
-        return openingDate <= currentTime && closingDate >= currentTime;
-      });
-
-      const expiredDebates = debates.filter((debate) => {
-        const closingDate = new Date(debate.closingDate);
-        return closingDate < currentTime;
-      });
-
       // Return the ongoing and expired debates
       return {
         message: 'Debates fetched successfully.',
-        ongoingDebates,
-        expiredDebates,
+        debates,
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
@@ -494,8 +486,11 @@ export class DebateService {
 
       // If entity is a club or node, filter by that entity
       if (entityType === 'club') {
+        query.publishedStatus = 'published';
         query.club = new Types.ObjectId(entityId); // Use clubId for filtering
       } else if (entityType === 'node') {
+        query.publishedStatus = 'published';
+
         query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
       }
 
@@ -710,7 +705,7 @@ export class DebateService {
       console.log({ file });
 
       let url;
-      if (file) {
+      if (Array.isArray(file) && file.length > 0) {
         const uploadedFile = await this.s3FileUpload.uploadFile(
           file[0].buffer,
           file[0].originalname,
@@ -789,5 +784,166 @@ export class DebateService {
     );
 
     return updatedArgument;
+  }
+
+  async getProposedDebatesByEntityWithAuthorization(
+    entity: 'club' | 'node',
+    entityId: string,
+    userId: string,
+  ) {
+    try {
+      // Validate entity ID
+      if (!Types.ObjectId.isValid(entityId)) {
+        throw new NotFoundException(`Invalid ${entity} ID`);
+      }
+      console.log({ userId });
+
+      // Determine which model to use based on entity
+      const membershipModel: any =
+        entity === 'club' ? this.clubMembersModel : this.nodeMembersModel;
+
+      // Check if the user is an admin of the entity
+      const query =
+        entity === 'club'
+          ? {
+              club: new Types.ObjectId(entityId),
+              user: new Types.ObjectId(userId),
+            }
+          : {
+              node: new Types.ObjectId(entityId),
+              user: new Types.ObjectId(userId),
+            };
+
+      const member = await membershipModel.findOne(query).exec();
+      console.log({ member });
+
+      if (!member || member.role !== 'admin') {
+        throw new ForbiddenException(
+          `You do not have permission to access adopted proposed entities for this ${entity}`,
+        );
+      }
+
+      // Fetch proposed debates for the entity
+      const filter =
+        entity === 'club'
+          ? { club: new Types.ObjectId(entityId), publishedStatus: 'proposed' }
+          : { node: new Types.ObjectId(entityId), publishedStatus: 'proposed' };
+
+      const debates = await this.debateModel
+        .find(filter)
+        .populate('createdBy')
+        .exec();
+
+      if (!debates.length) {
+        throw new NotFoundException(
+          `No proposed debates found for this ${entity}`,
+        );
+      }
+
+      return debates;
+    } catch (error) {
+      console.error(`Error fetching proposed debates for ${entity}:`, error);
+      throw error;
+    }
+  }
+  async acceptDebate(debateId: string): Promise<Debate> {
+    try {
+      console.log({ debateId });
+
+      const updatedDebate = await this.debateModel.findByIdAndUpdate(
+        new Types.ObjectId(debateId),
+        { publishedStatus: 'published' },
+        { new: true },
+      );
+
+      if (!updatedDebate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return updatedDebate;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'An error occurred while accepting the debate',
+      );
+    }
+  }
+
+  async rejectDebate(debateId: string): Promise<Debate> {
+    try {
+      const updatedDebate = await this.debateModel.findByIdAndUpdate(
+        debateId,
+        { status: 'Rejected' },
+        { new: true },
+      );
+      if (!updatedDebate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return updatedDebate;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'An error occurred while rejecting the debate',
+      );
+    }
+  }
+  async validateParticipation(
+    userId: string,
+    debateId: string,
+    entityType: 'club' | 'node',
+    entity: string,
+  ): Promise<{ isAllowed: boolean; reason?: string }> {
+    try {
+      // Fetch the debate
+      const debate = await this.debateModel.findById(debateId).lean();
+      if (!debate) {
+        return { isAllowed: false, reason: 'Debate not found' };
+      }
+      console.log({ debate });
+
+      // Validate if debate is associated with the provided entity
+      const isDebateAssociated =
+        (entityType === 'club' && debate.club?.toString() === entity) ||
+        (entityType === 'node' && debate.node?.toString() === entity);
+
+      if (!isDebateAssociated) {
+        return {
+          isAllowed: false,
+          reason: `Debate is not associated with the provided ${entityType}`,
+        };
+      }
+
+      // Check membership in the corresponding entity
+      let isMember = false;
+
+      if (entityType === 'club') {
+        const membership = await this.clubMembersModel.findOne({
+          club: new Types.ObjectId(entity),
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+        });
+        isMember = !!membership;
+      } else if (entityType === 'node') {
+        const membership = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(entity),
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+        });
+        isMember = !!membership;
+      }
+
+      if (!isMember) {
+        return {
+          isAllowed: false,
+          reason: `User is not a member of the provided ${entityType}`,
+        };
+      }
+
+      // All checks passed
+      return { isAllowed: true };
+    } catch (error) {
+      console.error('Error in validateParticipation:', error);
+      return {
+        isAllowed: false,
+        reason: 'An error occurred while validating participation',
+      };
+    }
   }
 }

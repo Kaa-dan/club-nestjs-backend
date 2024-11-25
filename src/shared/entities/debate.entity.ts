@@ -41,12 +41,6 @@ export class Debate extends Document {
     size: number;
   }[];
 
-  @Prop({ required: true })
-  openingCommentsFor: string;
-
-  @Prop({ required: true })
-  openingCommentsAgainst: string;
-
   @Prop({ default: false })
   isPublic: boolean;
 
