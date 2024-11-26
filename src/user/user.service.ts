@@ -14,7 +14,9 @@ import { UserWithoutPassword } from './dto/user.type';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+  ) {}
 
   async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
     try {
@@ -108,7 +110,7 @@ export class UserService {
       if (!user) {
         return {
           data: null,
-          message: 'user not found successfully',
+          message: 'User not found.',
           success: false,
         };
       }
@@ -177,12 +179,10 @@ export class UserService {
       const user = await this.userModel.findById(userId).select('-password');
       if (!user) {
         return {
-          isLogged: false
+          isLogged: false,
         };
       }
       return { isLogged: true, user };
-    } catch (error) {
-
-    }
+    } catch (error) {}
   }
 }
