@@ -15,20 +15,18 @@ import {
   Patch,
   InternalServerErrorException,
   Put,
+  UploadedFile,
+  NotFoundException,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
 import { Request, Response } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
-import {
-  FileFieldsInterceptor,
-  FilesInterceptor,
-} from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { AdoptDebateDto } from './dto/adopte.dto';
 import { DebateArgument } from 'src/shared/entities/debate-argument';
-import { CreateDebateArgumentDto } from './dto/argument.dto';
 import { Debate } from 'src/shared/entities/debate.entity';
 
 @Controller('debate')
@@ -414,5 +412,27 @@ export class DebateController {
       entityType,
       entity,
     );
+  }
+
+  @Post(':parentId/reply')
+  async replyToDebateArgument(
+    @Req() req: Request,
+    @Param('parentId') parentId: string,
+    @Body('content') content: string,
+  ) {
+    const userId = req.user._id;
+    return this.debateService.replyToDebateArgument(parentId, content, userId);
+  }
+
+  @Get('replies/:parentId')
+  async getReplies(@Param('parentId') parentId: string) {
+    // Fetch replies using service
+    const replies = await this.debateService.getRepliesForParent(parentId);
+    if (!replies) {
+      throw new NotFoundException(
+        `No replies found for DebateArgument with ID ${parentId}`,
+      );
+    }
+    return replies;
   }
 }

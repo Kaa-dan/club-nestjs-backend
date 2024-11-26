@@ -11,7 +11,7 @@ export class DebateArgument extends Document {
   @Prop({
     type: {
       user: { type: Types.ObjectId, ref: User.name, required: true },
-      side: { type: String, enum: ['support', 'against'], required: true },
+      side: { type: String, enum: ['support', 'against'] },
     },
     required: true,
   })
@@ -40,6 +40,12 @@ export class DebateArgument extends Document {
     default: [],
   })
   irrelevant: Types.ObjectId[];
+
+  @Prop({ type: String, ref: DebateArgument.name })
+  rootParent?: string; // This can be used for replies
+
+  @Prop({ type: Types.ObjectId, ref: DebateArgument.name, default: null })
+  parentId?: Types.ObjectId;
 }
 
 export const DebateArgumentSchema =

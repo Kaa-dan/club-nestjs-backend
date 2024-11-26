@@ -5,6 +5,7 @@ import { Club } from './club.entity';
 import { Node_ } from './node.entity';
 import { User } from './user.entity';
 import { Document } from 'mongoose';
+import { TPublishedStatus } from 'typings';
 interface View {
   user: Types.ObjectId;
   date: Date;

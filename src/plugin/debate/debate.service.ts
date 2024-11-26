@@ -5,6 +5,8 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
   ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -15,6 +17,8 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateDebateDto } from './dto/create.dto';
 import { DebateArgument } from 'src/shared/entities/debate-argument';
 import { CreateDebateArgumentDto } from './dto/argument.dto';
+import { DebatesResponse } from 'typings';
+import { url } from 'node:inspector';
 @Injectable()
 export class DebateService {
   constructor(
@@ -130,7 +134,7 @@ export class DebateService {
       if (openingCommentsFor) {
         debateArguments.push(
           new this.debateArgumentModel({
-            debate: savedDebate._id,
+            debate: new Types.ObjectId(savedDebate._id as string),
             participant: {
               user: userId,
               side: 'support',
@@ -143,7 +147,7 @@ export class DebateService {
       if (openingCommentsAgainst) {
         debateArguments.push(
           new this.debateArgumentModel({
-            debate: savedDebate._id,
+            debate: new Types.ObjectId(savedDebate._id as string),
             participant: {
               user: userId,
               side: 'against',
@@ -345,26 +349,26 @@ export class DebateService {
     userId,
     entityId,
   }: {
-    entity: 'club' | 'node'; // Define entity type
+    entity: 'club' | 'node';
     userId: string;
-    entityId: string; // This will hold either clubId or nodeId based on entity
-  }) {
+    entityId: string;
+  }): Promise<DebatesResponse> {
     try {
       // Build the base query object to find debates created by the user
       const query: any = {
-        createdBy: new Types.ObjectId(userId), // Ensure the user is the creator of the debate
+        createdBy: new Types.ObjectId(userId),
       };
 
-      // Add the entity-specific filtering based on the 'entity' argument
+      // Add entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
         if (entityId) {
-          query.club = new Types.ObjectId(entityId); // Filter by clubId
+          query.club = new Types.ObjectId(entityId);
         } else {
           throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
-          query.node = new Types.ObjectId(entityId); // Filter by nodeId
+          query.node = new Types.ObjectId(entityId);
         } else {
           throw new Error('nodeId is required for node entity type.');
         }
@@ -378,19 +382,42 @@ export class DebateService {
         .populate('createdBy')
         .exec();
 
-      // Check if no debates are found and throw an error
       if (!debates || debates.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Return the found debates with a success message
+      // Fetch arguments for each debate and group by side
+      const debatesWithArguments = await Promise.all(
+        debates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name') // Populate participant user details
+            .lean();
+
+          const forArguments = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArguments = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArguments,
+              against: againstArguments,
+            },
+          };
+        }),
+      );
+
+      // Return response with debates and grouped arguments
       return {
         message: 'Debates fetched successfully.',
-        data: debates,
+        data: debatesWithArguments,
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
-      // Throw internal server error with details of the exception
       throw new InternalServerErrorException(
         'Error while fetching debates.',
         error.message,
@@ -399,13 +426,39 @@ export class DebateService {
   }
 
   // Fetch ongoing public global debates (not expired)
-  async getOngoingPublicGlobalDebates(): Promise<Debate[]> {
+  async getOngoingPublicGlobalDebates(): Promise<any[]> {
     try {
       const debates = await this.debateModel
-        .find({ publishedStatus: 'published' })
-        .populate('createdBy'); // Fetch all debates
+        .find({ publishedStatus: 'published' }) // Fetch debates with published status
+        .populate('createdBy'); // Populate createdBy field with user details
 
-      return debates;
+      // Fetch args for each debate and group by side
+      const debateWithArguments = await Promise.all(
+        debates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id }) // Fetch args related to the debate
+            .populate('participant.user', 'name') // Populate user details in participant
+            .lean();
+
+          // Group args by side
+          const forArguments = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArguments = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArguments,
+              against: againstArguments,
+            },
+          };
+        }),
+      );
+
+      return debateWithArguments;
     } catch (error) {
       throw error;
     }
@@ -413,55 +466,70 @@ export class DebateService {
 
   async myDebatesByStatus({
     entity,
-
     entityId,
   }: {
     entity: 'club' | 'node'; // Define entity type
-
     entityId?: string; // This will hold either clubId or nodeId based on entity
-  }) {
+  }): Promise<DebatesResponse> {
     try {
-      // Build the base query object to find debates created by the user
-      const query: any = {};
+      // Build the base query object to find debates
+      const query: any = { publishedStatus: 'published' };
 
-      // Add the entity-specific filtering based on the 'entity' argument
+      // Entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
         if (entityId) {
           query.club = new Types.ObjectId(entityId); // Filter by clubId
-          query.publishedStatus = 'published';
-        } else {
-          throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
           query.node = new Types.ObjectId(entityId); // Filter by nodeId
-          query.publishedStatus = 'published';
-        } else {
-          throw new BadRequestException(
-            'nodeId is required for node entity type.',
-          );
         }
-      } else {
-        throw new BadRequestException(
-          'Invalid entity type. Use "club" or "node".',
-        );
       }
 
-      // Fetch all debates created by the user (no date filtering yet)
+      // Fetch debates based on the entity and status
       const debates = await this.debateModel
         .find(query)
-        .populate('createdBy')
+        .populate('createdBy') // Populate the creator of the debate
         .exec();
 
-      // Check if no debates are found and throw an error
+      // Check if no debates are found
       if (!debates || debates.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Return the ongoing and expired debates
+      // Fetch "for" and "against" arguments for each debate
+      const debatesWithArgs = await Promise.all(
+        debates.map(async (debate) => {
+          // Fetch all arguments related to the current debate
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name') // Populate participant details
+            .lean();
+
+          // Separate arguments into "for" and "against"
+
+          const forArgs = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArgs = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          // Return the debate with categorized arguments
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArgs,
+              against: againstArgs,
+            },
+          };
+        }),
+      );
+
+      // Return the fetched debates along with arguments
       return {
         message: 'Debates fetched successfully.',
-        debates,
+        data: debatesWithArgs,
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
@@ -473,48 +541,126 @@ export class DebateService {
     }
   }
 
+  // async getOngoingDebatesForEntity({
+  //   entityId,
+  //   entityType,
+  // }: {
+  //   entityId: string;
+  //   entityType: 'club' | 'node';
+  // }) {
+  //   try {
+  //     const currentTime = new Date(); // Current date and time
+  //     const query: any = {};
+
+  //     // If entity is a club or node, filter by that entity
+  //     if (entityType === 'club') {
+  //       query.publishedStatus = 'published';
+  //       query.club = new Types.ObjectId(entityId); // Use clubId for filtering
+  //     } else if (entityType === 'node') {
+  //       query.publishedStatus = 'published';
+
+  //       query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
+  //     }
+
+  //     // Fetch ongoing debates
+  //     const ongoingDebates = await this.debateModel
+  //       .find({
+  //         ...query,
+  //         createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
+  //         closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
+  //       })
+  //       .populate('createdBy')
+  //       .exec();
+
+  //     // If no ongoing debates found, throw an exception
+  //     if (!ongoingDebates || ongoingDebates.length === 0) {
+  //       throw new NotFoundException(
+  //         `No ongoing debates found for the ${entityType}.`,
+  //       );
+  //     }
+
+  //     // Return the ongoing debates
+  //     return {
+  //       message: `Ongoing debates fetched successfully for the ${entityType}.`,
+  //       data: ongoingDebates,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error fetching ongoing debates:', error);
+  //     throw new Error(`Error while fetching ongoing debates: ${error.message}`);
+  //   }
+  // }
+
   async getOngoingDebatesForEntity({
     entityId,
     entityType,
   }: {
     entityId: string;
     entityType: 'club' | 'node';
-  }) {
+  }): Promise<DebatesResponse> {
     try {
-      const currentTime = new Date(); // Current date and time
-      const query: any = {};
+      // Validate input parameters
+      if (!entityId || !entityType) {
+        throw new Error('Both entityId and entityType are required.');
+      }
 
-      // If entity is a club or node, filter by that entity
+      const currentTime = new Date();
+      const query: any = { publishedStatus: 'published' };
+
+      // Entity-specific filtering
       if (entityType === 'club') {
-        query.publishedStatus = 'published';
-        query.club = new Types.ObjectId(entityId); // Use clubId for filtering
+        query.club = new Types.ObjectId(entityId);
       } else if (entityType === 'node') {
-        query.publishedStatus = 'published';
-
-        query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
+        query.node = new Types.ObjectId(entityId);
+      } else {
+        throw new Error('Invalid entity type. Use "club" or "node".');
       }
 
       // Fetch ongoing debates
       const ongoingDebates = await this.debateModel
         .find({
           ...query,
-          createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
-          closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
+          createdAt: { $lte: currentTime },
+          closingDate: { $gt: currentTime },
         })
         .populate('createdBy')
         .exec();
 
-      // If no ongoing debates found, throw an exception
+      // Check for empty result
       if (!ongoingDebates || ongoingDebates.length === 0) {
         throw new NotFoundException(
           `No ongoing debates found for the ${entityType}.`,
         );
       }
 
-      // Return the ongoing debates
+      // Fetch "for" and "against" arguments (now `args`) for each debate
+      const debatesWithArgs = await Promise.all(
+        ongoingDebates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name')
+            .lean();
+
+          const forArgs = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArgs = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArgs,
+              against: againstArgs,
+            },
+          };
+        }),
+      );
+
+      // Return the response with a success message
       return {
         message: `Ongoing debates fetched successfully for the ${entityType}.`,
-        data: ongoingDebates,
+        data: debatesWithArgs,
       };
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
@@ -741,14 +887,14 @@ export class DebateService {
 
       if (!debateArguments || debateArguments.length === 0) {
         throw new NotFoundException(
-          `No arguments found for debate with ID ${debateId}`,
+          `No args found for debate with ID ${debateId}`,
         );
       }
 
       return debateArguments;
     } catch (error) {
       throw new InternalServerErrorException(
-        'Failed to fetch debate arguments',
+        'Failed to fetch debate args',
         error.message,
       );
     }
@@ -945,5 +1091,38 @@ export class DebateService {
         reason: 'An error occurred while validating participation',
       };
     }
+  }
+  async replyToDebateArgument(
+    parentId: string,
+    content: string,
+    userId: string,
+  ): Promise<DebateArgument> {
+    // Check if the parent debate argument exists
+    const parentArgument = await this.debateArgumentModel.findById(parentId);
+    if (!parentArgument) {
+      throw new NotFoundException(
+        `DebateArgument with ID ${parentId} not found`,
+      );
+    }
+
+    // Create a reply with the author set in the participant
+    const reply = new this.debateArgumentModel({
+      debate: parentArgument.debate, // Ensure the reply is part of the same debate
+      content, // Set the reply content
+      participant: {
+        user: userId, // Only set the user (author)
+      },
+      parentId, // Associate the reply with its parent
+    });
+
+    return (await reply.save()).populate('participant.user');
+  }
+  async getRepliesForParent(parentId: string): Promise<DebateArgument[]> {
+    console.log({ parentId });
+
+    // Fetch all replies by matching parentId
+    return this.debateArgumentModel
+      .find({ parentId })
+      .populate('participant.user');
   }
 }
