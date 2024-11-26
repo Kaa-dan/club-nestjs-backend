@@ -8,6 +8,8 @@ import {
   Query,
   Search,
   Req,
+  Put,
+  Body,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +23,7 @@ import { UserService } from './user.service';
 import { UserResponseDto } from './dto/user.dto';
 import { UserWithoutPassword } from './dto/user.type';
 import { Request } from 'express';
+import { AccessDto } from './dto/access.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -91,4 +94,28 @@ export class UserController {
   //     throw error;
   //   }
   // }
+
+  //----------------- MAKE ADMIN -------------------------
+  @Put('make-admin')
+  async makeAdmin(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeAdmin(accessDto);
+  }
+
+  //----------------- MAKE MODERATOR -------------------------
+  @Put('make-moderator')
+  async makeModerator(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeModerator(accessDto);
+  }
+
+  //----------------- MAKE MEMBER -------------------------
+  @Put('make-member')
+  async makeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeMember(accessDto);
+  }
+
+  //----------------- REMOVE MEMBER -------------------------
+  @Put('remove-member')
+  async removeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.removeMember(accessDto);
+  }
 }
