@@ -27,6 +27,14 @@ import {
   ProposeRulesAndRegulationSchema,
 } from './entities/propose-rulesAndRegulations';
 import { Debate, DebateSchema } from './entities/debate.entity';
+import {
+  NodeJoinRequest,
+  NodeJoinRequestSchema,
+} from './entities/node-join-requests.entity';
+import {
+  ClubJoinRequests,
+  ClubJoinRequestsSchema,
+} from './entities/club-join-requests.entity';
 
 @Module({
   imports: [
@@ -48,6 +56,8 @@ import { Debate, DebateSchema } from './entities/debate.entity';
         schema: ProposeRulesAndRegulationSchema,
       },
       { name: Debate.name, schema: DebateSchema },
+      { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
+      { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
     ]),
     forwardRef(() => SearchModule),
   ],
