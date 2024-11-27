@@ -26,8 +26,20 @@ export class DebateArgument extends Document {
   @Prop({ type: Date, default: Date.now })
   timestamp: Date;
 
-  @Prop({ type: String, required: false }) // Add this for optional image URL
-  imageUrl?: string; // Use `?` to indicate that this property is optional
+  @Prop([
+    {
+      url: String,
+      originalName: String,
+      mimetype: String,
+      size: Number,
+    },
+  ])
+  image: {
+    url: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+  };
 
   @Prop({
     type: [{ type: Types.ObjectId, ref: User.name }],
@@ -41,11 +53,15 @@ export class DebateArgument extends Document {
   })
   irrelevant: Types.ObjectId[];
 
-  @Prop({ type: String, ref: DebateArgument.name })
-  rootParent?: string; // This can be used for replies
-
   @Prop({ type: Types.ObjectId, ref: DebateArgument.name, default: null })
   parentId?: Types.ObjectId;
+
+  // New fields for pinning functionality
+  @Prop({ type: Boolean, default: false })
+  isPinned: boolean;
+
+  @Prop({ type: Date, default: null })
+  pinnedAt: Date;
 }
 
 export const DebateArgumentSchema =

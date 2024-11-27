@@ -10,6 +10,13 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
+
+interface IAttachment {
+  url: string;
+  type: 'image' | 'file';
+  filename: string;
+}
+
 @Schema({ timestamps: true })
 export class Debate extends Document {
   @Prop({ trim: true, required: true })

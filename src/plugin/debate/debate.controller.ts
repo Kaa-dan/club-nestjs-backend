@@ -435,4 +435,22 @@ export class DebateController {
     }
     return replies;
   }
+
+  @Post('pin/:id')
+  async pin(@Param('id') id: string) {
+    try {
+      return await this.debateService.pin(id);
+    } catch (error) {
+      // NestJS will handle these exceptions automatically
+      throw error;
+    }
+  }
+  @Post('unpin/:id')
+  async unpin(@Param('id') id: string) {
+    try {
+      return await this.debateService.unpin(id);
+    } catch (error) {
+      throw error;
+    }
+  }
 }

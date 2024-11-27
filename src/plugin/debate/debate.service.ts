@@ -9,7 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, StringExpression, Types } from 'mongoose';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Debate } from 'src/shared/entities/debate.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
@@ -228,10 +228,30 @@ export class DebateService {
         throw new NotFoundException('Debate not found');
       }
 
+      // Check if already adopted
+      let alreadyAdopted = false;
+      if (dataToSave.type === 'club') {
+        alreadyAdopted = await this.debateModel.findOne({
+          _id: dataToSave.debateId,
+          'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId),
+        });
+      } else if (dataToSave.type === 'node') {
+        alreadyAdopted = await this.debateModel.findOne({
+          _id: dataToSave.debateId,
+          'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId),
+        });
+      }
+
+      if (alreadyAdopted) {
+        return {
+          message: 'This debate is already adopted by the specified entity',
+          data: existingDebate,
+        };
+      }
+
       // Prepare base data for the new debate
       const debateData = {
         ...existingDebate.toObject(),
-
         _id: undefined, // Remove the _id to create a new document
         adoptedBy: dataToSave.userId,
         createdBy: dataToSave.userId,
@@ -240,7 +260,6 @@ export class DebateService {
         club: dataToSave.type == 'club' ? dataToSave.clubId : null,
         node: dataToSave.type == 'node' ? dataToSave.nodeId : null,
         adoptedDate: new Date(),
-        adoptedParent: dataToSave.debateId,
         publishedDate: isAuthorized ? new Date() : null,
         publishedStatus: isAuthorized ? 'published' : 'proposed',
       };
@@ -267,7 +286,7 @@ export class DebateService {
         // Create new debate for the club
         newDebate = new this.debateModel({
           ...debateData,
-          club: isAuthorized ? new Types.ObjectId(dataToSave.clubId) : null,
+          club: new Types.ObjectId(dataToSave.clubId),
         });
       } else if (dataToSave.type === 'node') {
         updateOperation = this.debateModel.findByIdAndUpdate(
@@ -288,7 +307,7 @@ export class DebateService {
         // Create new debate for the node
         newDebate = new this.debateModel({
           ...debateData,
-          node: isAuthorized ? new Types.ObjectId(dataToSave.nodeId) : null,
+          node: new Types.ObjectId(dataToSave.nodeId),
         });
       }
 
@@ -325,25 +344,6 @@ export class DebateService {
     }
   }
 
-  private async uploadFile(
-    file: Express.Multer.File,
-    section: 'node' | 'club',
-  ) {
-    try {
-      // Uploading file to S3 or other cloud storage service
-      const response = await this.s3FileUpload.uploadFile(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        section,
-      );
-      return response;
-    } catch (error) {
-      throw new BadRequestException(
-        'Failed to upload file. Please try again later.',
-      );
-    }
-  }
   async myDebates({
     entity,
     userId,
@@ -363,12 +363,14 @@ export class DebateService {
       if (entity === 'club') {
         if (entityId) {
           query.club = new Types.ObjectId(entityId);
+          query.publishedStatus = 'published';
         } else {
           throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
           query.node = new Types.ObjectId(entityId);
+          query.publishedStatus = 'published';
         } else {
           throw new Error('nodeId is required for node entity type.');
         }
@@ -429,7 +431,7 @@ export class DebateService {
   async getOngoingPublicGlobalDebates(): Promise<any[]> {
     try {
       const debates = await this.debateModel
-        .find({ publishedStatus: 'published' }) // Fetch debates with published status
+        .find({ publishedStatus: 'published', isPublic: true }) // Fetch debates with published status
         .populate('createdBy'); // Populate createdBy field with user details
 
       // Fetch args for each debate and group by side
@@ -790,10 +792,10 @@ export class DebateService {
       return acc;
     }, {});
 
-    // Fetch the debate and its adopted clubs/nodes
+    // Fetch the debate and its adopted clubs/nodes and creator info
     const debate = await this.debateModel
       .findById(debateId)
-      .select('adoptedClubs adoptedNodes')
+      .select('adoptedClubs adoptedNodes club node')
       .lean();
 
     if (!debate) {
@@ -807,21 +809,32 @@ export class DebateService {
       adopted.node.toString(),
     );
 
-    // Find non-adopted clubs and nodes by filtering out the adopted ones
+    // Exclude the club or node that created the debate from the adoption list
+    const creatorClubId = debate.club ? debate.club.toString() : null;
+    const creatorNodeId = debate.node ? debate.node.toString() : null;
+
+    // Find non-adopted clubs by filtering out the adopted ones and the creator club
     const nonAdoptedClubs = userClubIds
-      .filter((clubId) => !adoptedClubIds.includes(clubId))
+      .filter(
+        (clubId) =>
+          !adoptedClubIds.includes(clubId) && clubId !== creatorClubId,
+      )
       .map((clubId) => ({
         clubId,
-        role: userClubDetails[clubId].role, // Return the role for the club
-        name: userClubDetails[clubId].name, // Return the name for the club
+        role: userClubDetails[clubId].role,
+        name: userClubDetails[clubId].name,
       }));
 
+    // Find non-adopted nodes by filtering out the adopted ones and the creator node
     const nonAdoptedNodes = userNodeIds
-      .filter((nodeId) => !adoptedNodeIds.includes(nodeId))
+      .filter(
+        (nodeId) =>
+          !adoptedNodeIds.includes(nodeId) && nodeId !== creatorNodeId,
+      )
       .map((nodeId) => ({
         nodeId,
-        role: userNodeDetails[nodeId].role, // Return the role for the node
-        name: userNodeDetails[nodeId].name, // Return the name for the node
+        role: userNodeDetails[nodeId].role,
+        name: userNodeDetails[nodeId].name,
       }));
 
     return {
@@ -850,7 +863,7 @@ export class DebateService {
     try {
       console.log({ file });
 
-      let url;
+      let image: { url?: string; mimetype?: string } = {};
       if (Array.isArray(file) && file.length > 0) {
         const uploadedFile = await this.s3FileUpload.uploadFile(
           file[0].buffer,
@@ -859,12 +872,13 @@ export class DebateService {
           'comment',
         );
         if (uploadedFile) {
-          url = uploadedFile.url;
+          image.url = uploadedFile.url;
+          image.mimetype = file[0].mimetype;
         }
       }
       const newArgument = new this.debateArgumentModel({
         debate: new Types.ObjectId(debateId),
-        imageUrl: url,
+        image,
         participant: {
           user: new Types.ObjectId(userId),
           side: side,
@@ -882,7 +896,8 @@ export class DebateService {
         .find({
           debate: new Types.ObjectId(debateId),
         })
-        .populate('participant.user', 'firstName profileImage ') // Populate user details if necessary
+        .sort({ pinnedAt: -1 })
+        .populate('participant.user', 'userName profileImage ') // Populate user details if necessary
         .exec();
 
       if (!debateArguments || debateArguments.length === 0) {
@@ -1124,5 +1139,109 @@ export class DebateService {
     return this.debateArgumentModel
       .find({ parentId })
       .populate('participant.user');
+  }
+
+  private async uploadFile(
+    file: Express.Multer.File,
+    section: 'node' | 'club',
+  ) {
+    try {
+      // Uploading file to S3 or other cloud storage service
+      const response = await this.s3FileUpload.uploadFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        section,
+      );
+      return response;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to upload file. Please try again later.',
+      );
+    }
+  }
+  async pin(id: string): Promise<DebateArgument> {
+    try {
+      // First check if the argument exists
+      const argument = await this.debateArgumentModel.findById(id);
+      if (!argument) {
+        throw new NotFoundException(`Debate argument #${id} not found`);
+      }
+
+      // Check if already pinned
+      if (argument.isPinned) {
+        throw new BadRequestException('Argument is already pinned');
+      }
+
+      // Update the argument
+      const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isPinned: true,
+            pinnedAt: new Date(),
+          },
+        },
+        { new: true }, // Return the updated document
+      );
+
+      return updatedArgument;
+    } catch (error) {
+      // Handle specific known errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Log the error for debugging
+      console.error('Error while pinning argument:', error);
+
+      // Throw a generic error for unknown issues
+      throw new InternalServerErrorException('Failed to pin the argument');
+    }
+  }
+  async unpin(id: string): Promise<DebateArgument> {
+    try {
+      // First check if the argument exists
+      const argument = await this.debateArgumentModel.findById(id);
+      if (!argument) {
+        throw new NotFoundException(`Debate argument #${id} not found`);
+      }
+
+      // Check if not pinned
+      if (!argument.isPinned) {
+        throw new BadRequestException('Argument is not pinned');
+      }
+
+      // Update the argument
+      const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isPinned: false,
+            pinnedAt: null,
+          },
+        },
+        { new: true }, // Return the updated document
+      );
+
+      return updatedArgument;
+    } catch (error) {
+      // Handle specific known errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Log the error for debugging
+      console.error('Error while unpinning argument:', error);
+
+      // Throw a generic error for unknown issues
+      throw new InternalServerErrorException('Failed to unpin the argument');
+    }
   }
 }
