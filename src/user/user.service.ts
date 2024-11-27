@@ -16,6 +16,7 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
+import { async } from 'rxjs';
 
 @Injectable()
 export class UserService {
@@ -31,27 +32,97 @@ export class UserService {
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
   ) {}
 
-  async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
+  async getUsersNotInClubOrNode(
+    search: string,
+    type: 'node' | 'club',
+    id: Types.ObjectId,
+  ): Promise<UserWithoutPassword[]> {
+    console.log({ search, type, id });
     try {
-      const searchRegex = new RegExp(search, 'i'); // case-insensitive search
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
 
-      const users = await this.userModel
-        .find({
-          $or: [
-            { firstName: { $regex: searchRegex } },
-            { lastName: { $regex: searchRegex } },
-            { email: { $regex: searchRegex } },
-          ],
-        })
-        .select('-password')
-        .lean()
-        .exec();
+      const matchStage = {
+        $or: [
+          { 'userDetails.userName': searchRegex },
+          { 'userDetails.firstName': searchRegex },
+          { 'userDetails.lastName': searchRegex },
+          { 'userDetails.email': searchRegex },
+        ],
+      };
 
-      return users as unknown as UserWithoutPassword[];
+      if (type === 'node') {
+        return this.nodeMembersModel
+          .aggregate([
+            {
+              $match: {
+                _id: { $ne: id },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users', // Use the actual collection name, not User.name
+                localField: 'user',
+                foreignField: '_id',
+                as: 'userDetails',
+              },
+            },
+            { $unwind: '$userDetails' }, // Deconstruct the userDetails array
+            {
+              $match: matchStage, // Use the comprehensive match stage
+            },
+            {
+              $project: {
+                _id: '$userDetails._id',
+                userName: '$userDetails.userName',
+                firstName: '$userDetails.firstName',
+                lastName: '$userDetails.lastName',
+                email: '$userDetails.email',
+                profileImage: '$userDetails.profileImage',
+              },
+            },
+          ])
+          .exec();
+      } else if (type === 'club') {
+        return this.clubMembersModel
+          .aggregate([
+            {
+              $match: {
+                club: { $ne: new Types.ObjectId(id) },
+              },
+            },
+            {
+              $lookup: {
+                from: 'users', // Use the actual collection name
+                localField: 'user',
+                foreignField: '_id',
+                as: 'userDetails',
+              },
+            },
+            { $unwind: '$userDetails' }, // Deconstruct the userDetails array
+            {
+              $match: matchStage, // Use the comprehensive match stage
+            },
+            {
+              $project: {
+                _id: '$userDetails._id',
+                userName: '$userDetails.userName',
+                firstName: '$userDetails.firstName',
+                lastName: '$userDetails.lastName',
+                email: '$userDetails.email',
+                profileImage: '$userDetails.profileImage',
+              },
+            },
+          ])
+          .exec();
+      } else {
+        throw new BadRequestException('Invalid type');
+      }
     } catch (error) {
+      console.error('Error fetching users:', error);
       throw new InternalServerErrorException('Error fetching users');
     }
   }
+
   /**
    * Find user by ID
    * @param userId - MongoDB ObjectId of the user

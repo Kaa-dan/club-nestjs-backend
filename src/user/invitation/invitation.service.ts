@@ -14,6 +14,7 @@ import { Node_ } from 'src/shared/entities/node.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
+import { async } from 'rxjs';
 
 @Injectable()
 export class InvitationService {
@@ -32,6 +33,12 @@ export class InvitationService {
     private readonly nodeJoinRequest: Model<NodeJoinRequest>,
   ) {}
 
+  /**
+   * Retrieves all invitations for a given user.
+   * @param userId - The id of the user to retrieve invitations for.
+   * @returns A promise that resolves to an array of invitations, populated with club and node details.
+   * @throws `BadRequestException` if there is an error while trying to get invitations.
+   */
   async getInvitations(userId: Types.ObjectId): Promise<Invitation[]> {
     try {
       const invitations = await this.invitationModel
@@ -47,12 +54,21 @@ export class InvitationService {
       throw new BadRequestException(error.message);
     }
   }
+  /**
+   * Creates an invitation for a user to join a node or club.
+   * @param createInvitationDto - The request body containing the entity id and the user id.
+   * @param inviteId - The id of the user who is creating the invitation.
+   * @returns A promise that resolves to an object containing the saved invitation and success message, or an error object if there was an error.
+   * @throws `BadRequestException` if there is an error while trying to create the invitation.
+   * @throws `NotFoundException` if the node or club is not found.
+   * @throws `ForbiddenException` if the user is not a member of the node or club.
+   * @throws `BadRequestException` if the user has already sent an invitation to the same node or club.
+   */
   async createInvitation(
     createInvitationDto: CreateInvitationDto,
     inviteId: Types.ObjectId,
   ) {
     try {
-      console.log({ createInvitationDto, inviteId });
       if (createInvitationDto.type === 'node') {
         // checking if the node is valid
         const node = await this.nodeModel.findOne({
@@ -80,6 +96,18 @@ export class InvitationService {
 
         if (isPendingRequest) {
           throw new BadRequestException('Invitation already sent');
+        }
+
+        // check if the user is already the member of the club
+        const isAlreadyMember = await this.nodeMember.findOne({
+          node: node._id,
+          user: new Types.ObjectId(createInvitationDto.userId),
+        });
+
+        if (isAlreadyMember) {
+          throw new BadRequestException(
+            'User is already a member of this node',
+          );
         }
 
         // creating invitation
@@ -129,7 +157,15 @@ export class InvitationService {
         if (isPendingRequest) {
           throw new BadRequestException('Invitation already sent');
         }
-
+        const isAlreadyMember = await this.clubMember.findOne({
+          club: club._id,
+          user: new Types.ObjectId(createInvitationDto.userId),
+        });
+        if (isAlreadyMember) {
+          throw new BadRequestException(
+            'User is already a member of this club',
+          );
+        }
         // creating invitation
         const invitation = new this.invitationModel({
           club: club._id,
@@ -153,6 +189,17 @@ export class InvitationService {
     }
   }
 
+  /**
+   * Accepts or rejects an invitation for the user to join a node or club.
+   *
+   * @param invitationId - The ID of the invitation to accept or reject.
+   * @param userId - The ID of the user responding to the invitation.
+   * @param accept - A boolean indicating whether the invitation is accepted (true) or rejected (false).
+   * @returns A promise that resolves to an object containing a message, status, and optional data.
+   * @throws `NotFoundException` if the invitation is not found.
+   * @throws `ForbiddenException` if the invitation has expired.
+   * @throws `BadRequestException` if there is an error processing the invitation.
+   */
   async acceptInvitation(
     invitationId: Types.ObjectId,
     userId: Types.ObjectId,
@@ -187,12 +234,15 @@ export class InvitationService {
         await session.commitTransaction();
         return { message: 'Invitation rejected', status: true, data: null };
       }
+
+      //variable for checking the status
       let inivtationStatus: 'ACCEPTED' | 'REQUESTED';
+
       // The code below will only run if accept is true
       if (invitation.node) {
         // Add the user to the node
         if (invitation.node && (invitation.node as any).isPublic) {
-          const result = await this.nodeMember.create(
+          await this.nodeMember.create(
             [
               {
                 node: invitation.node._id,
@@ -203,10 +253,9 @@ export class InvitationService {
             ],
             { session },
           );
-          console.log({ result });
           inivtationStatus = 'ACCEPTED';
         } else {
-          const result = await this.nodeJoinRequest.create(
+          await this.nodeJoinRequest.create(
             [
               {
                 node: invitation.node._id,
@@ -217,7 +266,6 @@ export class InvitationService {
             ],
             { session },
           );
-          console.log({ result });
           inivtationStatus = 'REQUESTED';
         }
       }
@@ -225,7 +273,7 @@ export class InvitationService {
       if (invitation.club) {
         // Add the user to the club
         if (invitation.club && (invitation.club as any).isPublic) {
-          const response = await this.clubMember.create(
+          await this.clubMember.create(
             [
               {
                 club: invitation.club._id,
@@ -236,11 +284,10 @@ export class InvitationService {
             ],
             { session },
           );
-          console.log({ response });
           inivtationStatus = 'ACCEPTED';
         } else {
           inivtationStatus = 'REQUESTED';
-          const response = await this.clubJoinRequest.create(
+          await this.clubJoinRequest.create(
             [
               {
                 club: invitation.club._id,
@@ -251,7 +298,6 @@ export class InvitationService {
             ],
             { session },
           );
-          console.log({ response });
         }
       }
 
