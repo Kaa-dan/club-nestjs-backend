@@ -26,7 +26,7 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
-  ) { }
+  ) {}
 
   /*
   --------------------CREATING A CLUB----------------------------
@@ -63,7 +63,7 @@ export class ClubService {
       const createClubMember = new this.clubMembersModel({
         club: clubResponse._id,
         user: clubResponse.createdBy,
-        role: 'admin',
+        role: 'owner',
         status: 'MEMBER',
       });
 
@@ -522,7 +522,7 @@ export class ClubService {
       if (status === 'REJECTED') {
         const response = await this.clubJoinRequestsModel.findOneAndDelete({
           _id: requestId,
-        })
+        });
 
         return response;
       }
@@ -755,7 +755,7 @@ export class ClubService {
       console.log(error);
       throw new BadRequestException(
         'Failed to fetch user join requests. Please try again later.',
-      )
+      );
     }
   }
-}   
+}
