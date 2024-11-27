@@ -4,23 +4,31 @@ import {
   NotFoundException,
   InternalServerErrorException,
   UnauthorizedException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model, StringExpression, Types } from 'mongoose';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Debate } from 'src/shared/entities/debate.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateDebateDto } from './dto/create.dto';
+import { DebateArgument } from 'src/shared/entities/debate-argument';
+import { CreateDebateArgumentDto } from './dto/argument.dto';
+import { DebatesResponse } from 'typings';
+import { url } from 'node:inspector';
 @Injectable()
 export class DebateService {
   constructor(
     @InjectModel(Debate.name) private debateModel: Model<Debate>,
     @InjectModel(ClubMembers.name) private clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(DebateArgument.name)
+    private debateArgumentModel: Model<DebateArgument>,
     private readonly s3FileUpload: UploadService,
   ) {}
-
   async createDebate(createDebateDto, userId: string) {
     try {
       const {
@@ -31,11 +39,12 @@ export class DebateService {
         closingDate,
         openingDate,
         tags,
+        openingCommentsFor,
+        openingCommentsAgainst,
         ...rest
       } = createDebateDto;
-      console.log({ createDebateDto });
+
       const parsedTags = JSON.parse(tags);
-      console.log({ parsedTags });
 
       // Ensure either club or node is provided, not both
       if (!club && !node) {
@@ -47,11 +56,9 @@ export class DebateService {
         );
       }
 
-      // Determine section based on which id is provided
       const section = club ? 'club' : 'node';
       const sectionId = club || node;
 
-      // Handle file upload
       const uploadPromises = files?.map((file: any) =>
         this.uploadFile(
           {
@@ -65,7 +72,6 @@ export class DebateService {
 
       const uploadedFiles = await Promise.all(uploadPromises);
 
-      // Map the uploaded files to the appropriate file structure
       const fileObjects = uploadedFiles.map((uploadedFile, index) => ({
         url: uploadedFile.url,
         originalname: files[index].originalName,
@@ -73,33 +79,28 @@ export class DebateService {
         size: files[index].size,
       }));
 
-      // Define the member check function based on the section type
       const getMember = async () => {
         if (section === 'club') {
           return this.clubMembersModel.findOne({
-            club: new Types.ObjectId(sectionId), // Search for membership in the specified club
+            club: new Types.ObjectId(sectionId),
             user: userId,
           });
         }
         return this.nodeMembersModel.findOne({
-          node: new Types.ObjectId(sectionId), // Search for membership in the specified node
+          node: new Types.ObjectId(sectionId),
           user: userId,
         });
       };
 
-      // Check if the user is a member of the specified club or node
       const member = await getMember();
-      console.log({ member });
 
       if (!member) {
         throw new NotFoundException(`User is not a member of the ${section}`);
       }
 
-      // Handle publication status
       let publishedStatus: 'draft' | 'published' | 'proposed' = 'proposed';
       let publishedBy: string | null = null;
 
-      // Only admins or moderators can publish the debate
       if (['admin', 'moderator'].includes(member.role)) {
         publishedStatus = requestedStatus === 'draft' ? 'draft' : 'published';
         if (publishedStatus === 'published') {
@@ -111,22 +112,52 @@ export class DebateService {
         throw new BadRequestException('Invalid published status');
       }
 
-      // Create the debate document, ensuring proper assignment of sectionId (club or node)
       const debate = new this.debateModel({
         ...rest,
-
-        node: section === 'node' ? new Types.ObjectId(sectionId) : null, // Assign node if section is node
-        club: section === 'club' ? new Types.ObjectId(sectionId) : null, // Assign club if section is club
+        node: section === 'node' ? new Types.ObjectId(sectionId) : null,
+        club: section === 'club' ? new Types.ObjectId(sectionId) : null,
         openingDate,
         closingDate,
         tags: parsedTags,
         createdBy: userId,
         publishedStatus,
         publishedBy,
-        files: fileObjects, // Store the file URLs from S3
+        files: fileObjects,
+        createdAt: new Date(),
       });
 
       const savedDebate = await debate.save();
+
+      // Save the opening comments in the DebateArgument collection
+      const debateArguments = [];
+
+      if (openingCommentsFor) {
+        debateArguments.push(
+          new this.debateArgumentModel({
+            debate: new Types.ObjectId(savedDebate._id as string),
+            participant: {
+              user: userId,
+              side: 'support',
+            },
+            content: openingCommentsFor,
+          }).save(),
+        );
+      }
+
+      if (openingCommentsAgainst) {
+        debateArguments.push(
+          new this.debateArgumentModel({
+            debate: new Types.ObjectId(savedDebate._id as string),
+            participant: {
+              user: userId,
+              side: 'against',
+            },
+            content: openingCommentsAgainst,
+          }).save(),
+        );
+      }
+
+      await Promise.all(debateArguments);
 
       const statusMessages = {
         draft: 'Debate saved as draft successfully.',
@@ -136,7 +167,6 @@ export class DebateService {
 
       return {
         message: statusMessages[publishedStatus],
-        data: savedDebate,
       };
     } catch (error) {
       console.error('Debate creation error:', error);
@@ -198,10 +228,30 @@ export class DebateService {
         throw new NotFoundException('Debate not found');
       }
 
+      // Check if already adopted
+      let alreadyAdopted = false;
+      if (dataToSave.type === 'club') {
+        alreadyAdopted = await this.debateModel.findOne({
+          _id: dataToSave.debateId,
+          'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId),
+        });
+      } else if (dataToSave.type === 'node') {
+        alreadyAdopted = await this.debateModel.findOne({
+          _id: dataToSave.debateId,
+          'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId),
+        });
+      }
+
+      if (alreadyAdopted) {
+        return {
+          message: 'This debate is already adopted by the specified entity',
+          data: existingDebate,
+        };
+      }
+
       // Prepare base data for the new debate
       const debateData = {
         ...existingDebate.toObject(),
-
         _id: undefined, // Remove the _id to create a new document
         adoptedBy: dataToSave.userId,
         createdBy: dataToSave.userId,
@@ -210,7 +260,6 @@ export class DebateService {
         club: dataToSave.type == 'club' ? dataToSave.clubId : null,
         node: dataToSave.type == 'node' ? dataToSave.nodeId : null,
         adoptedDate: new Date(),
-        adoptedParent: dataToSave.debateId,
         publishedDate: isAuthorized ? new Date() : null,
         publishedStatus: isAuthorized ? 'published' : 'proposed',
       };
@@ -237,7 +286,7 @@ export class DebateService {
         // Create new debate for the club
         newDebate = new this.debateModel({
           ...debateData,
-          club: isAuthorized ? new Types.ObjectId(dataToSave.clubId) : null,
+          club: new Types.ObjectId(dataToSave.clubId),
         });
       } else if (dataToSave.type === 'node') {
         updateOperation = this.debateModel.findByIdAndUpdate(
@@ -258,7 +307,7 @@ export class DebateService {
         // Create new debate for the node
         newDebate = new this.debateModel({
           ...debateData,
-          node: isAuthorized ? new Types.ObjectId(dataToSave.nodeId) : null,
+          node: new Types.ObjectId(dataToSave.nodeId),
         });
       }
 
@@ -295,50 +344,33 @@ export class DebateService {
     }
   }
 
-  private async uploadFile(
-    file: Express.Multer.File,
-    section: 'node' | 'club',
-  ) {
-    try {
-      // Uploading file to S3 or other cloud storage service
-      const response = await this.s3FileUpload.uploadFile(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        section,
-      );
-      return response;
-    } catch (error) {
-      throw new BadRequestException(
-        'Failed to upload file. Please try again later.',
-      );
-    }
-  }
   async myDebates({
     entity,
     userId,
     entityId,
   }: {
-    entity: 'club' | 'node'; // Define entity type
+    entity: 'club' | 'node';
     userId: string;
-    entityId: string; // This will hold either clubId or nodeId based on entity
-  }) {
+    entityId: string;
+  }): Promise<DebatesResponse> {
     try {
       // Build the base query object to find debates created by the user
       const query: any = {
-        createdBy: new Types.ObjectId(userId), // Ensure the user is the creator of the debate
+        createdBy: new Types.ObjectId(userId),
       };
 
-      // Add the entity-specific filtering based on the 'entity' argument
+      // Add entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
         if (entityId) {
-          query.club = new Types.ObjectId(entityId); // Filter by clubId
+          query.club = new Types.ObjectId(entityId);
+          query.publishedStatus = 'published';
         } else {
           throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
-          query.node = new Types.ObjectId(entityId); // Filter by nodeId
+          query.node = new Types.ObjectId(entityId);
+          query.publishedStatus = 'published';
         } else {
           throw new Error('nodeId is required for node entity type.');
         }
@@ -352,19 +384,42 @@ export class DebateService {
         .populate('createdBy')
         .exec();
 
-      // Check if no debates are found and throw an error
       if (!debates || debates.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Return the found debates with a success message
+      // Fetch arguments for each debate and group by side
+      const debatesWithArguments = await Promise.all(
+        debates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name') // Populate participant user details
+            .lean();
+
+          const forArguments = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArguments = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArguments,
+              against: againstArguments,
+            },
+          };
+        }),
+      );
+
+      // Return response with debates and grouped arguments
       return {
         message: 'Debates fetched successfully.',
-        data: debates,
+        data: debatesWithArguments,
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
-      // Throw internal server error with details of the exception
       throw new InternalServerErrorException(
         'Error while fetching debates.',
         error.message,
@@ -373,29 +428,39 @@ export class DebateService {
   }
 
   // Fetch ongoing public global debates (not expired)
-  async getOngoingPublicGlobalDebates(): Promise<Debate[]> {
+  async getOngoingPublicGlobalDebates(): Promise<any[]> {
     try {
-      const currentTime = new Date(); // Current date and time
-      const debates = await this.debateModel.find().populate('createdBy'); // Fetch all debates
-      console.log({ debates });
+      const debates = await this.debateModel
+        .find({ publishedStatus: 'published', isPublic: true }) // Fetch debates with published status
+        .populate('createdBy'); // Populate createdBy field with user details
 
-      // Filter debates based on conditions
-      const ongoingPublicGlobalDebates = debates.filter((debate: any) => {
-        const startTime = new Date(debate.createdAt); // Debate start time (createdAt)
-        const endTime = new Date(debate.closingDate); // Debate end time (closingDate)
+      // Fetch args for each debate and group by side
+      const debateWithArguments = await Promise.all(
+        debates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id }) // Fetch args related to the debate
+            .populate('participant.user', 'name') // Populate user details in participant
+            .lean();
 
-        // Debate is ongoing if the current time is between startTime and endTime
-        const isOngoing = startTime <= currentTime && currentTime < endTime;
-        return debate.isPublic && isOngoing;
-      });
-      console.log({ ongoingPublicGlobalDebates });
+          // Group args by side
+          const forArguments = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArguments = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
 
-      // If no debates match the criteria, throw an error
-      if (ongoingPublicGlobalDebates.length === 0) {
-        throw new NotFoundException('No ongoing public global debates found.');
-      }
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArguments,
+              against: againstArguments,
+            },
+          };
+        }),
+      );
 
-      return ongoingPublicGlobalDebates;
+      return debateWithArguments;
     } catch (error) {
       throw error;
     }
@@ -403,69 +468,70 @@ export class DebateService {
 
   async myDebatesByStatus({
     entity,
-
     entityId,
   }: {
     entity: 'club' | 'node'; // Define entity type
-
     entityId?: string; // This will hold either clubId or nodeId based on entity
-  }) {
+  }): Promise<DebatesResponse> {
     try {
-      // Build the base query object to find debates created by the user
-      const query: any = {};
+      // Build the base query object to find debates
+      const query: any = { publishedStatus: 'published' };
 
-      // Add the entity-specific filtering based on the 'entity' argument
+      // Entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
         if (entityId) {
           query.club = new Types.ObjectId(entityId); // Filter by clubId
-        } else {
-          throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
           query.node = new Types.ObjectId(entityId); // Filter by nodeId
-        } else {
-          throw new BadRequestException(
-            'nodeId is required for node entity type.',
-          );
         }
-      } else {
-        throw new BadRequestException(
-          'Invalid entity type. Use "club" or "node".',
-        );
       }
 
-      // Fetch all debates created by the user (no date filtering yet)
+      // Fetch debates based on the entity and status
       const debates = await this.debateModel
         .find(query)
-        .populate('createdBy')
+        .populate('createdBy') // Populate the creator of the debate
         .exec();
 
-      // Check if no debates are found and throw an error
+      // Check if no debates are found
       if (!debates || debates.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Current date and time
-      const currentTime = new Date();
+      // Fetch "for" and "against" arguments for each debate
+      const debatesWithArgs = await Promise.all(
+        debates.map(async (debate) => {
+          // Fetch all arguments related to the current debate
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name') // Populate participant details
+            .lean();
 
-      // Split debates into ongoing and expired based on date logic
-      const ongoingDebates = debates.filter((debate: any) => {
-        const openingDate = new Date(debate.createdAt);
-        const closingDate = new Date(debate.closingDate);
-        return openingDate <= currentTime && closingDate >= currentTime;
-      });
+          // Separate arguments into "for" and "against"
 
-      const expiredDebates = debates.filter((debate) => {
-        const closingDate = new Date(debate.closingDate);
-        return closingDate < currentTime;
-      });
+          const forArgs = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArgs = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
 
-      // Return the ongoing and expired debates
+          // Return the debate with categorized arguments
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArgs,
+              against: againstArgs,
+            },
+          };
+        }),
+      );
+
+      // Return the fetched debates along with arguments
       return {
         message: 'Debates fetched successfully.',
-        ongoingDebates,
-        expiredDebates,
+        data: debatesWithArgs,
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
@@ -477,45 +543,126 @@ export class DebateService {
     }
   }
 
+  // async getOngoingDebatesForEntity({
+  //   entityId,
+  //   entityType,
+  // }: {
+  //   entityId: string;
+  //   entityType: 'club' | 'node';
+  // }) {
+  //   try {
+  //     const currentTime = new Date(); // Current date and time
+  //     const query: any = {};
+
+  //     // If entity is a club or node, filter by that entity
+  //     if (entityType === 'club') {
+  //       query.publishedStatus = 'published';
+  //       query.club = new Types.ObjectId(entityId); // Use clubId for filtering
+  //     } else if (entityType === 'node') {
+  //       query.publishedStatus = 'published';
+
+  //       query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
+  //     }
+
+  //     // Fetch ongoing debates
+  //     const ongoingDebates = await this.debateModel
+  //       .find({
+  //         ...query,
+  //         createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
+  //         closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
+  //       })
+  //       .populate('createdBy')
+  //       .exec();
+
+  //     // If no ongoing debates found, throw an exception
+  //     if (!ongoingDebates || ongoingDebates.length === 0) {
+  //       throw new NotFoundException(
+  //         `No ongoing debates found for the ${entityType}.`,
+  //       );
+  //     }
+
+  //     // Return the ongoing debates
+  //     return {
+  //       message: `Ongoing debates fetched successfully for the ${entityType}.`,
+  //       data: ongoingDebates,
+  //     };
+  //   } catch (error) {
+  //     console.error('Error fetching ongoing debates:', error);
+  //     throw new Error(`Error while fetching ongoing debates: ${error.message}`);
+  //   }
+  // }
+
   async getOngoingDebatesForEntity({
     entityId,
     entityType,
   }: {
     entityId: string;
     entityType: 'club' | 'node';
-  }) {
+  }): Promise<DebatesResponse> {
     try {
-      const currentTime = new Date(); // Current date and time
-      const query: any = {};
+      // Validate input parameters
+      if (!entityId || !entityType) {
+        throw new Error('Both entityId and entityType are required.');
+      }
 
-      // If entity is a club or node, filter by that entity
+      const currentTime = new Date();
+      const query: any = { publishedStatus: 'published' };
+
+      // Entity-specific filtering
       if (entityType === 'club') {
-        query.club = new Types.ObjectId(entityId); // Use clubId for filtering
+        query.club = new Types.ObjectId(entityId);
       } else if (entityType === 'node') {
-        query.node = new Types.ObjectId(entityId); // Use nodeId for filtering
+        query.node = new Types.ObjectId(entityId);
+      } else {
+        throw new Error('Invalid entity type. Use "club" or "node".');
       }
 
       // Fetch ongoing debates
       const ongoingDebates = await this.debateModel
         .find({
           ...query,
-          createdAt: { $lte: currentTime }, // Debate has started (createdAt is used as the start time)
-          closingDate: { $gt: currentTime }, // Debate is not yet closed (closingDate is used as the end time)
+          createdAt: { $lte: currentTime },
+          closingDate: { $gt: currentTime },
         })
         .populate('createdBy')
         .exec();
 
-      // If no ongoing debates found, throw an exception
+      // Check for empty result
       if (!ongoingDebates || ongoingDebates.length === 0) {
         throw new NotFoundException(
           `No ongoing debates found for the ${entityType}.`,
         );
       }
 
-      // Return the ongoing debates
+      // Fetch "for" and "against" arguments (now `args`) for each debate
+      const debatesWithArgs = await Promise.all(
+        ongoingDebates.map(async (debate) => {
+          const args = await this.debateArgumentModel
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name')
+            .lean();
+
+          const forArgs = args.filter(
+            (arg) => arg.participant.side === 'support',
+          );
+          const againstArgs = args.filter(
+            (arg) => arg.participant.side === 'against',
+          );
+
+          return {
+            ...debate.toObject(),
+            args: {
+              for: forArgs,
+              against: againstArgs,
+            },
+          };
+        }),
+      );
+
+      // Return the response with a success message
       return {
         message: `Ongoing debates fetched successfully for the ${entityType}.`,
-        data: ongoingDebates,
+        data: debatesWithArgs,
       };
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
@@ -645,10 +792,10 @@ export class DebateService {
       return acc;
     }, {});
 
-    // Fetch the debate and its adopted clubs/nodes
+    // Fetch the debate and its adopted clubs/nodes and creator info
     const debate = await this.debateModel
       .findById(debateId)
-      .select('adoptedClubs adoptedNodes')
+      .select('adoptedClubs adoptedNodes club node')
       .lean();
 
     if (!debate) {
@@ -662,21 +809,32 @@ export class DebateService {
       adopted.node.toString(),
     );
 
-    // Find non-adopted clubs and nodes by filtering out the adopted ones
+    // Exclude the club or node that created the debate from the adoption list
+    const creatorClubId = debate.club ? debate.club.toString() : null;
+    const creatorNodeId = debate.node ? debate.node.toString() : null;
+
+    // Find non-adopted clubs by filtering out the adopted ones and the creator club
     const nonAdoptedClubs = userClubIds
-      .filter((clubId) => !adoptedClubIds.includes(clubId))
+      .filter(
+        (clubId) =>
+          !adoptedClubIds.includes(clubId) && clubId !== creatorClubId,
+      )
       .map((clubId) => ({
         clubId,
-        role: userClubDetails[clubId].role, // Return the role for the club
-        name: userClubDetails[clubId].name, // Return the name for the club
+        role: userClubDetails[clubId].role,
+        name: userClubDetails[clubId].name,
       }));
 
+    // Find non-adopted nodes by filtering out the adopted ones and the creator node
     const nonAdoptedNodes = userNodeIds
-      .filter((nodeId) => !adoptedNodeIds.includes(nodeId))
+      .filter(
+        (nodeId) =>
+          !adoptedNodeIds.includes(nodeId) && nodeId !== creatorNodeId,
+      )
       .map((nodeId) => ({
         nodeId,
-        role: userNodeDetails[nodeId].role, // Return the role for the node
-        name: userNodeDetails[nodeId].name, // Return the name for the node
+        role: userNodeDetails[nodeId].role,
+        name: userNodeDetails[nodeId].name,
       }));
 
     return {
@@ -686,13 +844,404 @@ export class DebateService {
   }
 
   async getDebateById(id: string): Promise<Debate> {
-    const debate = await this.debateModel
-      .findById(id)
-      .populate('createdBy')
-      .exec();
-    if (!debate) {
-      throw new NotFoundException('Debate not found');
+    try {
+      const debate = await this.debateModel
+        .findById(id)
+        .populate('createdBy')
+        .exec();
+      if (!debate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return debate;
+    } catch (error) {}
+  }
+  async createArgument(
+    createDebateArgumentDto,
+    file?: Express.Multer.File,
+  ): Promise<DebateArgument> {
+    const { userId, debateId, side, content } = createDebateArgumentDto;
+    try {
+      console.log({ file });
+
+      let image: { url?: string; mimetype?: string } = {};
+      if (Array.isArray(file) && file.length > 0) {
+        const uploadedFile = await this.s3FileUpload.uploadFile(
+          file[0].buffer,
+          file[0].originalname,
+          file[0].mimetype,
+          'comment',
+        );
+        if (uploadedFile) {
+          image.url = uploadedFile.url;
+          image.mimetype = file[0].mimetype;
+        }
+      }
+      const newArgument = new this.debateArgumentModel({
+        debate: new Types.ObjectId(debateId),
+        image,
+        participant: {
+          user: new Types.ObjectId(userId),
+          side: side,
+        },
+        content,
+      });
+      return newArgument.save();
+    } catch (error) {
+      throw error;
     }
-    return debate;
+  }
+  async getArgumentsByDebate(debateId: string) {
+    try {
+      const debateArguments = await this.debateArgumentModel
+        .find({
+          debate: new Types.ObjectId(debateId),
+        })
+        .sort({ pinnedAt: -1 })
+        .populate('participant.user', 'userName profileImage ') // Populate user details if necessary
+        .exec();
+
+      if (!debateArguments || debateArguments.length === 0) {
+        throw new NotFoundException(
+          `No args found for debate with ID ${debateId}`,
+        );
+      }
+
+      return debateArguments;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        'Failed to fetch debate args',
+        error.message,
+      );
+    }
+  }
+
+  async toggleVote(
+    argumentId: string,
+    userId: string,
+    voteType: 'relevant' | 'irrelevant',
+  ) {
+    // Define the opposite field
+    const opposite = voteType === 'relevant' ? 'irrelevant' : 'relevant';
+
+    // Remove the user from the opposite array first
+    await this.debateArgumentModel.findByIdAndUpdate(argumentId, {
+      $pull: { [opposite]: userId },
+    });
+
+    // Check if the user is already in the target array
+    const argument = await this.debateArgumentModel.findById(argumentId);
+    const isInTarget = argument[voteType].includes(new Types.ObjectId(userId));
+
+    // Toggle the user in the target array
+    const updateOperation = isInTarget
+      ? { $pull: { [voteType]: userId } } // Remove user if already in the array
+      : { $addToSet: { [voteType]: userId } }; // Add user if not in the array
+
+    // Perform the update
+    const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+      argumentId,
+      updateOperation,
+      { new: true }, // Return the updated document
+    );
+
+    return updatedArgument;
+  }
+
+  async getProposedDebatesByEntityWithAuthorization(
+    entity: 'club' | 'node',
+    entityId: string,
+    userId: string,
+  ) {
+    try {
+      // Validate entity ID
+      if (!Types.ObjectId.isValid(entityId)) {
+        throw new NotFoundException(`Invalid ${entity} ID`);
+      }
+      console.log({ userId });
+
+      // Determine which model to use based on entity
+      const membershipModel: any =
+        entity === 'club' ? this.clubMembersModel : this.nodeMembersModel;
+
+      // Check if the user is an admin of the entity
+      const query =
+        entity === 'club'
+          ? {
+              club: new Types.ObjectId(entityId),
+              user: new Types.ObjectId(userId),
+            }
+          : {
+              node: new Types.ObjectId(entityId),
+              user: new Types.ObjectId(userId),
+            };
+
+      const member = await membershipModel.findOne(query).exec();
+      console.log({ member });
+
+      if (!member || member.role !== 'admin') {
+        throw new ForbiddenException(
+          `You do not have permission to access adopted proposed entities for this ${entity}`,
+        );
+      }
+
+      // Fetch proposed debates for the entity
+      const filter =
+        entity === 'club'
+          ? { club: new Types.ObjectId(entityId), publishedStatus: 'proposed' }
+          : { node: new Types.ObjectId(entityId), publishedStatus: 'proposed' };
+
+      const debates = await this.debateModel
+        .find(filter)
+        .populate('createdBy')
+        .exec();
+
+      if (!debates.length) {
+        throw new NotFoundException(
+          `No proposed debates found for this ${entity}`,
+        );
+      }
+
+      return debates;
+    } catch (error) {
+      console.error(`Error fetching proposed debates for ${entity}:`, error);
+      throw error;
+    }
+  }
+  async acceptDebate(debateId: string): Promise<Debate> {
+    try {
+      console.log({ debateId });
+
+      const updatedDebate = await this.debateModel.findByIdAndUpdate(
+        new Types.ObjectId(debateId),
+        { publishedStatus: 'published' },
+        { new: true },
+      );
+
+      if (!updatedDebate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return updatedDebate;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'An error occurred while accepting the debate',
+      );
+    }
+  }
+
+  async rejectDebate(debateId: string): Promise<Debate> {
+    try {
+      const updatedDebate = await this.debateModel.findByIdAndUpdate(
+        debateId,
+        { status: 'Rejected' },
+        { new: true },
+      );
+      if (!updatedDebate) {
+        throw new NotFoundException('Debate not found');
+      }
+      return updatedDebate;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'An error occurred while rejecting the debate',
+      );
+    }
+  }
+  async validateParticipation(
+    userId: string,
+    debateId: string,
+    entityType: 'club' | 'node',
+    entity: string,
+  ): Promise<{ isAllowed: boolean; reason?: string }> {
+    try {
+      // Fetch the debate
+      const debate = await this.debateModel.findById(debateId).lean();
+      if (!debate) {
+        return { isAllowed: false, reason: 'Debate not found' };
+      }
+      console.log({ debate });
+
+      // Validate if debate is associated with the provided entity
+      const isDebateAssociated =
+        (entityType === 'club' && debate.club?.toString() === entity) ||
+        (entityType === 'node' && debate.node?.toString() === entity);
+
+      if (!isDebateAssociated) {
+        return {
+          isAllowed: false,
+          reason: `Debate is not associated with the provided ${entityType}`,
+        };
+      }
+
+      // Check membership in the corresponding entity
+      let isMember = false;
+
+      if (entityType === 'club') {
+        const membership = await this.clubMembersModel.findOne({
+          club: new Types.ObjectId(entity),
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+        });
+        isMember = !!membership;
+      } else if (entityType === 'node') {
+        const membership = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(entity),
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+        });
+        isMember = !!membership;
+      }
+
+      if (!isMember) {
+        return {
+          isAllowed: false,
+          reason: `User is not a member of the provided ${entityType}`,
+        };
+      }
+
+      // All checks passed
+      return { isAllowed: true };
+    } catch (error) {
+      console.error('Error in validateParticipation:', error);
+      return {
+        isAllowed: false,
+        reason: 'An error occurred while validating participation',
+      };
+    }
+  }
+  async replyToDebateArgument(
+    parentId: string,
+    content: string,
+    userId: string,
+  ): Promise<DebateArgument> {
+    // Check if the parent debate argument exists
+    const parentArgument = await this.debateArgumentModel.findById(parentId);
+    if (!parentArgument) {
+      throw new NotFoundException(
+        `DebateArgument with ID ${parentId} not found`,
+      );
+    }
+
+    // Create a reply with the author set in the participant
+    const reply = new this.debateArgumentModel({
+      debate: parentArgument.debate, // Ensure the reply is part of the same debate
+      content, // Set the reply content
+      participant: {
+        user: userId, // Only set the user (author)
+      },
+      parentId, // Associate the reply with its parent
+    });
+
+    return (await reply.save()).populate('participant.user');
+  }
+  async getRepliesForParent(parentId: string): Promise<DebateArgument[]> {
+    console.log({ parentId });
+
+    // Fetch all replies by matching parentId
+    return this.debateArgumentModel
+      .find({ parentId })
+      .populate('participant.user');
+  }
+
+  private async uploadFile(
+    file: Express.Multer.File,
+    section: 'node' | 'club',
+  ) {
+    try {
+      // Uploading file to S3 or other cloud storage service
+      const response = await this.s3FileUpload.uploadFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        section,
+      );
+      return response;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to upload file. Please try again later.',
+      );
+    }
+  }
+  async pin(id: string): Promise<DebateArgument> {
+    try {
+      // First check if the argument exists
+      const argument = await this.debateArgumentModel.findById(id);
+      if (!argument) {
+        throw new NotFoundException(`Debate argument #${id} not found`);
+      }
+
+      // Check if already pinned
+      if (argument.isPinned) {
+        throw new BadRequestException('Argument is already pinned');
+      }
+
+      // Update the argument
+      const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isPinned: true,
+            pinnedAt: new Date(),
+          },
+        },
+        { new: true }, // Return the updated document
+      );
+
+      return updatedArgument;
+    } catch (error) {
+      // Handle specific known errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Log the error for debugging
+      console.error('Error while pinning argument:', error);
+
+      // Throw a generic error for unknown issues
+      throw new InternalServerErrorException('Failed to pin the argument');
+    }
+  }
+  async unpin(id: string): Promise<DebateArgument> {
+    try {
+      // First check if the argument exists
+      const argument = await this.debateArgumentModel.findById(id);
+      if (!argument) {
+        throw new NotFoundException(`Debate argument #${id} not found`);
+      }
+
+      // Check if not pinned
+      if (!argument.isPinned) {
+        throw new BadRequestException('Argument is not pinned');
+      }
+
+      // Update the argument
+      const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isPinned: false,
+            pinnedAt: null,
+          },
+        },
+        { new: true }, // Return the updated document
+      );
+
+      return updatedArgument;
+    } catch (error) {
+      // Handle specific known errors
+      if (
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      // Log the error for debugging
+      console.error('Error while unpinning argument:', error);
+
+      // Throw a generic error for unknown issues
+      throw new InternalServerErrorException('Failed to unpin the argument');
+    }
   }
 }
