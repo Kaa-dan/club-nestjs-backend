@@ -5,10 +5,18 @@ import { Club } from './club.entity';
 import { Node_ } from './node.entity';
 import { User } from './user.entity';
 import { Document } from 'mongoose';
+import { TPublishedStatus } from 'typings';
 interface View {
   user: Types.ObjectId;
   date: Date;
 }
+
+interface IAttachment {
+  url: string;
+  type: 'image' | 'file';
+  filename: string;
+}
+
 @Schema({ timestamps: true })
 export class Debate extends Document {
   @Prop({ trim: true, required: true })
@@ -40,12 +48,6 @@ export class Debate extends Document {
     mimetype: string;
     size: number;
   }[];
-
-  @Prop({ required: true })
-  openingCommentsFor: string;
-
-  @Prop({ required: true })
-  openingCommentsAgainst: string;
 
   @Prop({ default: false })
   isPublic: boolean;

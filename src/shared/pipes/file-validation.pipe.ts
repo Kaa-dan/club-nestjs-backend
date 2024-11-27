@@ -42,6 +42,7 @@ export class FileValidationPipe implements PipeTransform {
 
     for (const field of fileFields) {
       const fieldConfig = this.config[field];
+      console.log(fieldConfig, 'asda');
 
       // For single file or array of files
       if (value[field]) {
@@ -50,7 +51,7 @@ export class FileValidationPipe implements PipeTransform {
           : [value[field]];
         this.validateFiles(files, field);
       } else if (fieldConfig.required) {
-        throw new BadRequestException(`${field} is required`);
+        throw new BadRequestException(`${field} is requireded`);
       }
     }
 
@@ -70,7 +71,7 @@ export class FileValidationPipe implements PipeTransform {
 
     // Check if files are required
     if (required && (!files || files.length === 0)) {
-      throw new BadRequestException(`${fieldName} is required`);
+      throw new BadRequestException(`${fieldName} is requireded`);
     }
 
     // Validate each file

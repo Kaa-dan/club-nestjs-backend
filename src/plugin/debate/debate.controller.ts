@@ -15,6 +15,8 @@ import {
   Patch,
   InternalServerErrorException,
   Put,
+  UploadedFile,
+  NotFoundException,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -24,6 +26,8 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { AdoptDebateDto } from './dto/adopte.dto';
+import { DebateArgument } from 'src/shared/entities/debate-argument';
+import { Debate } from 'src/shared/entities/debate.entity';
 
 @Controller('debate')
 export class DebateController {
@@ -75,7 +79,6 @@ export class DebateController {
       // Return the response
       return res.status(HttpStatus.OK).json({
         message: result.message,
-        data: result.data,
       });
     } catch (error) {
       // Handle errors
@@ -142,6 +145,8 @@ export class DebateController {
     @Query('entity') entity: 'node' | 'club',
     @Req() req: Request,
   ) {
+    console.log(req);
+
     const userId = req.user._id;
     // Validate that userId is provided
     if (!userId) {
@@ -296,6 +301,154 @@ export class DebateController {
   async viewDebate(@Param('id') id: string) {
     try {
       return this.debateService.getDebateById(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('argument/:debateId')
+  async getArgumentsByDebate(@Param('debateId') debateId: string) {
+    return this.debateService.getArgumentsByDebate(debateId);
+  }
+
+  @UseInterceptors(FilesInterceptor('file', 1, { storage: memoryStorage() }))
+  @Post('create-argument')
+  async createArgument(
+    @Req() req: Request,
+    @UploadedFiles(
+      new FileValidationPipe({
+        file: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: false,
+        },
+      }),
+    )
+    file: Express.Multer.File,
+
+    @Body() createDebateArgumentDto,
+  ): Promise<DebateArgument> {
+    const userId = req.user._id;
+    createDebateArgumentDto.userId = userId;
+    return this.debateService.createArgument(createDebateArgumentDto, file);
+  }
+
+  @Post('vote/:argumentId')
+  async toggleVote(
+    @Req() req: Request,
+    @Param('argumentId') argumentId: string,
+    @Body() body: { voteType: 'relevant' | 'irrelevant' },
+  ) {
+    const { voteType } = body;
+    const userId = req.user._id;
+    return this.debateService.toggleVote(argumentId, userId, voteType);
+  }
+
+  @Get('proposed/:entityId/:entityType')
+  async getProposedDebatesByClub(
+    @Req() req: Request,
+    @Param('entityId') entityId: string,
+    @Param('entityType') entityType: 'club' | 'node',
+  ) {
+    try {
+      const userId = req.user._id;
+      return await this.debateService.getProposedDebatesByEntityWithAuthorization(
+        entityType,
+        entityId,
+        userId,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to fetch proposed debates for the club',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  @Put('accept/:debateId')
+  async acceptDebate(@Param('debateId') debateId: string): Promise<Debate> {
+    return this.debateService.acceptDebate(debateId);
+  }
+
+  @Put('reject/:debateId')
+  async rejectDebate(@Param('debateId') debateId: string): Promise<Debate> {
+    return this.debateService.rejectDebate(debateId);
+  }
+
+  @Post('check-status')
+  async checkParticipationStatus(
+    @Req() req: Request,
+    @Body()
+    body: {
+      debateId: string;
+      entityType: 'club' | 'node';
+      entity: string;
+    },
+  ): Promise<{ isAllowed: boolean; reason?: string }> {
+    const userId = req.user._id;
+    const { debateId, entityType, entity } = body;
+    console.log({ body });
+
+    // Validate input parameters
+    if (!userId || !debateId || !entityType || !entity) {
+      throw new BadRequestException(
+        'userId, debateId, entityType, and entity are required',
+      );
+    }
+
+    return this.debateService.validateParticipation(
+      userId,
+      debateId,
+      entityType,
+      entity,
+    );
+  }
+
+  @Post(':parentId/reply')
+  async replyToDebateArgument(
+    @Req() req: Request,
+    @Param('parentId') parentId: string,
+    @Body('content') content: string,
+  ) {
+    const userId = req.user._id;
+    return this.debateService.replyToDebateArgument(parentId, content, userId);
+  }
+
+  @Get('replies/:parentId')
+  async getReplies(@Param('parentId') parentId: string) {
+    // Fetch replies using service
+    const replies = await this.debateService.getRepliesForParent(parentId);
+    if (!replies) {
+      throw new NotFoundException(
+        `No replies found for DebateArgument with ID ${parentId}`,
+      );
+    }
+    return replies;
+  }
+
+  @Post('pin/:id')
+  async pin(@Param('id') id: string) {
+    try {
+      return await this.debateService.pin(id);
+    } catch (error) {
+      // NestJS will handle these exceptions automatically
+      throw error;
+    }
+  }
+  @Post('unpin/:id')
+  async unpin(@Param('id') id: string) {
+    try {
+      return await this.debateService.unpin(id);
     } catch (error) {
       throw error;
     }
