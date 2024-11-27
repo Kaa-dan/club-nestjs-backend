@@ -3,13 +3,15 @@ import { Document, Types } from 'mongoose';
 import { IsString, IsDate } from 'class-validator';
 import { Club } from './club.entity';
 import { User } from './user.entity';
-
-export type ClubInvitationDocument = ClubInvitation & Document;
+import { Node_ } from './node.entity';
 
 @Schema({ timestamps: true })
-export class ClubInvitation {
-  @Prop({ type: Types.ObjectId, ref: Club.name, required: true })
+export class Invitation extends Document {
+  @Prop({ type: Types.ObjectId, ref: Club.name })
   club: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: Node_.name })
+  node: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   user: Types.ObjectId;
@@ -24,8 +26,7 @@ export class ClubInvitation {
   isUsed: boolean;
 }
 
-export const ClubInvitationSchema =
-  SchemaFactory.createForClass(ClubInvitation);
+export const InvitationSchema = SchemaFactory.createForClass(Invitation);
 
 export class CreateInvitationDto {
   @IsString()

@@ -390,6 +390,8 @@ export class ClubService {
         .populate('user')
         .exec();
 
+      console.log('ismember', isMember);
+
       if (isMember) {
         status = isMember.status;
         return {
