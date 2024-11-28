@@ -23,7 +23,7 @@ export class NodeService {
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) { }
+  ) {}
 
   /**
    * Creates a new node in the database.
@@ -69,7 +69,7 @@ export class NodeService {
       const createNodeMember = new this.nodeMembersModel({
         node: nodeResponse._id,
         user: nodeResponse.createdBy,
-        role: 'admin',
+        role: 'owner',
         status: 'MEMBER',
       });
 
@@ -203,7 +203,9 @@ export class NodeService {
       });
 
       if (existingRequest) {
-        throw new ConflictException('You have already requested to join this node');
+        throw new ConflictException(
+          'You have already requested to join this node',
+        );
       }
 
       const response = await this.nodeJoinRequestModel.create({
@@ -215,13 +217,16 @@ export class NodeService {
       return response;
     } catch (error) {
       if (error instanceof ConflictException) {
-        throw new ConflictException('You have already requested to join this node')
+        throw new ConflictException(
+          'You have already requested to join this node',
+        );
       }
-      console.log(error, "error")
-      throw new BadRequestException('Error while trying to request to join. Please try again later.');
+      console.log(error, 'error');
+      throw new BadRequestException(
+        'Error while trying to request to join. Please try again later.',
+      );
     }
   }
-
 
   /**
    * Cancel a join request made by a user to a node.
@@ -257,7 +262,9 @@ export class NodeService {
       }
 
       console.error('Error while canceling join request:', error);
-      throw new BadRequestException('Failed to cancel join request. Please try again later.');
+      throw new BadRequestException(
+        'Failed to cancel join request. Please try again later.',
+      );
     }
   }
 
@@ -301,7 +308,7 @@ export class NodeService {
       console.log(error);
       throw new BadRequestException(
         'Error while trying to get user join requests. Please try again later.',
-      )
+      );
     }
   }
 
@@ -321,12 +328,12 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
-      console.log('ddd', status)
+      console.log('ddd', status);
       const updateData: any = { status };
       if (status === 'REJECTED') {
         const response = await this.nodeJoinRequestModel.findOneAndDelete({
           _id: requestId,
-        })
+        });
 
         return response;
       }

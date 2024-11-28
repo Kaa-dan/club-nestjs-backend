@@ -15,6 +15,9 @@ import {
   Patch,
   InternalServerErrorException,
   Put,
+  UploadedFile,
+  NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -24,6 +27,8 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { AdoptDebateDto } from './dto/adopte.dto';
+import { DebateArgument } from 'src/shared/entities/debate-argument';
+import { Debate } from 'src/shared/entities/debate.entity';
 
 @Controller('debate')
 export class DebateController {
@@ -60,14 +65,12 @@ export class DebateController {
     @Res() res: Response,
   ) {
     const userId = req.user._id;
-    console.log(createDebateDto); // To check if the body data is properly captured
 
     try {
       const dataToSave = {
         ...createDebateDto,
         files,
       };
-      console.log({ files });
 
       // Pass the data to the service for creation
       const result = await this.debateService.createDebate(dataToSave, userId);
@@ -75,7 +78,6 @@ export class DebateController {
       // Return the response
       return res.status(HttpStatus.OK).json({
         message: result.message,
-        data: result.data,
       });
     } catch (error) {
       // Handle errors
@@ -97,11 +99,8 @@ export class DebateController {
 
   @Post('adopt')
   async adoptDebate(@Body() body: AdoptDebateDto, @Req() req: any) {
-    console.log({ body });
-
     try {
       const userId = req.user._id; // Extract the authenticated user's ID
-      console.log({ userId });
 
       // Validate the provided data
       if (!body.type || !body.debateId) {
@@ -131,7 +130,6 @@ export class DebateController {
         data: result.data,
       };
     } catch (error) {
-      console.error('Adopt Debate Controller Error:', error);
       throw error;
     }
   }
@@ -156,7 +154,6 @@ export class DebateController {
         userId,
         entityId,
       });
-      console.log({ result });
 
       // Return the result to the client
       return result;
@@ -187,8 +184,6 @@ export class DebateController {
     @Query('entityId') entityId: string,
     @Query('entity') entityType: 'club' | 'node',
   ) {
-    console.log({ entityId, entityType });
-
     try {
       if (!entityId || !entityType) {
         throw new BadRequestException(
@@ -205,7 +200,6 @@ export class DebateController {
       // Return the result from the service
       return result;
     } catch (error) {
-      console.error('Error fetching ongoing debates:', error);
       throw error;
     }
   }
@@ -249,7 +243,6 @@ export class DebateController {
         data: updatedDebate,
       };
     } catch (error) {
-      console.error('Error publishing debate:', error);
       throw error;
     }
   }
@@ -260,7 +253,6 @@ export class DebateController {
     @Body('rulesId') rulesId: Types.ObjectId,
   ) {
     try {
-      console.log({ rulesId });
       return await this.debateService.createViewsForRulesAndRegulations(
         req.user._id,
         rulesId,
@@ -284,7 +276,6 @@ export class DebateController {
         new Types.ObjectId(rulesId),
       );
     } catch (error) {
-      console.log('errrrr ', error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -296,6 +287,161 @@ export class DebateController {
   async viewDebate(@Param('id') id: string) {
     try {
       return this.debateService.getDebateById(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Get('argument/:debateId')
+  async getArgumentsByDebate(@Param('debateId') debateId: string) {
+    return this.debateService.getArgumentsByDebate(debateId);
+  }
+
+  @UseInterceptors(FilesInterceptor('file', 1, { storage: memoryStorage() }))
+  @Post('create-argument')
+  async createArgument(
+    @Req() req: Request,
+    @UploadedFiles(
+      new FileValidationPipe({
+        file: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: false,
+        },
+      }),
+    )
+    file: Express.Multer.File,
+
+    @Body() createDebateArgumentDto,
+  ): Promise<DebateArgument> {
+    const userId = req.user._id;
+    createDebateArgumentDto.userId = userId;
+    return this.debateService.createArgument(createDebateArgumentDto, file);
+  }
+
+  @Post('vote/:argumentId')
+  async toggleVote(
+    @Req() req: Request,
+    @Param('argumentId') argumentId: string,
+    @Body() body: { voteType: 'relevant' | 'irrelevant' },
+  ) {
+    const { voteType } = body;
+    const userId = req.user._id;
+    return this.debateService.toggleVote(argumentId, userId, voteType);
+  }
+
+  @Get('proposed/:entityId/:entityType')
+  async getProposedDebatesByClub(
+    @Req() req: Request,
+    @Param('entityId') entityId: string,
+    @Param('entityType') entityType: 'club' | 'node',
+  ) {
+    try {
+      const userId = req.user._id;
+      return await this.debateService.getProposedDebatesByEntityWithAuthorization(
+        entityType,
+        entityId,
+        userId,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        'Failed to fetch proposed debates for the club',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+  @Put('accept/:debateId')
+  async acceptDebate(@Param('debateId') debateId: string): Promise<Debate> {
+    return this.debateService.acceptDebate(debateId);
+  }
+
+  @Put('reject/:debateId')
+  async rejectDebate(@Param('debateId') debateId: string): Promise<Debate> {
+    return this.debateService.rejectDebate(debateId);
+  }
+
+  @Post('check-status')
+  async checkParticipationStatus(
+    @Req() req: Request,
+    @Body()
+    body: {
+      debateId: string;
+      entityType: 'club' | 'node';
+      entity: string;
+    },
+  ): Promise<{ isAllowed: boolean; reason?: string }> {
+    const userId = req.user._id;
+    const { debateId, entityType, entity } = body;
+
+    // Validate input parameters
+    if (!userId || !debateId || !entityType || !entity) {
+      throw new BadRequestException(
+        'userId, debateId, entityType, and entity are required',
+      );
+    }
+
+    return this.debateService.validateParticipation(
+      userId,
+      debateId,
+      entityType,
+      entity,
+    );
+  }
+
+  @Post(':parentId/reply')
+  async replyToDebateArgument(
+    @Req() req: Request,
+    @Param('parentId') parentId: string,
+    @Body('content') content: string,
+  ) {
+    const userId = req.user._id;
+    return this.debateService.replyToDebateArgument(parentId, content, userId);
+  }
+
+  @Get('replies/:parentId')
+  async getReplies(@Param('parentId') parentId: string) {
+    // Fetch replies using service
+    const replies = await this.debateService.getRepliesForParent(parentId);
+    if (!replies) {
+      throw new NotFoundException(
+        `No replies found for DebateArgument with ID ${parentId}`,
+      );
+    }
+    return replies;
+  }
+
+  @Post('pin/:id')
+  async pin(@Param('id') id: string) {
+    try {
+      return await this.debateService.pin(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+  @Post('unpin/:id')
+  async unpin(@Param('id') id: string) {
+    try {
+      return await this.debateService.unpin(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Delete('argument/:id')
+  async deleteArgument(@Param('id') id: string) {
+    try {
+      return await this.debateService.deleteArgument(id);
     } catch (error) {
       throw error;
     }
