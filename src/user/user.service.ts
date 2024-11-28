@@ -76,17 +76,47 @@ export class UserService {
             as: 'membership',
           },
         },
-        // Stage 3: Filter out users already in the node/club
+        // Stage 3: Look up invitations based on type
+        {
+          $lookup: {
+            from: 'invitations',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                      // { $eq: ['$isUsed', false] },
+                      // { $eq: ['$isRevoked', false] },
+                      { $gt: ['$expiresAt', new Date()] }, // Check if invitation is not expired
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'invitations',
+          },
+        },
+        // Stage 4: Filter out users already in the node/club and with active invitations
         {
           $match: {
             membership: { $eq: [] },
+            invitations: { $eq: [] },
           },
         },
-        // Stage 4: Project to remove sensitive information
+        // Stage 5: Project to remove sensitive information
         {
           $project: {
             password: 0,
             membership: 0,
+            invitations: 0,
           },
         },
       ];

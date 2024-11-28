@@ -223,6 +223,7 @@ export class InvitationService {
       if (!invitation) {
         throw new NotFoundException('Invitation not found');
       }
+      // check if user is already member of the club or node
 
       if (invitation.expiresAt < new Date()) {
         throw new ForbiddenException('Invitation expired');
@@ -240,6 +241,16 @@ export class InvitationService {
 
       // The code below will only run if accept is true
       if (invitation.node) {
+        const isMember = await this.nodeMember.findOne({
+          node: invitation.node._id,
+          user: userId,
+        });
+        if (isMember) {
+          await this.invitationModel.findByIdAndDelete(invitationId);
+          throw new BadRequestException(
+            'User is already a member of this node',
+          );
+        }
         // Add the user to the node
         if (invitation.node && (invitation.node as any).isPublic) {
           await this.nodeMember.create(
@@ -271,6 +282,18 @@ export class InvitationService {
       }
 
       if (invitation.club) {
+        //checking wheather the user is a member of the club
+        const isMember = await this.clubMember.findOne({
+          club: invitation.club._id,
+          user: userId,
+        });
+        if (isMember) {
+          await this.invitationModel.findByIdAndDelete(invitationId);
+          throw new BadRequestException(
+            'User is already a member of this club',
+          );
+        }
+
         // Add the user to the club
         if (invitation.club && (invitation.club as any).isPublic) {
           await this.clubMember.create(
