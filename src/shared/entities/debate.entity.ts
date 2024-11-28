@@ -10,13 +10,6 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-
-interface IAttachment {
-  url: string;
-  type: 'image' | 'file';
-  filename: string;
-}
-
 @Schema({ timestamps: true })
 export class Debate extends Document {
   @Prop({ trim: true, required: true })
@@ -108,6 +101,22 @@ export class Debate extends Document {
 
   @Prop({ default: 'proposed' })
   publishedStatus: TPublishedStatus;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: Debate.name,
+    default: null,
+    required: false,
+  })
+  adoptedFrom: null | Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Debate.name, default: null })
+  rootParentId?: Types.ObjectId;
+
+  @Prop({ default: 0 })
+  pinnedSupportCount: number;
+
+  @Prop({ default: 0 })
+  pinnedAgainstCount: number;
 }
 
 export const DebateSchema = SchemaFactory.createForClass(Debate);

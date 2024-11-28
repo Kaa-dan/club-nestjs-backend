@@ -53,15 +53,15 @@ export class DebateArgument extends Document {
   })
   irrelevant: Types.ObjectId[];
 
-  @Prop({ type: Types.ObjectId, ref: DebateArgument.name, default: null })
-  parentId?: Types.ObjectId;
-
   // New fields for pinning functionality
   @Prop({ type: Boolean, default: false })
   isPinned: boolean;
 
   @Prop({ type: Date, default: null })
   pinnedAt: Date;
+
+  @Prop({ type: Types.ObjectId })
+  parentId: Types.ObjectId;
 }
 
 export const DebateArgumentSchema =
