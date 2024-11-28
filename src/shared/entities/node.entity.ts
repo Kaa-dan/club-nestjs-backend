@@ -63,6 +63,10 @@ export class Node_ extends Document {
   @Prop({ default: false })
   isVerified?: boolean;
 
+  //link for joining the node
+  @Prop({ required: true, unique: true, type: String })
+  link: string;
+
   @Prop({ required: false })
   location: string;
 }
