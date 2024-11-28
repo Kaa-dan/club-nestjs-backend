@@ -28,7 +28,9 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/mongoose": "^10.0.10",
     "@nestjs/platform-express": "^10.4.5",
+    "@nestjs/platform-socket.io": "^10.4.11",
     "@nestjs/swagger": "^7.4.2",
+    "@nestjs/websockets": "^10.4.11",
     "@types/morgan": "^1.9.9",
     "axios": "^1.7.7",
     "bcrypt": "^5.1.1",
@@ -43,6 +45,7 @@
     "nanoid": "^5.0.8",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1",
     "spin-up-ping": "^1.0.5",
     "uuid": "^11.0.2"
   },
