@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 
 import { UserResponseDto } from './dto/user.dto';
 import { plainToClass } from 'class-transformer';
@@ -16,7 +16,6 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
-import { async } from 'rxjs';
 
 @Injectable()
 export class UserService {
@@ -37,86 +36,62 @@ export class UserService {
     type: 'node' | 'club',
     id: Types.ObjectId,
   ): Promise<UserWithoutPassword[]> {
-    console.log({ search, type, id });
     try {
       const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
 
-      const matchStage = {
-        $or: [
-          { 'userDetails.userName': searchRegex },
-          { 'userDetails.firstName': searchRegex },
-          { 'userDetails.lastName': searchRegex },
-          { 'userDetails.email': searchRegex },
-        ],
-      };
+      const aggregationPipeline: any[] = [
+        // Stage 1: Initial match for search criteria
+        {
+          $match: {
+            $or: [
+              { userName: searchRegex },
+              { firstName: searchRegex },
+              { lastName: searchRegex },
+              { email: searchRegex },
+            ],
+          },
+        },
+        // Stage 2: Look up membership based on type
+        {
+          $lookup: {
+            from: type === 'node' ? 'nodemembers' : 'clubmembers',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'membership',
+          },
+        },
+        // Stage 3: Filter out users already in the node/club
+        {
+          $match: {
+            membership: { $eq: [] },
+          },
+        },
+        // Stage 4: Project to remove sensitive information
+        {
+          $project: {
+            password: 0,
+            membership: 0,
+          },
+        },
+      ];
 
-      if (type === 'node') {
-        return this.nodeMembersModel
-          .aggregate([
-            {
-              $match: {
-                _id: { $ne: id },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users', // Use the actual collection name, not User.name
-                localField: 'user',
-                foreignField: '_id',
-                as: 'userDetails',
-              },
-            },
-            { $unwind: '$userDetails' }, // Deconstruct the userDetails array
-            {
-              $match: matchStage, // Use the comprehensive match stage
-            },
-            {
-              $project: {
-                _id: '$userDetails._id',
-                userName: '$userDetails.userName',
-                firstName: '$userDetails.firstName',
-                lastName: '$userDetails.lastName',
-                email: '$userDetails.email',
-                profileImage: '$userDetails.profileImage',
-              },
-            },
-          ])
-          .exec();
-      } else if (type === 'club') {
-        return this.clubMembersModel
-          .aggregate([
-            {
-              $match: {
-                club: { $ne: new Types.ObjectId(id) },
-              },
-            },
-            {
-              $lookup: {
-                from: 'users', // Use the actual collection name
-                localField: 'user',
-                foreignField: '_id',
-                as: 'userDetails',
-              },
-            },
-            { $unwind: '$userDetails' }, // Deconstruct the userDetails array
-            {
-              $match: matchStage, // Use the comprehensive match stage
-            },
-            {
-              $project: {
-                _id: '$userDetails._id',
-                userName: '$userDetails.userName',
-                firstName: '$userDetails.firstName',
-                lastName: '$userDetails.lastName',
-                email: '$userDetails.email',
-                profileImage: '$userDetails.profileImage',
-              },
-            },
-          ])
-          .exec();
-      } else {
-        throw new BadRequestException('Invalid type');
-      }
+      return await this.userModel.aggregate(aggregationPipeline);
     } catch (error) {
       console.error('Error fetching users:', error);
       throw new InternalServerErrorException('Error fetching users');
