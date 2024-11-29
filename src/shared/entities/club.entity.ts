@@ -66,7 +66,7 @@ export class Club extends Document {
   isPublic: boolean;
 
   //link for joining the club
-  @Prop({ required: true, unique: true, type: String })
+  @Prop({ required: false, unique: false, type: String })
   link: string;
 
   //reference of the user who created the club

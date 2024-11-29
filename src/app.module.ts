@@ -12,6 +12,7 @@ import { FileUploadMiddleware } from './shared/middleware/file-upload.middleware
 import { MailerModule } from './mailer/mailer.module';
 import { PluginModule } from './plugin/plugin.module';
 import { RecaptchaModule } from './recaptcha/recaptcha.module';
+import { SocketModule } from './socket/socket.module';
 @Module({
   imports: [
     UserModule,
@@ -26,6 +27,7 @@ import { RecaptchaModule } from './recaptcha/recaptcha.module';
     MailerModule,
     PluginModule,
     RecaptchaModule,
+    SocketModule,
   ],
   providers: [],
 })

@@ -199,7 +199,7 @@ export class UserService {
       if (!user) {
         return {
           data: null,
-          message: 'user not found successfully',
+          message: 'User not found.',
           success: false,
         };
       }
