@@ -100,7 +100,7 @@ export class DebateController {
   @Post('adopt')
   async adoptDebate(@Body() body: AdoptDebateDto, @Req() req: any) {
     try {
-      const userId = req.user._id; // Extract the authenticated user's ID
+      const userId = req?.user?._id; // Extract the authenticated user's ID
 
       // Validate the provided data
       if (!body.type || !body.debateId) {
