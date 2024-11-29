@@ -821,32 +821,38 @@ export class DebateService {
       // Fetch all clubs the user is part of
       const userClubs = await this.clubMembersModel
         .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
-        .populate('club', 'name')
+        .populate('club')
         .select('club role')
         .lean();
+      console.log({ userClubs });
 
       const userClubIds = userClubs?.map((club) => club?.club?._id.toString());
 
       const userClubDetails = userClubs?.reduce((acc, club: any) => {
+        console.log({ club });
+
         acc[club?.club?._id.toString()] = {
           role: club.role,
-          name: club.name,
+          name: club.club.name,
+          image: club.club.profileImage.url,
         };
         return acc;
       }, {});
+      console.log({ userClubDetails });
 
       // Fetch all nodes the user is part of
       const userNodes = await this.nodeMembersModel
         .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
-        .populate('node', 'name')
+        .populate('node')
         .select('node role')
         .lean();
 
-      const userNodeIds = userNodes.map((node) => node.node._id.toString());
-      const userNodeDetails = userNodes.reduce((acc, node: any) => {
+      const userNodeIds = userNodes?.map((node) => node?.node?._id.toString());
+      const userNodeDetails = userNodes?.reduce((acc, node: any) => {
         acc[node?.node?._id.toString()] = {
           role: node?.role,
           name: node?.node?.name,
+          image: node?.node?.profileImage.url,
         };
         return acc;
       }, {});
@@ -863,7 +869,7 @@ export class DebateService {
         .select('club')
         .lean();
 
-      const clubIdsWithDebate = clubsWithDebate.map((d) => d.club.toString());
+      const clubIdsWithDebate = clubsWithDebate.map((d) => d?.club?.toString());
 
       // Find nodes that already have any version of this debate (using rootId)
 
@@ -891,6 +897,7 @@ export class DebateService {
           clubId,
           role: userClubDetails[clubId].role,
           name: userClubDetails[clubId].name,
+          image: userClubDetails[clubId].image,
         }));
 
       // Filter out nodes that already have any version of the debate
@@ -905,6 +912,7 @@ export class DebateService {
           nodeId,
           role: userNodeDetails[nodeId].role,
           name: userNodeDetails[nodeId].name,
+          image: userNodeDetails[nodeId].image,
         }));
 
       return {
