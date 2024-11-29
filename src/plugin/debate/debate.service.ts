@@ -139,6 +139,7 @@ export class DebateService {
               user: userId,
               side: 'support',
             },
+            startingPoint: true,
             content: openingCommentsFor,
           }).save(),
         );
@@ -153,6 +154,7 @@ export class DebateService {
               side: 'against',
             },
             content: openingCommentsAgainst,
+            startingPoint: true,
           }).save(),
         );
       }
@@ -227,10 +229,7 @@ export class DebateService {
 
       // Get the root ID (original source debate)
       const rootId = existingDebate.rootParentId || existingDebate._id;
-      console.log({ rootId });
-      console.log({ type: dataToSave.type });
-      console.log({ club: dataToSave.clubId });
-      console.log({ debateId: dataToSave.debateId });
+
       ``;
 
       // Check if the debate is already adopted by checking both rootParentId and _id
@@ -254,7 +253,6 @@ export class DebateService {
           },
         ],
       });
-      console.log({ alreadyAdopted });
 
       if (alreadyAdopted) {
         return {
@@ -265,9 +263,36 @@ export class DebateService {
       }
 
       // Prepare base data for the new debate
+      // const debateData = {
+      //   ...existingDebate.toObject(),
+      //   _id: undefined,
+
+      //   adoptedBy: new Types.ObjectId(dataToSave.userId),
+      //   createdBy: new Types.ObjectId(dataToSave.userId),
+      //   adoptedClubs: [],
+      //   adoptedNodes: [],
+      //   club:
+      //     dataToSave.type === 'club'
+      //       ? new Types.ObjectId(dataToSave.clubId)
+      //       : null,
+      //   node:
+      //     dataToSave.type === 'node'
+      //       ? new Types.ObjectId(dataToSave.nodeId)
+      //       : null,
+      //   adoptedDate: new Date(),
+      //   publishedDate: isAuthorized ? new Date() : null,
+      //   publishedStatus: isAuthorized ? 'published' : 'proposed',
+      //   adoptedFrom: new Types.ObjectId(existingDebate._id as string),
+      //   rootParentId: rootId, // Keep track of original source
+      // };
+
+      // Prepare base data for the new debate
       const debateData = {
         ...existingDebate.toObject(),
         _id: undefined,
+        createdAt: new Date(), // Add new creation date
+        updatedAt: new Date(), // Add new update date
+        views: [], // Reset views array
         adoptedBy: new Types.ObjectId(dataToSave.userId),
         createdBy: new Types.ObjectId(dataToSave.userId),
         adoptedClubs: [],
@@ -363,7 +388,6 @@ export class DebateService {
       );
     }
   }
-
   async myDebates({
     entity,
     userId,
@@ -383,14 +407,14 @@ export class DebateService {
       if (entity === 'club') {
         if (entityId) {
           query.club = new Types.ObjectId(entityId);
-          query.publishedStatus = 'published';
+          query.publishedStatus = { $in: ['published', 'draft', 'proposed'] };
         } else {
           throw new Error('clubId is required for club entity type.');
         }
       } else if (entity === 'node') {
         if (entityId) {
           query.node = new Types.ObjectId(entityId);
-          query.publishedStatus = 'published';
+          query.publishedStatus = { $in: ['published', 'draft', 'proposed'] };
         } else {
           throw new Error('nodeId is required for node entity type.');
         }
@@ -743,151 +767,154 @@ export class DebateService {
 
   async createViewsForRulesAndRegulations(
     userId: Types.ObjectId,
-    rulesRegulationId: Types.ObjectId,
+    debateId: Types.ObjectId,
   ) {
     try {
-      // Check if the user has already liked
-      const rulesRegulation = await this.debateModel.findOne({
-        _id: rulesRegulationId,
-        views: userId,
+      // Check if the user has already viewed
+      const existingDebate = await this.debateModel.findOne({
+        _id: debateId,
+        views: userId, // Direct match as `views` is an array of IDs
       });
 
-      if (rulesRegulation) {
-        throw new BadRequestException(
-          'User has already viewed this rules regulation',
-        );
+      if (existingDebate) {
+        return {
+          message: 'User has already viewed this rules regulation',
+          debate: existingDebate, // Return the existing debate data
+        };
       }
 
-      // Update the document: Add to relevant array and remove from irrelevant if exists
-      const updatedRulesRegulation = await this.debateModel
-        .findByIdAndUpdate(
-          rulesRegulationId,
-          {
-            // Add to relevant array if not exists
-            $addToSet: { views: { user: userId } },
-          },
-          { new: true },
-        )
-        .exec();
+      // Add userId to the views array if not already present
+      const updatedDebate = await this.debateModel.findByIdAndUpdate(
+        debateId,
+        { $addToSet: { views: userId } }, // Ensures no duplicates
+        { new: true }, // Return the updated document
+      );
 
-      if (!updatedRulesRegulation) {
+      if (!updatedDebate) {
         throw new NotFoundException('Rules regulation not found');
       }
 
-      return { message: 'Viewed successfully' };
+      return { message: 'Viewed successfully', debate: updatedDebate };
     } catch (error) {
+      console.error('Error while updating views:', error.message);
+
       throw new InternalServerErrorException(
         'Error while viewing rules-regulations',
-        error,
       );
     }
   }
 
   async getNonAdoptedClubsAndNodes(userId: string, debateId: Types.ObjectId) {
-    // Fetch the debate to get its rootId
-    const sourceDebate = await this.debateModel
-      .findById(debateId)
-      .select('rootParentId club node')
-      .lean();
+    try {
+      // Fetch the debate to get its rootId
+      const sourceDebate = await this.debateModel
+        .findById(debateId)
+        .select('rootParentId club node')
+        .lean();
 
-    if (!sourceDebate) {
-      throw new NotFoundException('Debate not found');
+      if (!sourceDebate) {
+        throw new NotFoundException('Debate not found');
+      }
+
+      const rootId = sourceDebate.rootParentId || sourceDebate._id;
+
+      // Fetch all clubs the user is part of
+      const userClubs = await this.clubMembersModel
+        .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
+        .populate('club', 'name')
+        .select('club role')
+        .lean();
+
+      const userClubIds = userClubs?.map((club) => club?.club?._id.toString());
+
+      const userClubDetails = userClubs?.reduce((acc, club: any) => {
+        acc[club?.club?._id.toString()] = {
+          role: club.role,
+          name: club.name,
+        };
+        return acc;
+      }, {});
+
+      // Fetch all nodes the user is part of
+      const userNodes = await this.nodeMembersModel
+        .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
+        .populate('node', 'name')
+        .select('node role')
+        .lean();
+
+      const userNodeIds = userNodes.map((node) => node.node._id.toString());
+      const userNodeDetails = userNodes.reduce((acc, node: any) => {
+        acc[node?.node?._id.toString()] = {
+          role: node?.role,
+          name: node?.node?.name,
+        };
+        return acc;
+      }, {});
+
+      // Find clubs that already have any version of this debate (using rootId)
+      const clubsWithDebate = await this.debateModel
+        .find({
+          $or: [
+            { rootParentId: rootId }, // Matches debates with the given rootId in rootParentId
+            { _id: rootId }, // Matches the main parent debate (where rootId is _id)
+          ],
+          club: { $in: userClubIds.map((id) => new Types.ObjectId(id)) }, // Filters by user's clubs
+        })
+        .select('club')
+        .lean();
+
+      const clubIdsWithDebate = clubsWithDebate.map((d) => d.club.toString());
+
+      // Find nodes that already have any version of this debate (using rootId)
+
+      const nodesWithDebate = await this.debateModel
+        .find({
+          $or: [
+            { rootParentId: rootId }, // Include debates with this rootId in rootParentId
+            { _id: rootId }, // Include the root debate itself
+          ],
+          node: { $in: userNodeIds.map((id) => new Types.ObjectId(id)) }, // Filter by user's nodes
+        })
+        .select('node')
+        .lean();
+      const nodeIdsWithDebate = nodesWithDebate.map((d) => d.node.toString());
+
+      // Filter out clubs that already have any version of the debate
+      // and the creator club
+      const nonAdoptedClubs = userClubIds
+        .filter(
+          (clubId) =>
+            !clubIdsWithDebate.includes(clubId) &&
+            clubId !== sourceDebate.club?.toString(),
+        )
+        .map((clubId) => ({
+          clubId,
+          role: userClubDetails[clubId].role,
+          name: userClubDetails[clubId].name,
+        }));
+
+      // Filter out nodes that already have any version of the debate
+      // and the creator node
+      const nonAdoptedNodes = userNodeIds
+        .filter(
+          (nodeId) =>
+            !nodeIdsWithDebate.includes(nodeId) &&
+            nodeId !== sourceDebate.node?.toString(),
+        )
+        .map((nodeId) => ({
+          nodeId,
+          role: userNodeDetails[nodeId].role,
+          name: userNodeDetails[nodeId].name,
+        }));
+
+      return {
+        nonAdoptedClubs,
+        nonAdoptedNodes,
+      };
+    } catch (error) {
+      console.error('Error fetching non-adopted clubs and nodes:', error);
+      throw new InternalServerErrorException('Failed to fetch data');
     }
-
-    console.log({ sourceDebate });
-
-    const rootId = sourceDebate.rootParentId || sourceDebate._id;
-
-    // Fetch all clubs the user is part of
-    const userClubs = await this.clubMembersModel
-      .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
-      .populate('club', 'name')
-      .select('club role')
-      .lean();
-    console.log({ userClubs });
-
-    const userClubIds = userClubs.map((club) => club.club._id.toString());
-    console.log({ userClubIds });
-
-    const userClubDetails = userClubs.reduce((acc, club: any) => {
-      acc[club.club._id.toString()] = { role: club.role, name: club.club.name };
-      return acc;
-    }, {});
-
-    // Fetch all nodes the user is part of
-    const userNodes = await this.nodeMembersModel
-      .find({ user: new Types.ObjectId(userId), status: 'MEMBER' })
-      .populate('node', 'name')
-      .select('node role')
-      .lean();
-
-    const userNodeIds = userNodes.map((node) => node.node._id.toString());
-    const userNodeDetails = userNodes.reduce((acc, node: any) => {
-      acc[node.node._id.toString()] = { role: node.role, name: node.node.name };
-      return acc;
-    }, {});
-
-    // Find clubs that already have any version of this debate (using rootId)
-    const clubsWithDebate = await this.debateModel
-      .find({
-        $or: [
-          { rootParentId: rootId }, // Matches debates with the given rootId in rootParentId
-          { _id: rootId }, // Matches the main parent debate (where rootId is _id)
-        ],
-        club: { $in: userClubIds.map((id) => new Types.ObjectId(id)) }, // Filters by user's clubs
-      })
-      .select('club')
-      .lean();
-
-    const clubIdsWithDebate = clubsWithDebate.map((d) => d.club.toString());
-
-    // Find nodes that already have any version of this debate (using rootId)
-
-    const nodesWithDebate = await this.debateModel
-      .find({
-        $or: [
-          { rootParentId: rootId }, // Include debates with this rootId in rootParentId
-          { _id: rootId }, // Include the root debate itself
-        ],
-        node: { $in: userNodeIds.map((id) => new Types.ObjectId(id)) }, // Filter by user's nodes
-      })
-      .select('node')
-      .lean();
-    const nodeIdsWithDebate = nodesWithDebate.map((d) => d.node.toString());
-
-    // Filter out clubs that already have any version of the debate
-    // and the creator club
-    const nonAdoptedClubs = userClubIds
-      .filter(
-        (clubId) =>
-          !clubIdsWithDebate.includes(clubId) &&
-          clubId !== sourceDebate.club?.toString(),
-      )
-      .map((clubId) => ({
-        clubId,
-        role: userClubDetails[clubId].role,
-        name: userClubDetails[clubId].name,
-      }));
-
-    // Filter out nodes that already have any version of the debate
-    // and the creator node
-    const nonAdoptedNodes = userNodeIds
-      .filter(
-        (nodeId) =>
-          !nodeIdsWithDebate.includes(nodeId) &&
-          nodeId !== sourceDebate.node?.toString(),
-      )
-      .map((nodeId) => ({
-        nodeId,
-        role: userNodeDetails[nodeId].role,
-        name: userNodeDetails[nodeId].name,
-      }));
-    // console.log({ nonAdoptedClubs, nonAdoptedNodes });
-
-    return {
-      nonAdoptedClubs,
-      nonAdoptedNodes,
-    };
   }
 
   async getDebateById(id: string): Promise<Debate> {
@@ -942,8 +969,8 @@ export class DebateService {
         .find({
           debate: new Types.ObjectId(debateId),
         })
-        .sort({ pinnedAt: -1 })
-        .populate('participant.user', 'userName profileImage ') // Populate user details if necessary
+        .sort({ startingPoint: -1, isPinned: -1, pinnedAt: -1 })
+        .populate('participant.user', 'userName profileImage')
         .exec();
 
       if (!debateArguments || debateArguments.length === 0) {
@@ -1080,7 +1107,6 @@ export class DebateService {
       if (!updatedDebate) {
         throw new NotFoundException('Debate not found');
       }
-      console.log({ updated: updatedDebate });
 
       return updatedDebate;
     } catch (error) {
@@ -1101,7 +1127,6 @@ export class DebateService {
       if (!debate) {
         return { isAllowed: false, reason: 'Debate not found' };
       }
-      console.log({ debate });
 
       // Validate if debate is associated with the provided entity
       const isDebateAssociated =
@@ -1163,7 +1188,6 @@ export class DebateService {
         `DebateArgument with ID ${parentId} not found`,
       );
     }
-    console.log({ parentId });
 
     // Create a reply with the author set in the participant
     const reply = new this.debateArgumentModel({
@@ -1178,8 +1202,6 @@ export class DebateService {
     return (await reply.save()).populate('participant.user');
   }
   async getRepliesForParent(parentId: string): Promise<DebateArgument[]> {
-    console.log({ parentId });
-
     // Fetch all replies by matching parentId
     return this.debateArgumentModel
       .find({ parentId: new Types.ObjectId(parentId) })

@@ -1,4 +1,13 @@
-import { Controller, Post, Body, Param, Get, Req, Put } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Param,
+  Get,
+  Req,
+  Put,
+  ParseBoolPipe,
+} from '@nestjs/common';
 
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { InvitationService } from './invitation.service';
@@ -28,7 +37,7 @@ export class InvitationController {
   acceptInvitation(
     @Req() req: Request,
     @Param('invitationId') invitationId: Types.ObjectId,
-    @Param('accept') accept: boolean,
+    @Param('accept', ParseBoolPipe) accept: boolean,
   ) {
     console.log('nithin');
     return this.invitationService.acceptInvitation(
