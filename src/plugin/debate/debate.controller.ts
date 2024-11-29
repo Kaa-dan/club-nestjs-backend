@@ -250,7 +250,7 @@ export class DebateController {
   @Put('create-views')
   async createViewsForRulesAndRegulations(
     @Req() req: Request,
-    @Body('rulesId') rulesId: Types.ObjectId,
+    @Body('debateId') rulesId: Types.ObjectId,
   ) {
     try {
       return await this.debateService.createViewsForRulesAndRegulations(

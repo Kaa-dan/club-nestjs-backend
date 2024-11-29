@@ -62,6 +62,9 @@ export class DebateArgument extends Document {
 
   @Prop({ type: Types.ObjectId })
   parentId: Types.ObjectId;
+
+  @Prop({ default: false, type: Boolean })
+  startingPoint: boolean;
 }
 
 export const DebateArgumentSchema =
