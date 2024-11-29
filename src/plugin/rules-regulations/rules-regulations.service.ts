@@ -342,8 +342,6 @@ export class RulesRegulationsService {
         dataToSave.rulesId,
       );
 
-      console.log({ existingRule });
-
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }
@@ -359,10 +357,9 @@ export class RulesRegulationsService {
         adoptedDate: new Date(),
         adoptedParent: dataToSave.rulesId,
         publishedDate: new Date(),
+        rootParent: existingRule?.rootParent ?? existingRule?._id,
         version: 1,
       };
-
-      console.log({ baseRuleData });
 
       let updateOperation;
       let newRule;
@@ -462,144 +459,108 @@ export class RulesRegulationsService {
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     rulesId: Types.ObjectId,
-  ): Promise<{ clubs: any[]; nodes: any[] }> {
+  ): Promise<Node_[]> {
     try {
-      console.log({ userId, rulesId });
-      // Get all clubs where user is admin
-      const clubsQuery = await this.clubMembersModel.aggregate([
-        {
-          $match: {
-            user: userId,
-            role: 'admin',
-            status: 'MEMBER',
-          },
-        },
-        {
-          $lookup: {
-            from: 'rulesregulations',
-            let: { clubId: '$club' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$_id', rulesId] },
-                      {
-                        $not: [
-                          {
-                            $in: [
-                              '$clubId',
-                              { $ifNull: ['$adoptedNodes', []] },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'notAdoptedRules',
-          },
-        },
-        {
-          $match: {
-            'notAdoptedRules.0': { $exists: true },
-          },
-        },
-        {
-          $lookup: {
-            from: 'clubs',
-            localField: 'club',
-            foreignField: '_id',
-            as: 'clubDetails',
-          },
-        },
-        {
-          $unwind: '$clubDetails',
-        },
-        {
-          $project: {
-            _id: '$clubDetails._id',
-            name: '$clubDetails.name',
-            description: '$clubDetails.description',
-            // add other fields according to the requirements
-          },
-        },
-      ]);
+      console.log('Input Parameters:', { userId, rulesId });
 
-      // Get all nodes where user is admin
-      const nodesQuery = await this.nodeMembersModel.aggregate([
+      // Stage 1: Match
+      const stage1 = [
         {
           $match: {
             user: userId,
-            role: 'admin',
-            status: 'MEMBER',
+            // Optional: remove this filter if unnecessary
           },
         },
+      ];
+      console.log('Stage 1 Pipeline:', stage1);
+      const stage1Result = await this.nodeMembersModel.aggregate(stage1);
+      console.log('Stage 1 Result:', stage1Result);
+
+      // Stage 2: Lookup node details
+      const stage2 = [
+        ...stage1,
         {
           $lookup: {
-            from: 'rulesregulations',
-            let: { nodeId: '$node' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$_id', rulesId] },
-                      {
-                        $not: [
-                          {
-                            $in: [
-                              '$$nodeId',
-                              { $ifNull: ['$adoptedNodes', []] },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'notAdoptedRules',
-          },
-        },
-        {
-          $match: {
-            'notAdoptedRules.0': { $exists: true },
-          },
-        },
-        {
-          $lookup: {
-            from: 'node_',
+            from: 'node_', // Collection name for nodes
             localField: 'node',
             foreignField: '_id',
             as: 'nodeDetails',
           },
         },
+      ];
+      console.log('Stage 2 Pipeline:', stage2);
+      const stage2Result = await this.nodeMembersModel.aggregate(stage2);
+      console.log('Stage 2 Result:', stage2Result);
+
+      // Stage 3: Unwind nodeDetails
+      const stage3 = [
+        ...stage2,
         {
           $unwind: '$nodeDetails',
         },
+      ];
+      console.log('Stage 3 Pipeline:', stage3);
+      const stage3Result = await this.nodeMembersModel.aggregate(stage3);
+      console.log('Stage 3 Result:', stage3Result);
+
+      // Stage 4: Lookup rules to check adoption
+      const stage4 = [
+        ...stage3,
         {
-          $project: {
-            _id: '$nodeDetails._id',
-            name: '$nodeDetails.name',
-            description: '$nodeDetails.description',
+          $lookup: {
+            from: 'rulesregulations', // Collection name for rules
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  _id: new Types.ObjectId(rulesId),
+                  $expr: {
+                    $not: {
+                      $in: ['$$nodeId', '$adoptedNodes.node'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedRules',
           },
         },
-      ]);
+      ];
+      console.log('Stage 4 Pipeline:', stage4);
+      const stage4Result = await this.nodeMembersModel.aggregate(stage4);
+      console.log('Stage 4 Result:', stage4Result);
 
-      // Execute both queries in parallel
-      const [clubs, nodes] = await Promise.all([clubsQuery, nodesQuery]);
+      // Stage 5: Filter out nodes already adopted
+      const stage5 = [
+        ...stage4,
+        {
+          $match: {
+            unadoptedRules: { $ne: [] },
+          },
+        },
+      ];
+      console.log('Stage 5 Pipeline:', stage5);
+      const stage5Result = await this.nodeMembersModel.aggregate(stage5);
+      console.log('Stage 5 Result:', stage5Result);
 
-      console.log({ clubs, nodes });
+      // Stage 6: Project node details
+      const stage6 = [
+        ...stage5,
+        {
+          $replaceRoot: {
+            newRoot: '$nodeDetails',
+          },
+        },
+      ];
+      console.log('Stage 6 Pipeline:', stage6);
+      const stage6Result = await this.nodeMembersModel.aggregate(stage6);
+      console.log('Final Result:', stage6Result);
 
-      return { clubs, nodes };
+      return stage6Result;
     } catch (error) {
-      console.log({ error });
+      console.error('Error while fetching unadopted nodes:', error);
       throw new InternalServerErrorException(
-        'Error while fetching clubs and nodes',
+        'Error while fetching unadopted nodes',
         error,
       );
     }
