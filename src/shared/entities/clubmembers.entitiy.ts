@@ -13,8 +13,8 @@ export class ClubMembers extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true })
   user: Types.ObjectId;
 
-  @Prop({ required: true, enum: ['admin', 'moderator', 'member'] })
-  role: 'admin' | 'moderator' | 'member';
+  @Prop({ required: true, enum: ['admin', 'moderator', 'member', 'owner'] })
+  role: 'admin' | 'moderator' | 'member' | 'owner';
 
   @Prop({ required: true })
   status: 'MEMBER' | 'BLOCKED';

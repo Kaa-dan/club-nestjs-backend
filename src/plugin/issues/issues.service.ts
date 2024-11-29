@@ -37,8 +37,7 @@ export class IssuesService {
     private readonly nodeModel: Model<Node_>,
     @InjectModel(Club.name)
     private readonly clubModel: Model<Club>,
-
-  ) { }
+  ) {}
 
   /**
    * Create a new issue. This function will also handle the upload of any files
@@ -156,8 +155,8 @@ export class IssuesService {
         ...currentVersion.toObject(),
         version: currentVersion.version || 1,
         files: mergedFiles,
-        publishedStatus: 'olderversion'
-      }
+        publishedStatus: 'olderversion',
+      };
 
       const updatedDocument = await this.issuesModel.findByIdAndUpdate(
         dataToSave._id,
@@ -212,7 +211,7 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -237,7 +236,7 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -273,7 +272,7 @@ export class IssuesService {
       }
       return await this.issuesModel.find(query).exec();
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -294,14 +293,13 @@ export class IssuesService {
         .populate('club')
         .exec();
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
       );
     }
   }
-
 
   async getIssue(issueId: Types.ObjectId) {
     try {
@@ -313,10 +311,10 @@ export class IssuesService {
         .populate('club')
         .exec();
 
-      console.log(response, 'ice')
-      return response
+      console.log(response, 'ice');
+      return response;
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting specific issue',
         error,
@@ -385,7 +383,7 @@ export class IssuesService {
               $addToSet: {
                 adoptedClubs: {
                   club: new Types.ObjectId(data.club),
-                  date: new Date()
+                  date: new Date(),
                 },
               },
             },
@@ -443,7 +441,7 @@ export class IssuesService {
           version: 1,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
-        }
+        };
 
         // Removing fields
         // delete newIssueData._id;
@@ -489,7 +487,7 @@ export class IssuesService {
           version: 1,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
-        }
+        };
 
         // Removing fields
         // delete newIssueData._id;
@@ -511,7 +509,7 @@ export class IssuesService {
 
       // return adoptedIssue;
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
@@ -587,7 +585,6 @@ export class IssuesService {
     }
   }
 
-
   async getProposedIssues(entity, entityId: Types.ObjectId) {
     try {
       if (entity === 'node') {
@@ -602,7 +599,7 @@ export class IssuesService {
           .exec();
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting proposed issues',
         error,
@@ -622,7 +619,7 @@ export class IssuesService {
   async likeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
     try {
       if (!issueId) {
-        throw new NotFoundException('IssueId not found')
+        throw new NotFoundException('IssueId not found');
       }
 
       const issue = await this.issuesModel.findById(issueId);
@@ -630,30 +627,28 @@ export class IssuesService {
         throw new NotFoundException('Issue not found');
       }
 
-      const alreadyLiked = issue.relevant.some(
-        (like) => like.user.equals(userId)
+      const alreadyLiked = issue.relevant.some((like) =>
+        like.user.equals(userId),
       );
 
       if (alreadyLiked) {
         return await this.issuesModel.findByIdAndUpdate(
           issueId,
           { $pull: { relevant: { user: userId } } },
-          { new: true }
-        )
+          { new: true },
+        );
       }
 
       return await this.issuesModel.findByIdAndUpdate(
         issueId,
         {
           $addToSet: { relevant: { user: userId, date: new Date() } },
-          $pull: { irrelevant: { user: userId } }
+          $pull: { irrelevant: { user: userId } },
         },
-        { new: true }
-      )
-
+        { new: true },
+      );
     } catch (error) {
-
-      console.log(error)
+      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -662,8 +657,7 @@ export class IssuesService {
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
-      )
-
+      );
     }
   }
 
@@ -679,7 +673,7 @@ export class IssuesService {
   async dislikeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
     try {
       if (!issueId) {
-        throw new NotFoundException('IssueId not found')
+        throw new NotFoundException('IssueId not found');
       }
 
       const issue = await this.issuesModel.findById(issueId);
@@ -687,30 +681,28 @@ export class IssuesService {
         throw new NotFoundException('Issue not found');
       }
 
-      const alreadyDisliked = issue.irrelevant.some(
-        (dislike) => dislike.user.equals(userId)
+      const alreadyDisliked = issue.irrelevant.some((dislike) =>
+        dislike.user.equals(userId),
       );
 
       if (alreadyDisliked) {
         return await this.issuesModel.findByIdAndUpdate(
           issueId,
           { $pull: { irrelevant: { user: userId } } },
-          { new: true }
-        )
+          { new: true },
+        );
       }
 
       return await this.issuesModel.findByIdAndUpdate(
         issueId,
         {
           $addToSet: { irrelevant: { user: userId, date: new Date() } },
-          $pull: { relevant: { user: userId } }
+          $pull: { relevant: { user: userId } },
         },
-        { new: true }
-      )
-
+        { new: true },
+      );
     } catch (error) {
-
-      console.log(error)
+      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -719,41 +711,39 @@ export class IssuesService {
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
-      )
+      );
     }
   }
 
-
-  async getClubsNodesNotAdopted(userId: Types.ObjectId, issueId: Types.ObjectId) {
+  async getClubsNodesNotAdopted(
+    userId: Types.ObjectId,
+    issueId: Types.ObjectId,
+  ) {
     try {
-
       if (!issueId) {
-        throw new NotFoundException('IssueId not found')
+        throw new NotFoundException('IssueId not found');
       }
 
       const issue = await this.issuesModel.findById(issueId);
 
       if (!issue) {
-        throw new NotFoundException('Issue not found')
+        throw new NotFoundException('Issue not found');
       }
 
       let adoptedClubs: Types.ObjectId[] = [];
       let adoptedNodes: Types.ObjectId[] = [];
 
-      adoptedClubs = issue.adoptedClubs.map(club => club.club);
-      adoptedNodes = issue.adoptedNodes.map(node => node.node);
+      adoptedClubs = issue.adoptedClubs.map((club) => club.club);
+      adoptedNodes = issue.adoptedNodes.map((node) => node.node);
 
       // Find clubs where user is a member but hasn't adopted the issue
       const memberClubs = await this.clubModel.aggregate([
         {
           $match: {
             _id: {
-              $nin: [
-                ...adoptedClubs,
-                issue.club
-              ].filter(Boolean)
+              $nin: [...adoptedClubs, issue.club].filter(Boolean),
             },
-          }
+          },
         },
         {
           // First lookup to check adoptedFrom in issues
@@ -766,19 +756,19 @@ export class IssuesService {
                   $expr: {
                     $and: [
                       { $eq: ['$club', '$$clubId'] },
-                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] }
-                    ]
-                  }
-                }
-              }
+                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] },
+                    ],
+                  },
+                },
+              },
             ],
-            as: 'adoptedFromIssues'
-          }
+            as: 'adoptedFromIssues',
+          },
         },
         {
           $match: {
-            adoptedFromIssues: { $size: 0 } // Exclude clubs that have adopted from this issue
-          }
+            adoptedFromIssues: { $size: 0 }, // Exclude clubs that have adopted from this issue
+          },
         },
         // {
         //   $lookup: {
@@ -814,28 +804,28 @@ export class IssuesService {
                   $expr: {
                     $and: [
                       { $eq: ['$club', '$$clubId'] },
-                      { $eq: ['$user', new Types.ObjectId(userId)] }
-                    ]
-                  }
-                }
-              }
+                      { $eq: ['$user', new Types.ObjectId(userId)] },
+                    ],
+                  },
+                },
+              },
             ],
-            as: 'userMembership'
-          }
+            as: 'userMembership',
+          },
         },
         {
           $match: {
-            userMembership: { $not: { $size: 0 } } // Clubs where user is a member
-          }
+            userMembership: { $not: { $size: 0 } }, // Clubs where user is a member
+          },
         },
         {
           $project: {
             _id: 1,
             name: 1,
             description: 1,
-            userRole: { $arrayElemAt: ['$userMembership.role', 0] } // Include user's role
-          }
-        }
+            userRole: { $arrayElemAt: ['$userMembership.role', 0] }, // Include user's role
+          },
+        },
       ]);
 
       // Find nodes where user is a member but hasn't adopted the issue
@@ -843,12 +833,9 @@ export class IssuesService {
         {
           $match: {
             _id: {
-              $nin: [
-                ...adoptedNodes,
-                issue.node
-              ].filter(Boolean)
+              $nin: [...adoptedNodes, issue.node].filter(Boolean),
             },
-          }
+          },
         },
         {
           // Add lookup to check adoptedFrom in issues
@@ -861,14 +848,14 @@ export class IssuesService {
                   $expr: {
                     $and: [
                       { $eq: ['$node', '$$nodeId'] },
-                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] }
-                    ]
-                  }
-                }
-              }
+                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] },
+                    ],
+                  },
+                },
+              },
             ],
-            as: 'adoptedFromIssues'
-          }
+            as: 'adoptedFromIssues',
+          },
         },
         // {
         //   $lookup: {
@@ -904,39 +891,36 @@ export class IssuesService {
                   $expr: {
                     $and: [
                       { $eq: ['$node', '$$nodeId'] },
-                      { $eq: ['$user', new Types.ObjectId(userId)] }
-                    ]
-                  }
-                }
-              }
+                      { $eq: ['$user', new Types.ObjectId(userId)] },
+                    ],
+                  },
+                },
+              },
             ],
-            as: 'userMembership'
-          }
+            as: 'userMembership',
+          },
         },
         {
           $match: {
-            userMembership: { $not: { $size: 0 } } // Nodes where user is a member
-          }
+            userMembership: { $not: { $size: 0 } }, // Nodes where user is a member
+          },
         },
         {
           $project: {
             _id: 1,
             name: 1,
             description: 1,
-            userRole: { $arrayElemAt: ['$userMembership.role', 0] } // Include user's role
-          }
-        }
+            userRole: { $arrayElemAt: ['$userMembership.role', 0] }, // Include user's role
+          },
+        },
       ]);
 
       return {
         clubs: memberClubs,
-        nodes: memberNodes
+        nodes: memberNodes,
       };
-
-
     } catch (error) {
-
-      console.log(error)
+      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -944,10 +928,8 @@ export class IssuesService {
 
       throw new InternalServerErrorException(
         'Error while getting clubs and nodes not adopted',
-        error
-      )
+        error,
+      );
     }
   }
-
-
 }

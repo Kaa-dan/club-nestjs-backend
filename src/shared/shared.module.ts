@@ -5,10 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { NodeMembers, NodeMembersSchema } from './entities/node-members.entity';
 import { SearchModule } from './search/search.module';
 import { Club, ClubSchema } from './entities/club.entity';
-import {
-  ClubInvitation,
-  ClubInvitationSchema,
-} from './entities/club-invitation.entity';
+import { Invitation, InvitationSchema } from './entities/invitation.entity';
 import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 import {
   RulesRegulations,
@@ -48,7 +45,7 @@ import {
       { name: Node_.name, schema: NodeSchema },
       { name: NodeMembers.name, schema: NodeMembersSchema },
       { name: Club.name, schema: ClubSchema },
-      { name: ClubInvitation.name, schema: ClubInvitationSchema },
+      { name: Invitation.name, schema: InvitationSchema },
       { name: ClubMembers.name, schema: ClubMembersSchema },
       { name: RulesRegulations.name, schema: RulesRegulationsSchema },
       { name: Comment.name, schema: CommentSchema },

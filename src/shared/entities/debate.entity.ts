@@ -8,15 +8,7 @@ import { Document } from 'mongoose';
 import { TPublishedStatus } from 'typings';
 interface View {
   user: Types.ObjectId;
-  date: Date;
 }
-
-interface IAttachment {
-  url: string;
-  type: 'image' | 'file';
-  filename: string;
-}
-
 @Schema({ timestamps: true })
 export class Debate extends Document {
   @Prop({ trim: true, required: true })
@@ -92,13 +84,10 @@ export class Debate extends Document {
     date: Date;
   }[];
 
-  @Prop([
-    {
-      user: { type: Types.ObjectId, ref: User.name, required: true },
-      date: { type: Date, default: Date.now },
-    },
-  ])
-  views: View[];
+  @Prop({
+    type: [String], // Define as an array of strings
+  })
+  views: string[];
 
   @Prop({ type: Types.ObjectId, ref: User.name })
   createdBy: Types.ObjectId;
@@ -108,6 +97,22 @@ export class Debate extends Document {
 
   @Prop({ default: 'proposed' })
   publishedStatus: TPublishedStatus;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: Debate.name,
+    default: null,
+    required: false,
+  })
+  adoptedFrom: null | Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: Debate.name, default: null })
+  rootParentId?: Types.ObjectId;
+
+  @Prop({ default: 0 })
+  pinnedSupportCount: number;
+
+  @Prop({ default: 0 })
+  pinnedAgainstCount: number;
 }
 
 export const DebateSchema = SchemaFactory.createForClass(Debate);

@@ -241,6 +241,9 @@ export class NodeService {
       if (!nodeId) {
         throw new BadRequestException('Please provide node id');
       }
+      if (!userId) {
+        throw new BadRequestException('Please provide user id');
+      }
 
       const response = await this.nodeJoinRequestModel.findOneAndDelete({
         node: nodeId,

@@ -5,7 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 
 import { UserResponseDto } from './dto/user.dto';
 import { plainToClass } from 'class-transformer';
@@ -31,27 +31,103 @@ export class UserService {
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
   ) {}
 
-  async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
+  async getUsersNotInClubOrNode(
+    search: string,
+    type: 'node' | 'club',
+    id: Types.ObjectId,
+  ): Promise<UserWithoutPassword[]> {
     try {
-      const searchRegex = new RegExp(search, 'i'); // case-insensitive search
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
 
-      const users = await this.userModel
-        .find({
-          $or: [
-            { firstName: { $regex: searchRegex } },
-            { lastName: { $regex: searchRegex } },
-            { email: { $regex: searchRegex } },
-          ],
-        })
-        .select('-password')
-        .lean()
-        .exec();
+      const aggregationPipeline: any[] = [
+        // Stage 1: Initial match for search criteria
+        {
+          $match: {
+            $or: [
+              { userName: searchRegex },
+              { firstName: searchRegex },
+              { lastName: searchRegex },
+              { email: searchRegex },
+            ],
+          },
+        },
+        // Stage 2: Look up membership based on type
+        {
+          $lookup: {
+            from: type === 'node' ? 'nodemembers' : 'clubmembers',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'membership',
+          },
+        },
+        // Stage 3: Look up invitations based on type
+        {
+          $lookup: {
+            from: 'invitations',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                      // { $eq: ['$isUsed', false] },
+                      // { $eq: ['$isRevoked', false] },
+                      { $gt: ['$expiresAt', new Date()] }, // Check if invitation is not expired
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'invitations',
+          },
+        },
+        // Stage 4: Filter out users already in the node/club and with active invitations
+        {
+          $match: {
+            membership: { $eq: [] },
+            invitations: { $eq: [] },
+          },
+        },
+        // Stage 5: Project to remove sensitive information
+        {
+          $project: {
+            password: 0,
+            membership: 0,
+            invitations: 0,
+          },
+        },
+      ];
 
-      return users as unknown as UserWithoutPassword[];
+      return await this.userModel.aggregate(aggregationPipeline);
     } catch (error) {
+      console.error('Error fetching users:', error);
       throw new InternalServerErrorException('Error fetching users');
     }
   }
+
   /**
    * Find user by ID
    * @param userId - MongoDB ObjectId of the user

@@ -17,6 +17,7 @@ import {
   Put,
   UploadedFile,
   NotFoundException,
+  Delete,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -64,14 +65,12 @@ export class DebateController {
     @Res() res: Response,
   ) {
     const userId = req.user._id;
-    console.log(createDebateDto); // To check if the body data is properly captured
 
     try {
       const dataToSave = {
         ...createDebateDto,
         files,
       };
-      console.log({ files });
 
       // Pass the data to the service for creation
       const result = await this.debateService.createDebate(dataToSave, userId);
@@ -100,11 +99,8 @@ export class DebateController {
 
   @Post('adopt')
   async adoptDebate(@Body() body: AdoptDebateDto, @Req() req: any) {
-    console.log({ body });
-
     try {
       const userId = req.user._id; // Extract the authenticated user's ID
-      console.log({ userId });
 
       // Validate the provided data
       if (!body.type || !body.debateId) {
@@ -134,7 +130,6 @@ export class DebateController {
         data: result.data,
       };
     } catch (error) {
-      console.error('Adopt Debate Controller Error:', error);
       throw error;
     }
   }
@@ -145,8 +140,6 @@ export class DebateController {
     @Query('entity') entity: 'node' | 'club',
     @Req() req: Request,
   ) {
-    console.log(req);
-
     const userId = req.user._id;
     // Validate that userId is provided
     if (!userId) {
@@ -161,7 +154,6 @@ export class DebateController {
         userId,
         entityId,
       });
-      console.log({ result });
 
       // Return the result to the client
       return result;
@@ -192,8 +184,6 @@ export class DebateController {
     @Query('entityId') entityId: string,
     @Query('entity') entityType: 'club' | 'node',
   ) {
-    console.log({ entityId, entityType });
-
     try {
       if (!entityId || !entityType) {
         throw new BadRequestException(
@@ -210,7 +200,6 @@ export class DebateController {
       // Return the result from the service
       return result;
     } catch (error) {
-      console.error('Error fetching ongoing debates:', error);
       throw error;
     }
   }
@@ -254,7 +243,6 @@ export class DebateController {
         data: updatedDebate,
       };
     } catch (error) {
-      console.error('Error publishing debate:', error);
       throw error;
     }
   }
@@ -262,10 +250,9 @@ export class DebateController {
   @Put('create-views')
   async createViewsForRulesAndRegulations(
     @Req() req: Request,
-    @Body('rulesId') rulesId: Types.ObjectId,
+    @Body('debateId') rulesId: Types.ObjectId,
   ) {
     try {
-      console.log({ rulesId });
       return await this.debateService.createViewsForRulesAndRegulations(
         req.user._id,
         rulesId,
@@ -289,7 +276,6 @@ export class DebateController {
         new Types.ObjectId(rulesId),
       );
     } catch (error) {
-      console.log('errrrr ', error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -397,7 +383,6 @@ export class DebateController {
   ): Promise<{ isAllowed: boolean; reason?: string }> {
     const userId = req.user._id;
     const { debateId, entityType, entity } = body;
-    console.log({ body });
 
     // Validate input parameters
     if (!userId || !debateId || !entityType || !entity) {
@@ -441,7 +426,6 @@ export class DebateController {
     try {
       return await this.debateService.pin(id);
     } catch (error) {
-      // NestJS will handle these exceptions automatically
       throw error;
     }
   }
@@ -449,6 +433,15 @@ export class DebateController {
   async unpin(@Param('id') id: string) {
     try {
       return await this.debateService.unpin(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  @Delete('argument/:id')
+  async deleteArgument(@Param('id') id: string) {
+    try {
+      return await this.debateService.deleteArgument(id);
     } catch (error) {
       throw error;
     }

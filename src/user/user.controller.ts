@@ -31,12 +31,13 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('search')
-  async getAllUsers(
-    @Query('keyword') keyword?: string, // Make it optional with ?
+  async getUsersNotInClubOrNode(
+    @Query('type') type: 'node' | 'club',
+    @Query('entityId') id: Types.ObjectId,
+    @Query('keyword') keyword?: string,
   ): Promise<UserWithoutPassword[]> {
     try {
-      console.log({ keyword });
-      return await this.userService.getAllUsers(keyword);
+      return await this.userService.getUsersNotInClubOrNode(keyword, type, id);
     } catch (error) {
       throw error;
     }
