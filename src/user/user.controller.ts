@@ -68,8 +68,9 @@ export class UserController {
    * @param term - The username search term
    * @returns Promise containing the matching user data
    */
-  @Get('userName')
+  @Get('username')
   async getUserByUserName(@Query('term') term: string) {
+    console.log('termm ', term);
     return await this.userService.getUserByUserName(term);
   }
 
