@@ -8,7 +8,6 @@ import { Document } from 'mongoose';
 import { TPublishedStatus } from 'typings';
 interface View {
   user: Types.ObjectId;
-  date: Date;
 }
 @Schema({ timestamps: true })
 export class Debate extends Document {
@@ -85,13 +84,10 @@ export class Debate extends Document {
     date: Date;
   }[];
 
-  @Prop([
-    {
-      user: { type: Types.ObjectId, ref: User.name, required: true },
-      date: { type: Date, default: Date.now },
-    },
-  ])
-  views: View[];
+  @Prop({
+    type: [String], // Define as an array of strings
+  })
+  views: string[];
 
   @Prop({ type: Types.ObjectId, ref: User.name })
   createdBy: Types.ObjectId;
