@@ -134,8 +134,8 @@ export class IssuesService {
       // Check if the user is an admin or not
       const memberRole = await this.getMemberRoles(userId, dataToSave);
 
-      // If the user is not an admin, update the document to proposed
-      if (memberRole !== 'admin') {
+      // If the user is not an admin or owner or moderator, update the document to proposed
+      if (!['admin', 'owner', 'moderator']?.includes(memberRole)) {
         const updateData = await this.issuesModel.findByIdAndUpdate(
           dataToSave._id,
           {
