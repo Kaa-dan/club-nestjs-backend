@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
-
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
@@ -30,7 +29,6 @@ export class ClubService {
 
   /*
   --------------------CREATING A CLUB----------------------------
-
   parameter {CreateClubDto} createClubDto - The data to create a new club
   @Returns {Promise<Club>} - The created club 
   */
@@ -226,7 +224,7 @@ export class ClubService {
       return await this.clubMembersModel
         .find({ user: userId })
         .populate('club')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
     } catch (error) {
       console.log(error);
