@@ -347,12 +347,33 @@ export class RulesRegulationsService {
       }
 
       // Create the new rule document without the _id field
-      const ruleData = existingRule.toObject();
-      delete ruleData._id;
+      const {
+        title,
+        description,
+        category,
+        significance,
+        tags,
+        isPublic,
+        files,
+        publishedStatus,
+        publishedBy,
+        isActive,
+        domain,
+      } = existingRule;
 
       // Prepare base data for the new rule
       const baseRuleData = {
-        ...ruleData,
+        title,
+        description,
+        category,
+        significance,
+        tags,
+        isPublic,
+        files,
+        publishedStatus,
+        publishedBy,
+        isActive,
+        domain,
         adoptedBy: dataToSave.userId,
         adoptedDate: new Date(),
         adoptedParent: dataToSave.rulesId,
@@ -367,14 +388,14 @@ export class RulesRegulationsService {
       if (dataToSave.type === 'club') {
         // First check if this club is already in adoptedClubs
         const alreadyAdopted = await this.rulesregulationModel.findOne({
-          _id: dataToSave.rulesId,
+          _id: baseRuleData.rootParent,
           'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId),
         });
 
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-            dataToSave.rulesId,
+            baseRuleData.rootParent,
             {
               $push: {
                 adoptedClubs: {
@@ -397,14 +418,14 @@ export class RulesRegulationsService {
       } else if (dataToSave.type === 'node') {
         // First check if this node is already in adoptedNodes
         const alreadyAdopted = await this.rulesregulationModel.findOne({
-          _id: dataToSave.rulesId,
+          _id: baseRuleData.rootParent,
           'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId),
         });
 
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-            dataToSave.rulesId,
+            baseRuleData.rootParent,
             {
               $push: {
                 adoptedNodes: {
