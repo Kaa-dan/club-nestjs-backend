@@ -483,7 +483,14 @@ export class RulesRegulationsService {
   ): Promise<Node_[]> {
     try {
       console.log('Input Parameters:', { userId, rulesId });
-
+      const existingRule = this.rulesregulationModel.findById(
+        new Types.ObjectId(rulesId),
+      );
+      if (!existingRule) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+      const rootParent =
+        (await existingRule).rootParent ?? new Types.ObjectId(rulesId);
       // Stage 1: Match
       const stage1 = [
         {
@@ -534,7 +541,10 @@ export class RulesRegulationsService {
             pipeline: [
               {
                 $match: {
-                  _id: new Types.ObjectId(rulesId),
+                  $or: [
+                    { _id: new Types.ObjectId(rulesId) },
+                    { rootParent: rootParent },
+                  ],
                   $expr: {
                     $not: {
                       $in: ['$$nodeId', '$adoptedNodes.node'],
