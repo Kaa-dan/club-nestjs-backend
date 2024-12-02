@@ -371,14 +371,17 @@ export class IssuesService {
     try {
       let clubOrNode: null | string = data?.club ? 'club' : 'node';
 
-      console.log(data, 'data');
-
       if (!clubOrNode) throw new BadRequestException('Invalid club or node');
       const role = await this.getMemberRoles(userId, data);
+
+      const existingIssue = await this.issuesModel.findById(data.issueId);
+
+      const rootParent =
+        existingIssue?.rootParent ?? new Types.ObjectId(data.issueId);
       if (role === 'admin') {
         if (data.club) {
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
                 adoptedClubs: {
@@ -391,7 +394,7 @@ export class IssuesService {
           );
         } else if (data.node) {
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
                 adoptedNodes: {
@@ -403,21 +406,6 @@ export class IssuesService {
             { new: true }, // Returns the updated document
           );
         }
-        const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
-        // const newIssueData = {
-        //   ...existingIssue.toObject(), // Converting to plain object
-        //   publishedBy: userId,
-        //   publishedDate: new Date(),
-        //   version: 1,
-        //   isActive: true,
-        //   publishedStatus: 'published',
-        //   ...(clubOrNode === 'club'
-        //     ? { club: new Types.ObjectId(data.club) }
-        //     : { node: new Types.ObjectId(data.node) }),
-        //   adoptedDate: new Date(),
-        //   adoptedFrom: existingIssue._id,
-        // };
 
         const newIssueData = {
           title: existingIssue.title,
@@ -439,13 +427,10 @@ export class IssuesService {
           publishedBy: userId,
           publishedDate: new Date(),
           version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        // delete newIssueData._id;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
@@ -453,19 +438,6 @@ export class IssuesService {
         return newIssue;
       } else if (role === 'member') {
         const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
-        // const newIssueData = {
-        //   ...existingIssue.toObject(), // Converting to plain object
-        //   publishedBy: userId,
-        //   version: 1,
-        //   isActive: false,
-        //   publishedStatus: 'proposed',
-        //   ...(clubOrNode === 'club'
-        //     ? { club: new Types.ObjectId(data.club) }
-        //     : { node: new Types.ObjectId(data.node) }),
-        //   adoptedDate: new Date(),
-        //   adoptedFrom: existingIssue._id,
-        // };
 
         const newIssueData = {
           title: existingIssue.title,
@@ -485,21 +457,10 @@ export class IssuesService {
           publishedStatus: 'proposed',
           isActive: false,
           version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        // delete newIssueData._id;
-        // delete newIssueData.views;
-        // delete newIssueData.relevant;
-        // delete newIssueData.irrelevant;
-        // delete newIssueData.adoptedClubs;
-        // delete newIssueData.adoptedNodes;
-        // delete newIssueData.createdBy;
-        // delete newIssueData.updatedDate;
-        // delete newIssueData.olderVersions;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
