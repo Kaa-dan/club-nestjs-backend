@@ -106,6 +106,7 @@ export class DebateController {
       if (!body.type || !body.debateId) {
         throw new BadRequestException('Type and Debate ID are required fields');
       }
+      console.log({ body });
 
       //   if (body.type === 'club' && !body.clubId) {
       //     throw new BadRequestException('Club ID is required for club adoption');
