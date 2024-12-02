@@ -114,6 +114,8 @@ export class RulesRegulations extends Document {
 
   adoptedParent: null | Types.ObjectId;
 
+  rootParent: null | Types.ObjectId;
+
   @Prop({
     type: [{ type: Types.ObjectId, ref: User.name }],
     default: [],

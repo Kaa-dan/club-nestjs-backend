@@ -138,7 +138,12 @@ export class Issues extends Document {
     date: Date;
   }[];
   @Prop({ default: 'draft' })
-  publishedStatus: 'draft' | 'published' | 'olderversion' | 'proposed' | 'archived';
+  publishedStatus:
+    | 'draft'
+    | 'published'
+    | 'olderversion'
+    | 'proposed'
+    | 'archived';
 
   @Prop()
   isActive: boolean;
@@ -151,9 +156,8 @@ export class Issues extends Document {
 
   @Prop()
   olderVersions: [{}];
+
+  rootParent: null | Types.ObjectId;
 }
 
 export const IssuesSchema = SchemaFactory.createForClass(Issues);
-
-// export type IssueDocument = Issues & Document;
-// export const IssueSchema = SchemaFactory.createForClass(Issues);
