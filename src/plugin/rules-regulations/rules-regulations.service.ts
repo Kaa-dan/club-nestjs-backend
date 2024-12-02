@@ -74,6 +74,7 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
+    console.log('nithinS');
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
     let fileObjects = null;
     if (files) {
@@ -483,6 +484,7 @@ export class RulesRegulationsService {
   ): Promise<Node_[]> {
     try {
       console.log('Input Parameters:', { userId, rulesId });
+
       const existingRule = this.rulesregulationModel.findById(
         new Types.ObjectId(rulesId),
       );
