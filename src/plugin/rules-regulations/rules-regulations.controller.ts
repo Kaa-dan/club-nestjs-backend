@@ -91,6 +91,7 @@ export class RulesRegulationsController {
     files: Express.Multer.File[],
     @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
+    console.log('nithin');
     try {
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
@@ -688,19 +689,17 @@ export class RulesRegulationsController {
     );
   }
 
-
   /**
-    * Propose rules for the club
-    * @param req - Express request object
-    * @param commentId - ID of the comment to delete
-    * @returns Promise containing the result of comment deletion
-    */
+   * Propose rules for the club
+   * @param req - Express request object
+   * @param commentId - ID of the comment to delete
+   * @returns Promise containing the result of comment deletion
+   */
 
   @Put('propose-rule')
-  async proposeRules(@Req() req: Request, @Body() data
-  ) {
-    const userId = req.user._id
-    return await this.rulesRegulationsService.proposeRules(userId, data)
+  async proposeRules(@Req() req: Request, @Body() data) {
+    const userId = req.user._id;
+    return await this.rulesRegulationsService.proposeRules(userId, data);
   }
 
   /**
@@ -711,7 +710,8 @@ export class RulesRegulationsController {
 
   @Get('get-all-clubs-nodes-role')
   async getAllClubsAndNodesWithRole(@Req() req: Request) {
-    return this.rulesRegulationsService.getAllClubsAndNodesWithRole(req.user._id)
+    return this.rulesRegulationsService.getAllClubsAndNodesWithRole(
+      req.user._id,
+    );
   }
-
 }

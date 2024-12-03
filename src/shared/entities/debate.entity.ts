@@ -14,7 +14,7 @@ export class Debate extends Document {
   @Prop({ trim: true, required: true })
   topic: string;
 
-  @Prop({ required: true })
+  @Prop({ required: false })
   closingDate: Date;
 
   @Prop({ required: true })
@@ -43,6 +43,9 @@ export class Debate extends Document {
 
   @Prop({ default: false })
   isPublic: boolean;
+
+  @Prop({ required: true })
+  startingComment: string;
 
   @Prop({
     type: Types.ObjectId,

@@ -371,14 +371,17 @@ export class IssuesService {
     try {
       let clubOrNode: null | string = data?.club ? 'club' : 'node';
 
-      console.log(data, 'data');
-
       if (!clubOrNode) throw new BadRequestException('Invalid club or node');
       const role = await this.getMemberRoles(userId, data);
+
+      const existingIssue = await this.issuesModel.findById(data.issueId);
+
+      const rootParent =
+        existingIssue?.rootParent ?? new Types.ObjectId(data.issueId);
       if (role === 'admin') {
         if (data.club) {
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
                 adoptedClubs: {
@@ -391,7 +394,7 @@ export class IssuesService {
           );
         } else if (data.node) {
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
                 adoptedNodes: {
@@ -403,21 +406,6 @@ export class IssuesService {
             { new: true }, // Returns the updated document
           );
         }
-        const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
-        // const newIssueData = {
-        //   ...existingIssue.toObject(), // Converting to plain object
-        //   publishedBy: userId,
-        //   publishedDate: new Date(),
-        //   version: 1,
-        //   isActive: true,
-        //   publishedStatus: 'published',
-        //   ...(clubOrNode === 'club'
-        //     ? { club: new Types.ObjectId(data.club) }
-        //     : { node: new Types.ObjectId(data.node) }),
-        //   adoptedDate: new Date(),
-        //   adoptedFrom: existingIssue._id,
-        // };
 
         const newIssueData = {
           title: existingIssue.title,
@@ -439,13 +427,10 @@ export class IssuesService {
           publishedBy: userId,
           publishedDate: new Date(),
           version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        // delete newIssueData._id;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
@@ -453,19 +438,6 @@ export class IssuesService {
         return newIssue;
       } else if (role === 'member') {
         const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
-        // const newIssueData = {
-        //   ...existingIssue.toObject(), // Converting to plain object
-        //   publishedBy: userId,
-        //   version: 1,
-        //   isActive: false,
-        //   publishedStatus: 'proposed',
-        //   ...(clubOrNode === 'club'
-        //     ? { club: new Types.ObjectId(data.club) }
-        //     : { node: new Types.ObjectId(data.node) }),
-        //   adoptedDate: new Date(),
-        //   adoptedFrom: existingIssue._id,
-        // };
 
         const newIssueData = {
           title: existingIssue.title,
@@ -485,21 +457,10 @@ export class IssuesService {
           publishedStatus: 'proposed',
           isActive: false,
           version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        // delete newIssueData._id;
-        // delete newIssueData.views;
-        // delete newIssueData.relevant;
-        // delete newIssueData.irrelevant;
-        // delete newIssueData.adoptedClubs;
-        // delete newIssueData.adoptedNodes;
-        // delete newIssueData.createdBy;
-        // delete newIssueData.updatedDate;
-        // delete newIssueData.olderVersions;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
@@ -724,195 +685,124 @@ export class IssuesService {
         throw new NotFoundException('IssueId not found');
       }
 
-      const issue = await this.issuesModel.findById(issueId);
+      const issue = await this.issuesModel.findById(
+        new Types.ObjectId(issueId),
+      );
 
       if (!issue) {
         throw new NotFoundException('Issue not found');
       }
 
-      let adoptedClubs: Types.ObjectId[] = [];
-      let adoptedNodes: Types.ObjectId[] = [];
+      const rootParent = issue.rootParent ?? new Types.ObjectId(issueId);
 
-      adoptedClubs = issue.adoptedClubs.map((club) => club.club);
-      adoptedNodes = issue.adoptedNodes.map((node) => node.node);
+      // Nodes Aggregation Pipeline
+      const nodesAggregation = [
+        {
+          $match: {
+            user: userId,
+          },
+        },
+        {
+          $lookup: {
+            from: 'node_', // Ensure this matches your actual collection name
+            localField: 'node',
+            foreignField: '_id',
+            as: 'nodeDetails',
+          },
+        },
+        {
+          $unwind: '$nodeDetails',
+        },
+        {
+          $lookup: {
+            from: 'issues', // Ensure this matches your actual collection name
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(issueId) },
+                    { rootParent: rootParent },
+                  ],
+                  $expr: {
+                    $not: {
+                      $in: ['$$nodeId', '$adoptedNodes.node'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedIssues',
+          },
+        },
+        {
+          $match: {
+            unadoptedIssues: { $ne: [] },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$nodeDetails',
+          },
+        },
+      ];
 
-      // Find clubs where user is a member but hasn't adopted the issue
-      const memberClubs = await this.clubModel.aggregate([
+      // Clubs Aggregation Pipeline
+      const clubsAggregation = [
         {
           $match: {
-            _id: {
-              $nin: [...adoptedClubs, issue.club].filter(Boolean),
-            },
+            user: userId,
           },
         },
         {
-          // First lookup to check adoptedFrom in issues
           $lookup: {
-            from: 'issues',
-            let: { clubId: '$_id' },
+            from: 'clubs', // Ensure this matches your actual collection name
+            localField: 'club',
+            foreignField: '_id',
+            as: 'clubDetails',
+          },
+        },
+        {
+          $unwind: '$clubDetails',
+        },
+        {
+          $lookup: {
+            from: 'issues', // Ensure this matches your actual collection name
+            let: { clubId: '$club' },
             pipeline: [
               {
                 $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(issueId) },
+                    { rootParent: rootParent },
+                  ],
                   $expr: {
-                    $and: [
-                      { $eq: ['$club', '$$clubId'] },
-                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] },
-                    ],
+                    $not: {
+                      $in: ['$$clubId', '$adoptedClubs.club'],
+                    },
                   },
                 },
               },
             ],
-            as: 'adoptedFromIssues',
+            as: 'unadoptedIssues',
           },
         },
         {
           $match: {
-            adoptedFromIssues: { $size: 0 }, // Exclude clubs that have adopted from this issue
-          },
-        },
-        // {
-        //   $lookup: {
-        //     from: 'issues',
-        //     let: { clubId: '$_id' },
-        //     pipeline: [
-        //       {
-        //         $match: {
-        //           $expr: {
-        //             $and: [
-        //               { $eq: ['$club', '$$clubId'] },
-        //               { $eq: ['$createdBy', new Types.ObjectId(userId)] }
-        //             ]
-        //           }
-        //         }
-        //       }
-        //     ],
-        //     as: 'createdByIssues'
-        //   }
-        // },
-        // {
-        //   $match: {
-        //     createdByIssues: { $size: 0 } // Exclude nodes that have adopted from this issue
-        //   }
-        // },
-        {
-          $lookup: {
-            from: 'clubmembers',
-            let: { clubId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$club', '$$clubId'] },
-                      { $eq: ['$user', new Types.ObjectId(userId)] },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'userMembership',
+            unadoptedIssues: { $ne: [] },
           },
         },
         {
-          $match: {
-            userMembership: { $not: { $size: 0 } }, // Clubs where user is a member
+          $replaceRoot: {
+            newRoot: '$clubDetails',
           },
         },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            description: 1,
-            userRole: { $arrayElemAt: ['$userMembership.role', 0] }, // Include user's role
-          },
-        },
-      ]);
+      ];
 
-      // Find nodes where user is a member but hasn't adopted the issue
-      const memberNodes = await this.nodeModel.aggregate([
-        {
-          $match: {
-            _id: {
-              $nin: [...adoptedNodes, issue.node].filter(Boolean),
-            },
-          },
-        },
-        {
-          // Add lookup to check adoptedFrom in issues
-          $lookup: {
-            from: 'issues',
-            let: { nodeId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$node', '$$nodeId'] },
-                      { $eq: ['$adoptedFrom', new Types.ObjectId(issueId)] },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'adoptedFromIssues',
-          },
-        },
-        // {
-        //   $lookup: {
-        //     from: 'issues',
-        //     let: { nodeId: '$_id' },
-        //     pipeline: [
-        //       {
-        //         $match: {
-        //           $expr: {
-        //             $and: [
-        //               { $eq: ['$node', '$$nodeId'] },
-        //               { $eq: ['$createdBy', new Types.ObjectId(userId)] }
-        //             ]
-        //           }
-        //         }
-        //       }
-        //     ],
-        //     as: 'createdByIssues'
-        //   }
-        // },
-        // {
-        //   $match: {
-        //     createdByIssues: { $size: 0 } // Exclude nodes that have adopted from this issue
-        //   }
-        // },
-        {
-          $lookup: {
-            from: 'nodemembers',
-            let: { nodeId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$node', '$$nodeId'] },
-                      { $eq: ['$user', new Types.ObjectId(userId)] },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'userMembership',
-          },
-        },
-        {
-          $match: {
-            userMembership: { $not: { $size: 0 } }, // Nodes where user is a member
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            description: 1,
-            userRole: { $arrayElemAt: ['$userMembership.role', 0] }, // Include user's role
-          },
-        },
+      // Run both aggregations concurrently
+      const [memberNodes, memberClubs] = await Promise.all([
+        this.nodeMembersModel.aggregate(nodesAggregation),
+        this.clubMembersModel.aggregate(clubsAggregation),
       ]);
 
       return {
