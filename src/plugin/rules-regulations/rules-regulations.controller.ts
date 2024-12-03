@@ -14,14 +14,13 @@ import {
 } from '@nestjs/common';
 import { RulesRegulationsService } from './rules-regulations.service';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
-import { type } from 'node:os';
-import { publish } from 'rxjs';
+
 import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 
 export interface IFileObject {

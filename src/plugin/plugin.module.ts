@@ -9,9 +9,16 @@ import { SharedModule } from 'src/shared/shared.module';
 import { IssuesModule } from './issues/issues.module';
 import { IssuesController } from './issues/issues.controller';
 import { DebateModule } from './debate/debate.module';
+import { ProjectModule } from './project/project.module';
 
 @Module({
-  imports: [RulesRegulationsModule, IssuesModule, SharedModule, DebateModule],
+  imports: [
+    RulesRegulationsModule,
+    IssuesModule,
+    SharedModule,
+    DebateModule,
+    ProjectModule,
+  ],
   exports: [RulesRegulationsModule, IssuesModule],
 })
 export class PluginModule {}
