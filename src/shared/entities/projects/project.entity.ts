@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsDate,
   IsArray,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Types } from 'mongoose';
@@ -152,11 +153,17 @@ export class Project {
   @IsString()
   @Prop({
     type: String,
-    enum: ['draft', 'published', 'proposed', 'rejected'],
+    enum: ['draft', 'published', 'proposed', 'rejected', 'inactive'],
     default: 'draft',
   })
   status: string;
 
+  @Prop({ type: Boolean })
+  @IsBoolean()
+  @IsOptional()
+  active: boolean;
+
+  @Prop({ type: [Object] })
   @IsArray()
   @IsOptional()
   files: any[];

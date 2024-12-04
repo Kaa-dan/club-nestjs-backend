@@ -8,6 +8,11 @@ import {
   UploadedFiles,
   BadRequestException,
   Put,
+  Param,
+  Get,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -24,6 +29,9 @@ import {
   ApiConsumes,
   ApiResponse,
 } from '@nestjs/swagger';
+import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
+import { Types } from 'mongoose';
+import { Query as NestQuery } from '@nestjs/common';
 
 /**
  * Controller handling all project-related operations
@@ -43,43 +51,7 @@ export class ProjectController {
    * @throws BadRequestException if file type is invalid
    */
   @Post()
-  @ApiOperation({ summary: 'Create a new project' })
-  @ApiConsumes('multipart/form-data')
-  @ApiResponse({
-    status: 201,
-    description: 'The project has been successfully created.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input data or file type.',
-  })
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'file', maxCount: 5 },
-        { name: 'bannerImage', maxCount: 1 },
-      ],
-      {
-        storage: memoryStorage(),
-        fileFilter: (req, file, cb) => {
-          const allowedMimeTypes = [
-            'image/jpeg',
-            'image/jpg',
-            'image/png',
-            'image/gif',
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          ];
-          if (allowedMimeTypes.includes(file.mimetype)) {
-            cb(null, true);
-          } else {
-            cb(new BadRequestException('Invalid file type'), false);
-          }
-        },
-      },
-    ),
-  )
+  @ProjectFiles()
   async create(
     @Req() req: Request,
     @Body(ValidationPipe) createProjectDto: CreateProjectDto,
@@ -105,6 +77,7 @@ export class ProjectController {
       bannerImage?: Express.Multer.File[];
     },
   ) {
+    // Extract files from request
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     return await this.projectService.create(
@@ -114,45 +87,17 @@ export class ProjectController {
       bannerImage,
     );
   }
-  @Post()
-  @ApiOperation({ summary: 'Create a new project' })
-  @ApiConsumes('multipart/form-data')
-  @ApiResponse({
-    status: 201,
-    description: 'The project has been successfully created.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid input data or file type.',
-  })
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'file', maxCount: 5 },
-        { name: 'bannerImage', maxCount: 1 },
-      ],
-      {
-        storage: memoryStorage(),
-        fileFilter: (req, file, cb) => {
-          const allowedMimeTypes = [
-            'image/jpeg',
-            'image/jpg',
-            'image/png',
-            'image/gif',
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          ];
-          if (allowedMimeTypes.includes(file.mimetype)) {
-            cb(null, true);
-          } else {
-            cb(new BadRequestException('Invalid file type'), false);
-          }
-        },
-      },
-    ),
-  )
+
+  /**
+   * Saves a project as draft with all provided details and files
+   * @param req - Express request object containing user info
+   * @param updateProjectDto - DTO containing project updates
+   * @param files - Object containing project files and banner image
+   * @returns Saved draft project
+   * @throws BadRequestException if file type is invalid
+   */
   @Post('draft')
+  @ProjectFiles()
   async saveDraftProject(
     @Req() req: Request,
     @Body() updateProjectDto: UpdateProjectDto,
@@ -178,6 +123,7 @@ export class ProjectController {
       bannerImage?: Express.Multer.File[];
     },
   ) {
+    // Extract files from request
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     return await this.projectService.saveDraftProject(
@@ -186,5 +132,101 @@ export class ProjectController {
       documentFiles,
       bannerImage,
     );
+  }
+
+  /**
+   * Updates an existing project with provided details and files
+   * @param id - ID of project to update
+   * @param updateProjectDto - DTO containing project updates
+   * @param req - Express request object containing user info
+   * @param files - Object containing project files and banner image
+   * @returns Updated project
+   * @throws BadRequestException if file type is invalid
+   * @throws NotFoundException if project not found
+   */
+  @Put(':id')
+  @ProjectFiles()
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'file', maxCount: 5 },
+        { name: 'bannerImage', maxCount: 1 },
+      ],
+      {
+        storage: memoryStorage(),
+        fileFilter: (req, file, cb) => {
+          // Define allowed file types for upload
+          const allowedMimeTypes = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ];
+          if (allowedMimeTypes.includes(file.mimetype)) {
+            cb(null, true);
+          } else {
+            cb(new BadRequestException('Invalid file type'), false);
+          }
+        },
+      },
+    ),
+  )
+  async updateProject(
+    @Param('id') id: string,
+    @Body() updateProjectDto: UpdateProjectDto,
+    @Req() req: Request,
+    @UploadedFiles(
+      new FileValidationPipe({
+        files: {
+          maxSizeMB: 5,
+          allowedMimeTypes: [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ],
+          required: false,
+        },
+      }),
+    )
+    files: {
+      file?: Express.Multer.File[];
+      bannerImage?: Express.Multer.File[];
+    },
+  ) {
+    // Extract files from request
+    const documentFiles = files.file || [];
+    const bannerImage = files.bannerImage?.[0] || null;
+    // Forward request to service layer
+    return await this.projectService.update(
+      id,
+      updateProjectDto,
+      req.user._id,
+      documentFiles,
+      bannerImage,
+    );
+  }
+  @Get('single/:id')
+  async getSingleProject(
+    @Param('id') id: Types.ObjectId,
+    @NestQuery('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @NestQuery('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return await this.projectService.getSingleProject(id, page, limit);
+  }
+
+  @Get('all-projects')
+  async getAllProjects(@Query('status') status: 'published' | 'proposed') {
+    return await this.projectService.getAllProjects(status);
+  }
+  @Get('my-projects')
+  async getMyProjects(@Req() req: Request) {
+    return await this.projectService.getMyProjects(req.user._id);
   }
 }
