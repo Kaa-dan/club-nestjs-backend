@@ -9,6 +9,7 @@ import {
   BadRequestException,
   Put,
   Param,
+  Get,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -205,5 +206,10 @@ export class ProjectController {
       documentFiles,
       bannerImage,
     );
+  }
+
+  @Get('all-projects')
+  async getAllProjects() {
+    return await this.projectService.getAllProjects();
   }
 }
