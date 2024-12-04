@@ -398,6 +398,16 @@ export class ProjectService {
     }
   }
 
+  /**
+   * Updates an existing project with new data and files
+   * @param id - ID of the project to update
+   * @param updateProjectDto - Data transfer object containing project updates
+   * @param userId - ID of user making the update
+   * @param documentFiles - Array of document files to upload
+   * @param bannerImage - Optional banner image file
+   * @returns Updated project
+   * @throws Error if project not found, user lacks permissions, or update fails
+   */
   async update(
     id: string,
     updateProjectDto: UpdateProjectDto,
@@ -419,6 +429,7 @@ export class ProjectService {
       let membershipModel = null;
       let membershipIdentifier = null;
 
+      // Check if project belongs to club or node
       if (project.club) {
         membershipModel = this.clubMembersModel;
         membershipIdentifier = { club: project.club };
@@ -427,7 +438,7 @@ export class ProjectService {
         membershipIdentifier = { node: project.node };
       }
 
-      // Check user membership and role
+      // Verify user membership and permissions
       let membership = null;
       if (membershipModel) {
         membership = await membershipModel.findOne({
@@ -440,7 +451,7 @@ export class ProjectService {
         }
       }
 
-      // Destructure DTO
+      // Extract fields from update DTO
       const {
         title,
         region,
@@ -459,10 +470,10 @@ export class ProjectService {
         parameters,
       } = updateProjectDto;
 
-      // Determine if user can change status
+      // Handle status changes based on user permissions
       let finalStatus = project.status;
       if (status) {
-        // Check if user has admin rights to change status
+        // Only admins can publish, others can change to other statuses
         const isAdmin = membership?.role === 'admin';
         if (isAdmin) {
           finalStatus = status;
@@ -475,13 +486,13 @@ export class ProjectService {
         }
       }
 
-      // Handle file uploads
+      // Upload new files in parallel
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
         this.uploadFile(bannerImage),
         Promise.all(documentFiles.map((file) => this.uploadFile(file))),
       ]);
 
-      // Create file objects
+      // Format uploaded document files metadata
       const fileObjects = uploadedDocumentFiles.map((file, index) => ({
         url: file.url,
         originalname: documentFiles[index].originalname,
@@ -489,7 +500,7 @@ export class ProjectService {
         size: documentFiles[index].size,
       }));
 
-      // Process banner image
+      // Format banner image metadata if provided
       const uploadedBannerImageObject = bannerImage
         ? {
             url: uploadedBannerImage.url,
@@ -499,7 +510,7 @@ export class ProjectService {
           }
         : null;
 
-      // Update project base data
+      // Prepare project update data
       const updateData = {
         title,
         region,
@@ -518,14 +529,14 @@ export class ProjectService {
         files: [...(project.files || []), ...fileObjects],
       };
 
-      // Update project
+      // Update project document
       const updatedProject = await this.projectModel.findByIdAndUpdate(
         id,
         updateData,
         { new: true, session },
       );
 
-      // Handle Parameters
+      // Handle parameter updates if provided
       if (parameters) {
         // Remove existing parameters
         await this.parameterModel.deleteMany(
@@ -533,7 +544,7 @@ export class ProjectService {
           { session },
         );
 
-        // Create new parameters
+        // Create new parameters if any
         if (parameters.length > 0) {
           const parametersToCreate = parameters.map((param) => ({
             ...param,
@@ -544,12 +555,12 @@ export class ProjectService {
         }
       }
 
-      // Handle FAQs
+      // Handle FAQ updates if provided
       if (faqs) {
         // Remove existing FAQs
         await this.faqModel.deleteMany({ project: project._id }, { session });
 
-        // Create new FAQs
+        // Create new FAQs if any
         if (faqs.length > 0) {
           const faqsToCreate = faqs.map((faq) => ({
             ...faq,
@@ -563,19 +574,35 @@ export class ProjectService {
         }
       }
 
-      // Commit transaction
+      // Commit all database changes
       await session.commitTransaction();
 
       return updatedProject;
     } catch (error) {
-      // Abort transaction on error
+      // Rollback all changes on error
       await session.abortTransaction();
       console.error('Project update error:', error);
       throw new Error(`Failed to update project: ${error.message}`);
     } finally {
-      // End session
+      // Clean up database session
       session.endSession();
     }
+  }
+
+  async getAllProjects() {
+    try {
+      return await this.projectModel.find();
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get all projects. Please try again later.',
+      );
+    }
+  }
+
+  async getMyProjects(userId: Types.ObjectId) {
+    return await this.projectModel.find({
+      ...(userId ? { champions: userId } : {}),
+    });
   }
   /**
    * Uploads a file to S3 bucket
