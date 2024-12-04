@@ -24,6 +24,8 @@ export class ProjectService {
     documentFiles: Express.Multer.File[],
     bannerImage: Express.Multer.File | null,
   ) {
+    console.log({ bannerImage });
+
     try {
       // Log incoming data for debugging
       console.log('Incoming Files:', {
@@ -45,10 +47,10 @@ export class ProjectService {
         champions,
         aboutPromoters,
         fundingDetails,
+        faqs,
         keyTakeaways,
         risksAndChallenges,
       } = createProjectDto;
-
       // Validate input early
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
@@ -81,12 +83,13 @@ export class ProjectService {
       const baseProjectData = {
         title,
         region,
-        budget,
+        budget: JSON.parse(budget),
         deadline,
         significance,
         solution,
-        committees,
+        committees: JSON.parse(committees as any),
         champions,
+        faqs: JSON.parse(faqs as any),
         aboutPromoters,
         fundingDetails,
         keyTakeaways,
@@ -100,6 +103,8 @@ export class ProjectService {
       let membershipIdentifier = null;
 
       if (club) {
+        // console.log('club is here');
+
         membershipModel = this.clubMembersModel;
         membershipIdentifier = { club: new Types.ObjectId(club) };
       } else if (node) {
@@ -109,10 +114,13 @@ export class ProjectService {
 
       // Check user membership if applicable
       if (membershipModel) {
+        console.log('member ship model', membershipIdentifier);
+
         const membership = await membershipModel.findOne({
           ...membershipIdentifier,
-          member: new Types.ObjectId(userId),
+          user: new Types.ObjectId(userId),
         });
+        console.log({ HEy: membership });
 
         if (!membership || !membership.role) {
           throw new Error('You are not a member of this group');

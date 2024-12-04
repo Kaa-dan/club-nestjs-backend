@@ -78,7 +78,7 @@ export class ProjectController {
   )
   create(
     @Req() req: Request,
-    @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -101,8 +101,12 @@ export class ProjectController {
       bannerImage?: Express.Multer.File[];
     },
   ) {
+    console.log({ files });
+
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
+    console.log({ createProjectDto });
+
     return this.projectService.create(
       createProjectDto,
       req.user._id,
