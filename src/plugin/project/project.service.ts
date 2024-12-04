@@ -11,11 +11,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Parameter } from 'src/shared/entities/projects/parameter.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { Faq } from 'src/shared/entities/projects/faq.enitity';
 
 /**
  * Service responsible for managing all project-related operations
@@ -82,7 +82,6 @@ export class ProjectService {
         keyTakeaways,
         risksAndChallenges,
         parameters,
-        faqs,
       } = createProjectDto;
 
       // Ensure required fields are present
