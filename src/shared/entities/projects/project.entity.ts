@@ -12,13 +12,6 @@ import { Node_ } from '../node.entity';
 import { Club } from '../club.entity';
 
 // Nested subdocument for banner image
-class BannerImage {
-  @IsString()
-  filename: string;
-
-  @IsString()
-  url: string;
-}
 
 // Nested subdocument for committees and champions
 class TeamMember {
@@ -30,14 +23,6 @@ class TeamMember {
 }
 //type for budget
 type Budget = { from: number; to: number; currency: string };
-
-class File {
-  @IsString()
-  filename: string;
-
-  @IsString()
-  url: string;
-}
 
 @Schema({
   timestamps: true,
@@ -52,9 +37,11 @@ class File {
 })
 export class Project {
   @Prop({ type: Types.ObjectId, ref: Club.name })
+  @IsOptional()
   club: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: Node_.name })
+  @IsOptional()
   node: Types.ObjectId;
 
   @Prop({
@@ -65,6 +52,7 @@ export class Project {
     maxlength: 100,
   })
   @IsString()
+  @IsOptional()
   title: string;
 
   @Prop({
@@ -75,14 +63,15 @@ export class Project {
     maxlength: 50,
   })
   @IsString()
+  @IsOptional()
   region: string;
 
   @Prop({
-    type: Number,
+    type: Object,
     min: 0,
     default: 0,
   })
-  @Prop({ required: true, type: Object })
+  @IsOptional()
   budget: Budget;
 
   @Prop({ type: Date })
@@ -110,12 +99,13 @@ export class Project {
   solution: string;
 
   @Prop({ type: Object })
-  @Type(() => BannerImage)
-  bannerImage: BannerImage;
+  @IsOptional()
+  bannerImage: any;
 
   @Prop({ type: [Object] })
   @IsArray()
   @Type(() => TeamMember)
+  @IsOptional()
   committees: TeamMember[];
 
   @Prop({ type: [Object] })
@@ -167,10 +157,9 @@ export class Project {
   })
   status: string;
 
-  @Prop({ type: [Object] })
   @IsArray()
-  @Type(() => File)
-  files: File[];
+  @IsOptional()
+  files: any[];
 }
 
 //Mongoose schema

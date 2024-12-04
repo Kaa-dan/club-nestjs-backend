@@ -101,7 +101,6 @@ export class ProjectController {
       bannerImage?: Express.Multer.File[];
     },
   ) {
-    console.log('DEBUGGING...........................');
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     return this.projectService.create(

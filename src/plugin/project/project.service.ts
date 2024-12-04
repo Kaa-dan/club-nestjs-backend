@@ -25,6 +25,12 @@ export class ProjectService {
     bannerImage: Express.Multer.File | null,
   ) {
     try {
+      // Log incoming data for debugging
+      console.log('Incoming Files:', {
+        documentFiles,
+        bannerImage,
+        createProjectDto,
+      });
       // Destructure input with default values and validation
       const {
         club,
