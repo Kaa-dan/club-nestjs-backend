@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsString,
   IsNumber,
@@ -76,6 +76,14 @@ class FaqDto {
 
 // Combined Project Creation DTO
 export class CreateProjectDto {
+  @IsMongoId()
+  @IsOptional()
+  club?: Types.ObjectId;
+
+  @IsMongoId()
+  @IsOptional()
+  node?: Types.ObjectId;
+
   // Project Details
   @IsString()
   title: string;
@@ -86,9 +94,15 @@ export class CreateProjectDto {
   @ValidateNested()
   budget: any;
 
-  @IsDate()
   @IsOptional()
-  @Type(() => Date)
+  @Transform(({ value }) => {
+    if (value) {
+      const [day, month, year] = value.split('/');
+      return new Date(year, month - 1, day);
+    }
+    return undefined;
+  })
+  @IsDate()
   deadline?: Date;
 
   @IsString()
