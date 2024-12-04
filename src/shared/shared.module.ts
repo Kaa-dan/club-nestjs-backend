@@ -37,6 +37,11 @@ import {
   DebateArgumentSchema,
 } from './entities/debate-argument';
 import { Project, ProjectSchema } from './entities/projects/project.entity';
+import { Faq, FaqSchema } from './entities/projects/faq.enitity';
+import {
+  Parameter,
+  ParameterSchema,
+} from './entities/projects/parameter.entity';
 
 @Module({
   imports: [
@@ -62,6 +67,8 @@ import { Project, ProjectSchema } from './entities/projects/project.entity';
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
       { name: Project.name, schema: ProjectSchema },
+      { name: Faq.name, schema: FaqSchema },
+      { name: Parameter.name, schema: ParameterSchema },
     ]),
     forwardRef(() => SearchModule),
   ],
