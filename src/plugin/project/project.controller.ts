@@ -10,6 +10,9 @@ import {
   Put,
   Param,
   Get,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -27,6 +30,8 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
+import { Types } from 'mongoose';
+import { Query as NestQuery } from '@nestjs/common';
 
 /**
  * Controller handling all project-related operations
@@ -207,9 +212,21 @@ export class ProjectController {
       bannerImage,
     );
   }
+  @Get('single/:id')
+  async getSingleProject(
+    @Param('id') id: Types.ObjectId,
+    @NestQuery('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @NestQuery('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return await this.projectService.getSingleProject(id, page, limit);
+  }
 
   @Get('all-projects')
-  async getAllProjects() {
-    return await this.projectService.getAllProjects();
+  async getAllProjects(@Query('status') status: 'published' | 'proposed') {
+    return await this.projectService.getAllProjects(status);
+  }
+  @Get('my-projects')
+  async getMyProjects(@Req() req: Request) {
+    return await this.projectService.getMyProjects(req.user._id);
   }
 }
