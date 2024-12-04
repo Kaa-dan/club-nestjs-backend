@@ -7,6 +7,9 @@ import {
   IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { Types } from 'mongoose';
+import { Node_ } from '../node.entity';
+import { Club } from '../club.entity';
 
 // Nested subdocument for banner image
 class BannerImage {
@@ -48,6 +51,12 @@ class File {
   },
 })
 export class Project {
+  @Prop({ type: Types.ObjectId, ref: Club.name })
+  club: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: Node_.name })
+  node: Types.ObjectId;
+
   @Prop({
     type: String,
     required: true,

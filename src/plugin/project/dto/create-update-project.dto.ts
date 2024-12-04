@@ -76,6 +76,14 @@ class FaqDto {
 
 // Combined Project Creation DTO
 export class CreateProjectDto {
+  @IsMongoId()
+  @IsOptional()
+  club?: Types.ObjectId;
+
+  @IsMongoId()
+  @IsOptional()
+  node?: Types.ObjectId;
+
   // Project Details
   @IsString()
   title: string;
