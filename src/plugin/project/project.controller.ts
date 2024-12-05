@@ -54,7 +54,7 @@ export class ProjectController {
   @ProjectFiles()
   async create(
     @Req() req: Request,
-    @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {

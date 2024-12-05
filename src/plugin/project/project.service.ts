@@ -149,7 +149,7 @@ export class ProjectService {
       if (membershipModel) {
         membership = await membershipModel.findOne({
           ...membershipIdentifier,
-          member: new Types.ObjectId(userId),
+          user: new Types.ObjectId(userId),
         });
 
         if (!membership || !membership.role) {
@@ -173,21 +173,27 @@ export class ProjectService {
       const savedProject = await newProject.save({ session });
 
       // Handle parameters if provided
-      if (parameters && parameters.length > 0) {
-        const parametersToCreate = parameters.map((param) => ({
-          ...param,
-          project: savedProject._id,
-        }));
+      if (
+        JSON.parse(parameters as any) &&
+        JSON.parse(parameters as any).length > 0
+      ) {
+        const parametersToCreate = JSON.parse(parameters as any).map(
+          (param) => ({
+            ...param,
+            project: savedProject._id,
+          }),
+        );
 
         await this.parameterModel.create(parametersToCreate, { session });
       }
 
       // Handle FAQs if provided
-      if (faqs && faqs.length > 0) {
-        const faqsToCreate = faqs.map((faq) => ({
+      if (JSON.parse(faqs as any) && JSON.parse(faqs.length as any) > 0) {
+        const faqsToCreate = JSON.parse(faqs as any).map((faq) => ({
           ...faq,
           project: savedProject._id,
           askedBy: userId,
+          answeredBy: userId,
           status: 'proposed',
           Date: new Date(),
         }));
@@ -547,11 +553,13 @@ export class ProjectService {
           { session },
         );
 
-        if (parameters.length > 0) {
-          const parametersToCreate = parameters.map((param) => ({
-            ...param,
-            project: project._id,
-          }));
+        if (JSON.parse(parameters as any).length > 0) {
+          const parametersToCreate = JSON.parse(parameters as any).map(
+            (param) => ({
+              ...param,
+              project: project._id,
+            }),
+          );
 
           await this.parameterModel.create(parametersToCreate, { session });
         }
@@ -596,11 +604,12 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
+    console.log({ id });
     try {
       const result = await this.projectModel.aggregate([
         // Match project by ID
         {
-          $match: { _id: id },
+          $match: { _id: new Types.ObjectId(id) },
         },
         // Get associated FAQs
         {
