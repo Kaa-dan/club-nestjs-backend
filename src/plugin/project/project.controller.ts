@@ -216,12 +216,8 @@ export class ProjectController {
     );
   }
   @Get('single/:id')
-  async getSingleProject(
-    @Param('id') id: Types.ObjectId,
-    @NestQuery('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @NestQuery('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
-  ) {
-    return await this.projectService.getSingleProject(id, page, limit);
+  async getSingleProject(@Param('id') id: Types.ObjectId) {
+    return await this.projectService.getSingleProject(id);
   }
 
   @Get('all-projects')

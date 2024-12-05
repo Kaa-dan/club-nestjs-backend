@@ -12,13 +12,7 @@ import { DebateModule } from './debate/debate.module';
 import { ProjectModule } from './project/project.module';
 
 @Module({
-  imports: [
-    RulesRegulationsModule,
-    IssuesModule,
-    SharedModule,
-    DebateModule,
-    ProjectModule,
-  ],
+  imports: [RulesRegulationsModule, IssuesModule, SharedModule, DebateModule],
   exports: [RulesRegulationsModule, IssuesModule],
 })
 export class PluginModule {}

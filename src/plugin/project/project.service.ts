@@ -595,10 +595,8 @@ export class ProjectService {
    * @returns Project with paginated FAQs and parameters
    * @throws NotFoundException if project not found
    */
-  async getSingleProject(id: Types.ObjectId, page: number, limit: number) {
+  async getSingleProject(id: Types.ObjectId) {
     try {
-      const skip = (page - 1) * limit;
-
       const result = await this.projectModel.aggregate([
         // Match project by ID
         {
@@ -622,24 +620,11 @@ export class ProjectService {
             as: 'parameters',
           },
         },
-        // Add pagination metadata
+        // Add metadata
         {
           $addFields: {
-            faqs: {
-              $slice: ['$faqs', skip, limit],
-            },
-            parameters: {
-              $slice: ['$parameters', skip, limit],
-            },
             totalFaqs: { $size: '$faqs' },
             totalParameters: { $size: '$parameters' },
-            page: { $literal: page },
-            limit: { $literal: limit },
-            totalPages: {
-              $ceil: {
-                $divide: [{ $size: '$faqs' }, limit],
-              },
-            },
           },
         },
       ]);

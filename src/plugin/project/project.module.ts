@@ -7,5 +7,6 @@ import { SharedModule } from 'src/shared/shared.module';
   imports: [SharedModule],
   controllers: [ProjectController],
   providers: [ProjectService],
+  exports: [ProjectService],
 })
 export class ProjectModule {}
