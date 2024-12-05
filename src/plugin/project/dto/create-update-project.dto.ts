@@ -13,8 +13,8 @@ import {
 import { Types } from 'mongoose';
 
 class TeamMemberDto {
-  @IsString()
-  name: string;
+  @IsMongoId()
+  name: Types.ObjectId;
 
   @IsString()
   designation: string;
@@ -165,6 +165,10 @@ export class CreateProjectDto {
   @Type(() => FaqDto)
   @IsOptional()
   faqs?: FaqDto[];
+
+  @IsMongoId()
+  @IsOptional()
+  createdBy?: Types.ObjectId;
 }
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
