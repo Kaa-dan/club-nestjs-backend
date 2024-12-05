@@ -1,4 +1,4 @@
-import { Prop, Schema } from '@nestjs/mongoose';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { Project } from './project.entity';
 import { User } from '../user.entity';
@@ -26,3 +26,5 @@ export class Contribution {
   @Prop({ type: [String, Number], required: true })
   value: string | number;
 }
+
+export const ContributionSchema = SchemaFactory.createForClass(Contribution);
