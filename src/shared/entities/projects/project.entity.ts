@@ -5,18 +5,21 @@ import {
   IsOptional,
   IsDate,
   IsArray,
+  IsBoolean,
+  IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { Types } from 'mongoose';
 import { Node_ } from '../node.entity';
 import { Club } from '../club.entity';
+import { User } from '../user.entity';
 
 // Nested subdocument for banner image
 
 // Nested subdocument for committees and champions
 class TeamMember {
-  @IsString()
-  name: string;
+  @IsMongoId()
+  user: Types.ObjectId;
 
   @IsString()
   designation: string;
@@ -152,14 +155,28 @@ export class Project {
   @IsString()
   @Prop({
     type: String,
-    enum: ['draft', 'published', 'proposed', 'rejected'],
+    enum: ['draft', 'published', 'proposed', 'rejected', 'inactive'],
     default: 'draft',
   })
   status: string;
 
+  @Prop({ type: Boolean })
+  @IsBoolean()
+  @IsOptional()
+  active: boolean;
+
+  @Prop({ type: [Object] })
   @IsArray()
   @IsOptional()
   files: any[];
+
+  @Prop({ type: Types.ObjectId, ref: User.name })
+  @IsOptional()
+  createdBy: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: User.name, default: null })
+  @IsOptional()
+  publishedBy: Types.ObjectId | null;
 }
 
 //Mongoose schema

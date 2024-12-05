@@ -8,7 +8,7 @@ import {
   CreateProjectDto,
   UpdateProjectDto,
 } from './dto/create-update-project.dto';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -18,8 +18,8 @@ import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Parameter } from 'src/shared/entities/projects/parameter.entity';
 
 /**
- * Service handling all project-related business logic
- * Manages project creation, updates, and file uploads
+ * Service responsible for managing all project-related operations
+ * Handles CRUD operations for projects, file uploads, and associated data like FAQs and parameters
  */
 @Injectable()
 export class ProjectService {
@@ -33,17 +33,19 @@ export class ProjectService {
     @InjectModel(Parameter.name)
     private readonly parameterModel: Model<Parameter>,
     private readonly s3FileUpload: UploadService,
-    @Inject(Connection) private connection: Connection,
+    @InjectConnection() private connection: Connection,
   ) {}
 
   /**
-   * Creates a new project with associated files and permissions
-   * @param createProjectDto - Data transfer object containing project details
-   * @param userId - ID of user creating the project
-   * @param documentFiles - Array of document files to be uploaded
-   * @param bannerImage - Optional banner image file
-   * @returns Newly created project document
-   * @throws Error if required fields are missing or user lacks permissions
+   * Creates a new project with all associated data and files
+   * Handles file uploads, permission checks, and data validation in a single transaction
+   *
+   * @param createProjectDto - Contains all project details like title, budget, etc
+   * @param userId - ID of the user creating the project
+   * @param documentFiles - Array of project-related documents to be uploaded
+   * @param bannerImage - Project banner image file (optional)
+   * @returns Newly created project with all associated data
+   * @throws Error if validation fails or user lacks permissions
    */
   async create(
     createProjectDto: CreateProjectDto,
@@ -55,14 +57,7 @@ export class ProjectService {
     session.startTransaction();
 
     try {
-      // Log incoming files and data for debugging purposes
-      console.log('Incoming Files:', {
-        documentFiles,
-        bannerImage,
-        createProjectDto,
-      });
-
-      // Destructure DTO
+      // Extract all fields from the DTO for easier access
       const {
         club,
         node,
@@ -82,18 +77,18 @@ export class ProjectService {
         faqs,
       } = createProjectDto;
 
-      // Validate required fields
+      // Ensure required fields are present
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
 
-      // Upload banner image and document files in parallel
+      // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
         bannerImage ? this.uploadFile(bannerImage) : null,
         Promise.all(documentFiles.map((file) => this.uploadFile(file))),
       ]);
 
-      // Create file objects
+      // Create standardized file objects with metadata
       const fileObjects = uploadedDocumentFiles.map((file, index) => ({
         url: file.url,
         originalname: documentFiles[index].originalname,
@@ -101,7 +96,7 @@ export class ProjectService {
         size: documentFiles[index].size,
       }));
 
-      // Create banner image object
+      // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
             url: uploadedBannerImage.url,
@@ -111,7 +106,7 @@ export class ProjectService {
           }
         : null;
 
-      // Base project data
+      // Construct core project data
       const baseProjectData = {
         title,
         region,
@@ -129,7 +124,7 @@ export class ProjectService {
         files: fileObjects,
       };
 
-      // Determine membership and project status
+      // Determine membership type and verify permissions
       let membershipModel = null;
       let membershipIdentifier = null;
 
@@ -141,7 +136,7 @@ export class ProjectService {
         membershipIdentifier = { node: new Types.ObjectId(node) };
       }
 
-      // Verify user membership
+      // Verify user's membership and role
       let membership = null;
       if (membershipModel) {
         membership = await membershipModel.findOne({
@@ -154,7 +149,7 @@ export class ProjectService {
         }
       }
 
-      // Create project with appropriate status
+      // Set project status based on user's role
       const projectData = {
         ...baseProjectData,
         ...(club ? { club } : { node }),
@@ -163,13 +158,16 @@ export class ProjectService {
             ? 'proposed'
             : 'published'
           : 'draft',
+        createdBy: new Types.ObjectId(userId),
+        publishedBy:
+          membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
 
-      // Save project
+      // Create and save the project
       const newProject = new this.projectModel(projectData);
       const savedProject = await newProject.save({ session });
 
-      // Create Parameters if provided
+      // Handle parameters if provided
       if (parameters && parameters.length > 0) {
         const parametersToCreate = parameters.map((param) => ({
           ...param,
@@ -179,7 +177,7 @@ export class ProjectService {
         await this.parameterModel.create(parametersToCreate, { session });
       }
 
-      // Create FAQs if provided
+      // Handle FAQs if provided
       if (faqs && faqs.length > 0) {
         const faqsToCreate = faqs.map((faq) => ({
           ...faq,
@@ -192,30 +190,31 @@ export class ProjectService {
         await this.faqModel.create(faqsToCreate, { session });
       }
 
-      // Commit transaction
+      // Commit all changes
       await session.commitTransaction();
 
       return savedProject;
     } catch (error) {
-      // Abort transaction on error
+      // Rollback all changes if any operation fails
       await session.abortTransaction();
       console.error('Project creation error:', error);
       throw new Error(`Failed to create project: ${error.message}`);
     } finally {
-      // End session
+      // Clean up database session
       session.endSession();
     }
   }
 
   /**
-   * Saves a project as draft with all associated files
-   * Similar to create but specifically for draft status
-   * @param updateProjectDto - Data transfer object with project updates
-   * @param userId - ID of user saving the draft
-   * @param documentFiles - Array of document files to upload
-   * @param bannerImage - Optional banner image file
+   * Saves a project as draft with all associated data
+   * Similar to create but specifically handles draft status and updates
+   *
+   * @param updateProjectDto - Contains all project details to be updated
+   * @param userId - ID of the user saving the draft
+   * @param documentFiles - Array of project-related documents
+   * @param prevBannerImage - Previous banner image if exists
    * @returns Saved draft project
-   * @throws Error if required fields are missing or user lacks permissions
+   * @throws Error if validation fails or user lacks permissions
    */
   async saveDraftProject(
     updateProjectDto: UpdateProjectDto,
@@ -249,18 +248,18 @@ export class ProjectService {
         parameters,
       } = updateProjectDto;
 
-      // Ensure required fields are present
+      // Validate required fields
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
 
-      // Handle file uploads in parallel for efficiency
+      // Process file uploads concurrently
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
         this.uploadFile(prevBannerImage),
         Promise.all(documentFiles.map((file) => this.uploadFile(file))),
       ]);
 
-      // Create standardized file objects with metadata
+      // Create standardized file objects
       const fileObjects = uploadedDocumentFiles.map((file, index) => ({
         url: file.url,
         originalname: documentFiles[index].originalname,
@@ -294,9 +293,10 @@ export class ProjectService {
         risksAndChallenges,
         bannerImage: bannerImage ?? uploadedBannerImageObject,
         files: [...files, ...fileObjects],
+        createdBy: new Types.ObjectId(userId),
       };
 
-      // Determine membership model based on project type
+      // Determine membership type
       let membershipModel = null;
       let membershipIdentifier = null;
 
@@ -308,7 +308,7 @@ export class ProjectService {
         membershipIdentifier = { node: new Types.ObjectId(node) };
       }
 
-      // Verify user membership and permissions
+      // Verify user membership and handle project creation
       if (membershipModel) {
         const membership = await membershipModel.findOne({
           ...membershipIdentifier,
@@ -319,7 +319,7 @@ export class ProjectService {
           throw new Error('You are not a member of this group');
         }
 
-        // Set project data with appropriate status
+        // Create project with membership data
         const projectData = {
           ...baseProjectData,
           ...(club ? { club } : { node }),
@@ -329,7 +329,7 @@ export class ProjectService {
         const newProject = new this.projectModel(projectData);
         const savedProject = await newProject.save({ session });
 
-        // Create Parameters if provided
+        // Handle parameters if provided
         if (parameters && parameters.length > 0) {
           const parametersToCreate = parameters.map((param) => ({
             ...param,
@@ -339,7 +339,7 @@ export class ProjectService {
           await this.parameterModel.create(parametersToCreate, { session });
         }
 
-        // Create FAQs if provided
+        // Handle FAQs if provided
         if (faqs && faqs.length > 0) {
           const faqsToCreate = faqs.map((faq) => ({
             ...faq,
@@ -356,7 +356,7 @@ export class ProjectService {
         return savedProject;
       }
 
-      // Create project as draft if not associated with club/node
+      // Handle project creation without membership
       const newProject = new this.projectModel({
         ...baseProjectData,
         status: 'draft',
@@ -364,7 +364,7 @@ export class ProjectService {
 
       const savedProject = await newProject.save({ session });
 
-      // Create Parameters if provided
+      // Handle parameters if provided
       if (parameters && parameters.length > 0) {
         const parametersToCreate = parameters.map((param) => ({
           ...param,
@@ -374,7 +374,7 @@ export class ProjectService {
         await this.parameterModel.create(parametersToCreate, { session });
       }
 
-      // Create FAQs if provided
+      // Handle FAQs if provided
       if (faqs && faqs.length > 0) {
         const faqsToCreate = faqs.map((faq) => ({
           ...faq,
@@ -400,13 +400,15 @@ export class ProjectService {
 
   /**
    * Updates an existing project with new data and files
+   * Handles permission checks, file uploads, and associated data updates
+   *
    * @param id - ID of the project to update
-   * @param updateProjectDto - Data transfer object containing project updates
-   * @param userId - ID of user making the update
-   * @param documentFiles - Array of document files to upload
-   * @param bannerImage - Optional banner image file
-   * @returns Updated project
-   * @throws Error if project not found, user lacks permissions, or update fails
+   * @param updateProjectDto - Contains all project details to be updated
+   * @param userId - ID of the user making the update
+   * @param documentFiles - New document files to be uploaded
+   * @param bannerImage - New banner image if provided
+   * @returns Updated project with all changes
+   * @throws Error if project not found or user lacks permissions
    */
   async update(
     id: string,
@@ -419,17 +421,16 @@ export class ProjectService {
     session.startTransaction();
 
     try {
-      // Find the project
+      // Verify project exists
       const project = await this.projectModel.findById(id);
       if (!project) {
         throw new NotFoundException('Project not found');
       }
 
-      // Determine membership and verify user's role
+      // Determine membership type
       let membershipModel = null;
       let membershipIdentifier = null;
 
-      // Check if project belongs to club or node
       if (project.club) {
         membershipModel = this.clubMembersModel;
         membershipIdentifier = { club: project.club };
@@ -438,7 +439,7 @@ export class ProjectService {
         membershipIdentifier = { node: project.node };
       }
 
-      // Verify user membership and permissions
+      // Verify user permissions
       let membership = null;
       if (membershipModel) {
         membership = await membershipModel.findOne({
@@ -451,7 +452,7 @@ export class ProjectService {
         }
       }
 
-      // Extract fields from update DTO
+      // Extract update fields
       const {
         title,
         region,
@@ -467,13 +468,13 @@ export class ProjectService {
         risksAndChallenges,
         status,
         faqs,
+        createdBy,
         parameters,
       } = updateProjectDto;
 
-      // Handle status changes based on user permissions
+      // Handle status changes based on permissions
       let finalStatus = project.status;
       if (status) {
-        // Only admins can publish, others can change to other statuses
         const isAdmin = membership?.role === 'admin';
         if (isAdmin) {
           finalStatus = status;
@@ -486,13 +487,13 @@ export class ProjectService {
         }
       }
 
-      // Upload new files in parallel
+      // Process file uploads
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
         this.uploadFile(bannerImage),
         Promise.all(documentFiles.map((file) => this.uploadFile(file))),
       ]);
 
-      // Format uploaded document files metadata
+      // Create file objects with metadata
       const fileObjects = uploadedDocumentFiles.map((file, index) => ({
         url: file.url,
         originalname: documentFiles[index].originalname,
@@ -500,7 +501,7 @@ export class ProjectService {
         size: documentFiles[index].size,
       }));
 
-      // Format banner image metadata if provided
+      // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
             url: uploadedBannerImage.url,
@@ -510,7 +511,7 @@ export class ProjectService {
           }
         : null;
 
-      // Prepare project update data
+      // Prepare update data
       const updateData = {
         title,
         region,
@@ -525,8 +526,14 @@ export class ProjectService {
         keyTakeaways,
         risksAndChallenges,
         status: finalStatus,
+        publishedBy:
+          membership.role !== 'member' && finalStatus === 'published'
+            ? new Types.ObjectId(userId)
+            : null,
+
         bannerImage: uploadedBannerImageObject || project.bannerImage,
         files: [...(project.files || []), ...fileObjects],
+        createdBy,
       };
 
       // Update project document
@@ -536,15 +543,13 @@ export class ProjectService {
         { new: true, session },
       );
 
-      // Handle parameter updates if provided
+      // Handle parameter updates
       if (parameters) {
-        // Remove existing parameters
         await this.parameterModel.deleteMany(
           { project: project._id },
           { session },
         );
 
-        // Create new parameters if any
         if (parameters.length > 0) {
           const parametersToCreate = parameters.map((param) => ({
             ...param,
@@ -555,12 +560,10 @@ export class ProjectService {
         }
       }
 
-      // Handle FAQ updates if provided
+      // Handle FAQ updates
       if (faqs) {
-        // Remove existing FAQs
         await this.faqModel.deleteMany({ project: project._id }, { session });
 
-        // Create new FAQs if any
         if (faqs.length > 0) {
           const faqsToCreate = faqs.map((faq) => ({
             ...faq,
@@ -574,45 +577,194 @@ export class ProjectService {
         }
       }
 
-      // Commit all database changes
       await session.commitTransaction();
-
       return updatedProject;
     } catch (error) {
-      // Rollback all changes on error
       await session.abortTransaction();
       console.error('Project update error:', error);
       throw new Error(`Failed to update project: ${error.message}`);
     } finally {
-      // Clean up database session
       session.endSession();
     }
   }
 
-  async getAllProjects() {
+  /**
+   * Retrieves a single project with its associated FAQs and parameters
+   * Implements pagination for FAQs and parameters
+   *
+   * @param id - Project ID to retrieve
+   * @param page - Page number for pagination
+   * @param limit - Number of items per page
+   * @returns Project with paginated FAQs and parameters
+   * @throws NotFoundException if project not found
+   */
+  async getSingleProject(id: Types.ObjectId) {
     try {
-      return await this.projectModel.find();
+      const result = await this.projectModel.aggregate([
+        // Match project by ID
+        {
+          $match: { _id: id },
+        },
+        // Get associated FAQs
+        {
+          $lookup: {
+            from: 'faqs',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'faqs',
+          },
+        },
+        // Get associated parameters
+        {
+          $lookup: {
+            from: 'parameters',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'parameters',
+          },
+        },
+        // Add metadata
+        {
+          $addFields: {
+            totalFaqs: { $size: '$faqs' },
+            totalParameters: { $size: '$parameters' },
+          },
+        },
+      ]);
+
+      if (!result || result.length === 0) {
+        throw new NotFoundException('Project not found');
+      }
+
+      return result[0];
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        'Failed to get single project. Please try again later.',
+      );
+    }
+  }
+
+  /**
+   * Retrieves all projects in the system
+   * @returns Array of all projects
+   * @throws BadRequestException if query fails
+   */
+  /**
+   * Retrieves a paginated list of projects based on provided filters
+   * @param status - Filter projects by status ('proposed' or 'published')
+   * @param page - Page number for pagination
+   * @param limit - Number of items per page
+   * @param isActive - Filter by project active status
+   * @param search - Optional search term to filter projects by title, region or significance
+   * @param node - Optional node ID to filter projects by node
+   * @param club - Optional club ID to filter projects by club
+   * @returns Object containing paginated projects list and pagination metadata
+   * @throws BadRequestException if query fails
+   */
+  async getAllProjects(
+    status: 'proposed' | 'published',
+    page: number,
+    limit: number,
+    isActive: boolean,
+    search: string,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
+  ) {
+    try {
+      const query: any = {
+        status,
+        active: isActive,
+      };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { region: { $regex: search, $options: 'i' } },
+          { significance: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      const projects = await this.projectModel
+        .find(query)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name');
+
+      const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
     } catch (error) {
       throw new BadRequestException(
         'Failed to get all projects. Please try again later.',
       );
     }
   }
-
-  async getMyProjects(userId: Types.ObjectId) {
-    return await this.projectModel.find({
-      ...(userId ? { champions: userId } : {}),
-    });
-  }
   /**
-   * Uploads a file to S3 bucket
+   * Retrieves all projects where the user is listed as a champion
+   * @param userId - ID of the user to find projects for
+   * @returns Array of projects where user is a champion
+   */
+  async getMyProjects(
+    userId: Types.ObjectId,
+    status: boolean,
+    page: number,
+    limit: number,
+  ) {
+    try {
+      const query = {
+        createdBy: userId,
+        status: status,
+      };
+
+      const projects = await this.projectModel
+        .find(query)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name');
+
+      const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
+  }
+
+  /**
+   * Handles file upload to S3 storage
    * @param file - File to be uploaded
-   * @returns Upload response containing file URL and metadata
+   * @returns Upload response with file URL and metadata
    * @throws BadRequestException if upload fails
    */
   private async uploadFile(file: Express.Multer.File) {
     try {
-      // Upload file to S3 using upload service
       const response = await this.s3FileUpload.uploadFile(
         file.buffer,
         file.originalname,

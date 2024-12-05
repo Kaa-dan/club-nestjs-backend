@@ -10,6 +10,10 @@ import {
   Put,
   Param,
   Get,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Query,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -27,6 +31,8 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
+import { Types } from 'mongoose';
+import { Query as NestQuery } from '@nestjs/common';
 
 /**
  * Controller handling all project-related operations
@@ -207,9 +213,43 @@ export class ProjectController {
       bannerImage,
     );
   }
+  @Get('single/:id')
+  async getSingleProject(@Param('id') id: Types.ObjectId) {
+    return await this.projectService.getSingleProject(id);
+  }
 
   @Get('all-projects')
-  async getAllProjects() {
-    return await this.projectService.getAllProjects();
+  async getAllProjects(
+    @Query('status') status: 'published' | 'proposed',
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('isActive', new ParseBoolPipe()) isActive: boolean,
+    @Query('search') search: string,
+    @Query('node') node?: Types.ObjectId,
+    @Query('club') club?: Types.ObjectId,
+  ) {
+    return await this.projectService.getAllProjects(
+      status,
+      page,
+      limit,
+      isActive,
+      search,
+      node,
+      club,
+    );
+  }
+  @Get('my-projects')
+  async getMyProjects(
+    @Req() req: Request,
+    @Query('status', new ParseBoolPipe()) status: boolean,
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+  ) {
+    return await this.projectService.getMyProjects(
+      req.user._id,
+      status,
+      page,
+      limit,
+    );
   }
 }
