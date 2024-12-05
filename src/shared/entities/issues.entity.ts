@@ -33,6 +33,7 @@ export class Issues extends Document {
   @Prop({
     type: [Types.ObjectId],
     ref: User.name,
+    required: false,
   })
   whoShouldAddress: Types.ObjectId[];
 
@@ -43,13 +44,13 @@ export class Issues extends Document {
     type: [
       {
         url: String,
-        originalName: String,
+        originalname: String,
         mimetype: String,
         size: Number,
       },
     ],
   })
-  files: { url: string; originalName: string; mimetype: string; size: number };
+  files: { url: string; originalname: string; mimetype: string; size: number };
 
   @Prop({ default: false })
   isPublic: boolean;
@@ -107,6 +108,12 @@ export class Issues extends Document {
   publishedDate: Date;
   updatedDate: Date;
   adoptedDate: Date;
+  @Prop({
+    type: Types.ObjectId,
+    ref: Issues.name,
+    default: null,
+    required: false,
+  })
   adoptedFrom: null | Types.ObjectId;
 
   @Prop([
@@ -131,7 +138,12 @@ export class Issues extends Document {
     date: Date;
   }[];
   @Prop({ default: 'draft' })
-  publishedStatus: 'draft' | 'published' | 'olderversion' | 'proposed' | 'archived';
+  publishedStatus:
+    | 'draft'
+    | 'published'
+    | 'olderversion'
+    | 'proposed'
+    | 'archived';
 
   @Prop()
   isActive: boolean;
@@ -144,9 +156,8 @@ export class Issues extends Document {
 
   @Prop()
   olderVersions: [{}];
+
+  rootParent: null | Types.ObjectId;
 }
 
 export const IssuesSchema = SchemaFactory.createForClass(Issues);
-
-// export type IssueDocument = Issues & Document;
-// export const IssueSchema = SchemaFactory.createForClass(Issues);

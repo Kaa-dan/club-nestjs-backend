@@ -11,7 +11,10 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateIssuesDto } from './dto/create-issue.dto';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
-import { publish } from 'rxjs';
+import { async, publish } from 'rxjs';
+import { Node_ } from 'src/shared/entities/node.entity';
+import { Club } from 'src/shared/entities/club.entity';
+import { title } from 'process';
 
 interface FileObject {
   buffer: Buffer;
@@ -30,6 +33,10 @@ export class IssuesService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(Node_.name)
+    private readonly nodeModel: Model<Node_>,
+    @InjectModel(Club.name)
+    private readonly clubModel: Model<Club>,
   ) {}
 
   /**
@@ -127,8 +134,8 @@ export class IssuesService {
       // Check if the user is an admin or not
       const memberRole = await this.getMemberRoles(userId, dataToSave);
 
-      // If the user is not an admin, update the document to proposed
-      if (memberRole !== 'admin') {
+      // If the user is not an admin or owner or moderator, update the document to proposed
+      if (!['admin', 'owner', 'moderator']?.includes(memberRole)) {
         const updateData = await this.issuesModel.findByIdAndUpdate(
           dataToSave._id,
           {
@@ -148,6 +155,7 @@ export class IssuesService {
         ...currentVersion.toObject(),
         version: currentVersion.version || 1,
         files: mergedFiles,
+        publishedStatus: 'olderversion',
       };
 
       const updatedDocument = await this.issuesModel.findByIdAndUpdate(
@@ -184,16 +192,18 @@ export class IssuesService {
    */
   async getAllActiveIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
     try {
-      let query = {}; // Initialize the query object
+      let query = {};
       if (entity === 'node') {
         query = {
           node: entityId,
           isActive: true,
+          publishedStatus: 'published',
         };
       } else {
         query = {
           club: entityId,
           isActive: true,
+          publishedStatus: 'published',
         };
       }
       return await this.issuesModel
@@ -201,6 +211,32 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  async getAllIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
+    try {
+      let query = {};
+      if (entity === 'node') {
+        query = {
+          node: entityId,
+        };
+      } else {
+        query = {
+          club: entityId,
+        };
+      }
+      return await this.issuesModel
+        .find(query)
+        .populate('createdBy', '-password')
+        .exec();
+    } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -236,8 +272,51 @@ export class IssuesService {
       }
       return await this.issuesModel.find(query).exec();
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  async getGlobalActiveIssues() {
+    try {
+      return await this.issuesModel
+        .find({
+          isActive: true,
+
+          publishedStatus: 'published',
+        })
+        .populate('createdBy', '-password')
+        .populate('node')
+        .populate('club')
+        .exec();
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException(
+        'Error while getting active rules-regulations',
+        error,
+      );
+    }
+  }
+
+  async getIssue(issueId: Types.ObjectId) {
+    try {
+      const response = await this.issuesModel
+        .findById(issueId)
+        .populate('createdBy', '-password')
+        .populate('whoShouldAddress')
+        .populate('node')
+        .populate('club')
+        .exec();
+
+      console.log(response, 'ice');
+      return response;
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException(
+        'Error while getting specific issue',
         error,
       );
     }
@@ -255,6 +334,7 @@ export class IssuesService {
       );
       return response;
     } catch (error) {
+      console.log(error);
       throw new BadRequestException(
         'Failed to upload file. Please try again later.',
       );
@@ -289,53 +369,68 @@ export class IssuesService {
 
   async adoptIssueAndPropose(userId: Types.ObjectId, data) {
     try {
-      let clubOrNode: null | string = null;
+      let clubOrNode: null | string = data?.club ? 'club' : 'node';
 
       if (!clubOrNode) throw new BadRequestException('Invalid club or node');
       const role = await this.getMemberRoles(userId, data);
+
+      const existingIssue = await this.issuesModel.findById(data.issueId);
+
+      const rootParent =
+        existingIssue?.rootParent ?? new Types.ObjectId(data.issueId);
       if (role === 'admin') {
         if (data.club) {
-          clubOrNode = 'club';
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
-                adoptedClubs: data.club,
+                adoptedClubs: {
+                  club: new Types.ObjectId(data.club),
+                  date: new Date(),
+                },
               },
             },
             { new: true }, // Returns the updated document
           );
         } else if (data.node) {
-          clubOrNode = 'node';
           await this.issuesModel.findByIdAndUpdate(
-            data.issueId,
+            rootParent,
             {
               $addToSet: {
-                adoptedNodes: data.club,
+                adoptedNodes: {
+                  node: new Types.ObjectId(data.node),
+                  date: new Date(),
+                },
               },
             },
             { new: true }, // Returns the updated document
           );
         }
-        const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
+
         const newIssueData = {
-          ...existingIssue.toObject(), // Converting to plain object
-          publishedBy: userId,
-          publishedDate: new Date(),
-          version: 1,
-          isAcitve: true,
-          publishedStatus: 'published',
+          title: existingIssue.title,
+          issueType: existingIssue.issueType,
+          whereOrWho: existingIssue.whereOrWho,
+          deadline: existingIssue.deadline,
+          reasonOfDeadline: existingIssue.reasonOfDeadline,
+          significance: existingIssue.significance,
+          description: existingIssue.description,
+          files: existingIssue.files,
+          isPublic: existingIssue.isPublic,
+          isAnonymous: existingIssue.isAnonymous,
           ...(clubOrNode === 'club'
             ? { club: new Types.ObjectId(data.club) }
             : { node: new Types.ObjectId(data.node) }),
+          createdBy: userId,
+          isActive: true,
+          publishedStatus: 'published',
+          publishedBy: userId,
+          publishedDate: new Date(),
+          version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        delete newIssueData._id;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
@@ -343,23 +438,29 @@ export class IssuesService {
         return newIssue;
       } else if (role === 'member') {
         const existingIssue = await this.issuesModel.findById(data.issueId);
-        // Creating a new object
+
         const newIssueData = {
-          ...existingIssue.toObject(), // Converting to plain object
-          publishedBy: userId,
-          version: 1,
-          isAcitve: false,
-          publishedStatus: 'proposed',
+          title: existingIssue.title,
+          issueType: existingIssue.issueType,
+          whereOrWho: existingIssue.whereOrWho,
+          deadline: existingIssue.deadline,
+          reasonOfDeadline: existingIssue.reasonOfDeadline,
+          significance: existingIssue.significance,
+          description: existingIssue.description,
+          files: existingIssue.files,
+          isPublic: existingIssue.isPublic,
+          isAnonymous: existingIssue.isAnonymous,
           ...(clubOrNode === 'club'
             ? { club: new Types.ObjectId(data.club) }
             : { node: new Types.ObjectId(data.node) }),
+          createdBy: userId,
+          publishedStatus: 'proposed',
+          isActive: false,
+          version: 1,
+          rootParent,
           adoptedDate: new Date(),
           adoptedFrom: existingIssue._id,
         };
-
-        // Removing fields
-        delete newIssueData._id;
-        // delete newIssueData.__v;
 
         // creating new fields with modified data
         const newIssue = await this.issuesModel.create(newIssueData);
@@ -369,6 +470,7 @@ export class IssuesService {
 
       // return adoptedIssue;
     } catch (error) {
+      console.log(error);
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
@@ -439,6 +541,283 @@ export class IssuesService {
       }
       throw new InternalServerErrorException(
         'Error while adopting issue',
+        error,
+      );
+    }
+  }
+
+  async getProposedIssues(entity, entityId: Types.ObjectId) {
+    try {
+      if (entity === 'node') {
+        return await this.issuesModel
+          .find({ node: entityId, publishedStatus: 'proposed' })
+          .populate('createdBy', '-password')
+          .exec();
+      } else {
+        return await this.issuesModel
+          .find({ club: entityId, publishedStatus: 'proposed' })
+          .populate('createdBy', '-password')
+          .exec();
+      }
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException(
+        'Error while getting proposed issues',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Like an issue.
+   * @param userId The id of the user to like the issue for
+   * @param issueId The id of the issue to like
+   * @throws `BadRequestException` if the issueId is invalid
+   * @throws `NotFoundException` if the issue is not found
+   * @throws `InternalServerErrorException` if there is an error while liking the issue
+   * @returns The updated issue document
+   */
+  async likeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
+    try {
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found');
+      }
+
+      const issue = await this.issuesModel.findById(issueId);
+      if (!issue) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      const alreadyLiked = issue.relevant.some((like) =>
+        like.user.equals(userId),
+      );
+
+      if (alreadyLiked) {
+        return await this.issuesModel.findByIdAndUpdate(
+          issueId,
+          { $pull: { relevant: { user: userId } } },
+          { new: true },
+        );
+      }
+
+      return await this.issuesModel.findByIdAndUpdate(
+        issueId,
+        {
+          $addToSet: { relevant: { user: userId, date: new Date() } },
+          $pull: { irrelevant: { user: userId } },
+        },
+        { new: true },
+      );
+    } catch (error) {
+      console.log(error);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while adopting issue',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Dislike an issue.
+   * @param userId The id of the user to dislike the issue for
+   * @param issueId The id of the issue to dislike
+   * @throws `BadRequestException` if the issueId is invalid
+   * @throws `NotFoundException` if the issue is not found
+   * @throws `InternalServerErrorException` if there is an error while disliking the issue
+   * @returns The updated issue document
+   */
+  async dislikeIssue(userId: Types.ObjectId, issueId: Types.ObjectId) {
+    try {
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found');
+      }
+
+      const issue = await this.issuesModel.findById(issueId);
+      if (!issue) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      const alreadyDisliked = issue.irrelevant.some((dislike) =>
+        dislike.user.equals(userId),
+      );
+
+      if (alreadyDisliked) {
+        return await this.issuesModel.findByIdAndUpdate(
+          issueId,
+          { $pull: { irrelevant: { user: userId } } },
+          { new: true },
+        );
+      }
+
+      return await this.issuesModel.findByIdAndUpdate(
+        issueId,
+        {
+          $addToSet: { irrelevant: { user: userId, date: new Date() } },
+          $pull: { relevant: { user: userId } },
+        },
+        { new: true },
+      );
+    } catch (error) {
+      console.log(error);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while adopting issue',
+        error,
+      );
+    }
+  }
+
+  async getClubsNodesNotAdopted(
+    userId: Types.ObjectId,
+    issueId: Types.ObjectId,
+  ) {
+    try {
+      if (!issueId) {
+        throw new NotFoundException('IssueId not found');
+      }
+
+      const issue = await this.issuesModel.findById(
+        new Types.ObjectId(issueId),
+      );
+
+      if (!issue) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      const rootParent = issue.rootParent ?? new Types.ObjectId(issueId);
+
+      // Nodes Aggregation Pipeline
+      const nodesAggregation = [
+        {
+          $match: {
+            user: userId,
+          },
+        },
+        {
+          $lookup: {
+            from: 'node_', // Ensure this matches your actual collection name
+            localField: 'node',
+            foreignField: '_id',
+            as: 'nodeDetails',
+          },
+        },
+        {
+          $unwind: '$nodeDetails',
+        },
+        {
+          $lookup: {
+            from: 'issues', // Ensure this matches your actual collection name
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(issueId) },
+                    { rootParent: rootParent },
+                  ],
+                  $expr: {
+                    $not: {
+                      $in: ['$$nodeId', '$adoptedNodes.node'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedIssues',
+          },
+        },
+        {
+          $match: {
+            unadoptedIssues: { $ne: [] },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$nodeDetails',
+          },
+        },
+      ];
+
+      // Clubs Aggregation Pipeline
+      const clubsAggregation = [
+        {
+          $match: {
+            user: userId,
+          },
+        },
+        {
+          $lookup: {
+            from: 'clubs', // Ensure this matches your actual collection name
+            localField: 'club',
+            foreignField: '_id',
+            as: 'clubDetails',
+          },
+        },
+        {
+          $unwind: '$clubDetails',
+        },
+        {
+          $lookup: {
+            from: 'issues', // Ensure this matches your actual collection name
+            let: { clubId: '$club' },
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(issueId) },
+                    { rootParent: rootParent },
+                  ],
+                  $expr: {
+                    $not: {
+                      $in: ['$$clubId', '$adoptedClubs.club'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedIssues',
+          },
+        },
+        {
+          $match: {
+            unadoptedIssues: { $ne: [] },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$clubDetails',
+          },
+        },
+      ];
+
+      // Run both aggregations concurrently
+      const [memberNodes, memberClubs] = await Promise.all([
+        this.nodeMembersModel.aggregate(nodesAggregation),
+        this.clubMembersModel.aggregate(clubsAggregation),
+      ]);
+
+      return {
+        clubs: memberClubs,
+        nodes: memberNodes,
+      };
+    } catch (error) {
+      console.log(error);
+
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        'Error while getting clubs and nodes not adopted',
         error,
       );
     }

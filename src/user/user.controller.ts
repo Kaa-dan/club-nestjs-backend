@@ -8,6 +8,8 @@ import {
   Query,
   Search,
   Req,
+  Put,
+  Body,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,6 +23,7 @@ import { UserService } from './user.service';
 import { UserResponseDto } from './dto/user.dto';
 import { UserWithoutPassword } from './dto/user.type';
 import { Request } from 'express';
+import { AccessDto } from './dto/access.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -28,12 +31,13 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get('search')
-  async getAllUsers(
-    @Query('keyword') keyword?: string, // Make it optional with ?
+  async getUsersNotInClubOrNode(
+    @Query('type') type: 'node' | 'club',
+    @Query('entityId') id: Types.ObjectId,
+    @Query('keyword') keyword?: string,
   ): Promise<UserWithoutPassword[]> {
     try {
-      console.log({ keyword });
-      return await this.userService.getAllUsers(keyword);
+      return await this.userService.getUsersNotInClubOrNode(keyword, type, id);
     } catch (error) {
       throw error;
     }
@@ -64,8 +68,9 @@ export class UserController {
    * @param term - The username search term
    * @returns Promise containing the matching user data
    */
-  @Get('userName')
+  @Get('username')
   async getUserByUserName(@Query('term') term: string) {
+    console.log('termm ', term);
     return await this.userService.getUserByUserName(term);
   }
 
@@ -90,4 +95,28 @@ export class UserController {
   //     throw error;
   //   }
   // }
+
+  //----------------- MAKE ADMIN -------------------------
+  @Put('make-admin')
+  async makeAdmin(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeAdmin(accessDto);
+  }
+
+  //----------------- MAKE MODERATOR -------------------------
+  @Put('make-moderator')
+  async makeModerator(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeModerator(accessDto);
+  }
+
+  //----------------- MAKE MEMBER -------------------------
+  @Put('make-member')
+  async makeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.makeMember(accessDto);
+  }
+
+  //----------------- REMOVE MEMBER -------------------------
+  @Put('remove-member')
+  async removeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
+    return await this.userService.removeMember(accessDto);
+  }
 }

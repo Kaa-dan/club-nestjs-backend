@@ -14,14 +14,13 @@ import {
 } from '@nestjs/common';
 import { RulesRegulationsService } from './rules-regulations.service';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
-import { type } from 'node:os';
-import { publish } from 'rxjs';
+
 import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
 
 export interface IFileObject {
@@ -36,7 +35,7 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) { }
+  ) {}
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
@@ -91,11 +90,8 @@ export class RulesRegulationsController {
     files: Express.Multer.File[],
     @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
+    console.log('nithin');
     try {
-      console.log({
-        createRulesRegulationsDto,
-      });
-      console.log('nihtin');
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
           'Invalid type parameter. Must be "node" or "club".',
@@ -135,7 +131,8 @@ export class RulesRegulationsController {
         );
       }
     } catch (error) {
-      console.log('error', error);
+      console.log({ error });
+
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -263,7 +260,7 @@ export class RulesRegulationsController {
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
           ],
-          required: true,
+          required: false, // Allow empty or no files
         },
       }),
     )
@@ -271,38 +268,45 @@ export class RulesRegulationsController {
     @Body() updateRulesRegulationsDto,
   ) {
     try {
-      if (file.length > 5 - updateRulesRegulationsDto.files.length) {
-        throw new BadRequestException('maximum count of files should be 5');
+      // Initialize fileObjects array
+      const fileObjects = file
+        ? file.map((singleFile) => ({
+            buffer: singleFile.buffer,
+            originalname: singleFile.originalname,
+            mimetype: singleFile.mimetype,
+            size: singleFile.size,
+          }))
+        : [];
+
+      // Validate the total file count if `files` exist in DTO
+      if (
+        file &&
+        updateRulesRegulationsDto?.files &&
+        file.length > 5 - updateRulesRegulationsDto.files.length
+      ) {
+        throw new BadRequestException('Maximum count of files should be 5');
       }
 
-      // Process the file and create file paths array
-      const fileObjects = file.map((singleFile) => ({
-        buffer: singleFile.buffer,
-        originalname: singleFile.originalname,
-        mimetype: singleFile.mimetype,
-        size: singleFile.size,
-      }));
-
-      //saving all the detail to sent to the service
+      // Prepare data to save
       const dataToSave = {
         ...updateRulesRegulationsDto,
-        updatedBy: req['user']._id,
+        updatedBy: req['user']?._id,
         updatedDate: new Date(),
       };
 
+      // Call the service with data and file objects
       return await this.rulesRegulationsService.updateRulesRegulations(
         dataToSave,
-        req.user._id,
+        req['user']?._id,
         fileObjects,
       );
     } catch (error) {
-      console.log('error', error);
+      console.error('Error:', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
       throw new InternalServerErrorException(
-        'Error while creating rules-regulations',
-        error,
+        'Error while updating rules-regulations',
       );
     }
   }
@@ -319,6 +323,9 @@ export class RulesRegulationsController {
     @Req() req: Request,
   ) {
     try {
+      console.log({ forId, type });
+      console.log('callethi');
+
       const ID = new Types.ObjectId(forId);
       return await this.rulesRegulationsService.getAllActiveRulesRegulations(
         type,
@@ -341,7 +348,9 @@ export class RulesRegulationsController {
     @Query('type') type: 'node' | 'club',
   ) {
     try {
-      console.log('entity', entity);
+      console.log({ type });
+      console.log({ entity });
+
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
@@ -378,6 +387,7 @@ export class RulesRegulationsController {
         userId: req.user._id,
       };
       // console.log(data);
+      console.log({ adoptClub: type });
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
@@ -415,6 +425,8 @@ export class RulesRegulationsController {
     try {
       return await this.rulesRegulationsService.getRules(ruleId);
     } catch (error) {
+      console.log({ error });
+
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -588,7 +600,10 @@ export class RulesRegulationsController {
    */
   @Get(':ruleId/comments')
   getAllComments(@Param('ruleId') ruleId: Types.ObjectId) {
-    return this.commentService.getCommentsByEntity(RulesRegulations.name, ruleId);
+    return this.commentService.getCommentsByEntity(
+      RulesRegulations.name,
+      ruleId,
+    );
   }
 
   /**
@@ -673,30 +688,29 @@ export class RulesRegulationsController {
     );
   }
 
-
- /**
+  /**
    * Propose rules for the club
    * @param req - Express request object
    * @param commentId - ID of the comment to delete
    * @returns Promise containing the result of comment deletion
    */
 
- @Put('propose-rule')
- async proposeRules(@Req() req:Request,@Body() data
-){
-  const userId = req.user._id
- return await this.rulesRegulationsService.proposeRules(userId,data)
- }
+  @Put('propose-rule')
+  async proposeRules(@Req() req: Request, @Body() data) {
+    const userId = req.user._id;
+    return await this.rulesRegulationsService.proposeRules(userId, data);
+  }
 
   /**
    * Get all the clubs and node of the user with role of the user
    * @param req - Express request object
    * @returns Promise containing the result of the data
    */
-  
-  @Get('get-all-clubs-nodes-role')
-  async getAllClubsAndNodesWithRole (@Req() req:Request){
-  return this.rulesRegulationsService.getAllClubsAndNodesWithRole(req.user._id)
-  }
 
+  @Get('get-all-clubs-nodes-role')
+  async getAllClubsAndNodesWithRole(@Req() req: Request) {
+    return this.rulesRegulationsService.getAllClubsAndNodesWithRole(
+      req.user._id,
+    );
+  }
 }

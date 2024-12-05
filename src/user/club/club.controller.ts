@@ -34,19 +34,24 @@ import { Request } from 'express';
 import { Types } from 'mongoose';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 
-// @SkipAuth()
+/**
+ * Controller handling all club-related operations
+ * Includes functionality for creating, reading, updating and deleting clubs
+ * as well as managing club memberships and requests
+ */
 @ApiTags('Clubs')
 @Controller('clubs')
 export class ClubController {
-  constructor(private readonly clubService: ClubService) { }
+  constructor(private readonly clubService: ClubService) {}
 
-  /*
-  --------------------CREATING A CLUB----------------------------
-
-  @Body {CreateClubDto} createClubDto - The data to create a new club
-  @Returns {Promise<Club>} - The created club 
-  */
-
+  /**
+   * Creates a new club with provided details and images
+   * @param req - Express request object containing user info
+   * @param files - Object containing profile and cover image files
+   * @param createClubDto - DTO containing club details
+   * @returns Newly created club
+   * @throws BadRequestException if required fields or images are missing
+   */
   @Post()
   @ApiOperation({ summary: 'Create a new club' })
   @ApiConsumes('multipart/form-data')
@@ -103,7 +108,6 @@ export class ClubController {
       );
     }
 
-    // Convert string ID to ObjectId
     const userId = new Types.ObjectId(req.user._id);
     console.log({ userId });
     return await this.clubService.createClub({
@@ -113,12 +117,11 @@ export class ClubController {
       createdBy: userId,
     });
   }
-  /*
-  --------------------GETTING ALL CLUBS----------------------------
 
-  @Returns {Promise<Club>} - All clubs
-  */
-
+  /**
+   * Retrieves all clubs in the system
+   * @returns Array of all clubs
+   */
   @Get()
   @ApiOperation({ summary: 'Get all clubs' })
   @ApiResponse({
@@ -129,9 +132,12 @@ export class ClubController {
   async getAllClubs() {
     return await this.clubService.getAllClubs();
   }
-  /*
-  --------------------GETTING  CLUBS OF THE SPECIFIED USER----------------------------
-  */
+
+  /**
+   * Gets all clubs associated with the current user
+   * @param req - Express request object containing user info
+   * @returns Array of clubs associated with the user
+   */
   @Get('user-clubs')
   @ApiOperation({ summary: 'Get all clubs of a user' })
   @ApiResponse({
@@ -143,13 +149,14 @@ export class ClubController {
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.getAllClubsOfUser(userId);
   }
-  /*
-  --------------------UPDATING ONE CLUB----------------------------
 
-  @Param {string} id - The id of the club to update  @ID to create a new club
-  @Returns {Promise<Club>} - The updated  club 
-  */
-
+  /**
+   * Updates an existing club's details
+   * @param id - ID of the club to update
+   * @param files - Optional updated profile and cover images
+   * @param updateClubDto - DTO containing updated club details
+   * @returns Updated club
+   */
   @Put(':id')
   @ApiOperation({ summary: 'Update a club' })
   @ApiConsumes('multipart/form-data')
@@ -194,12 +201,11 @@ export class ClubController {
     });
   }
 
-  /*
-  --------------------DELETE A CLUB----------------------------
-
-  @Returns {Promise<Club>} - The deleted club 
-  */
-
+  /**
+   * Deletes a club by its ID
+   * @param id - ID of the club to delete
+   * @returns Result of deletion operation
+   */
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a club' })
   @ApiParam({ name: 'id', type: 'string' })
@@ -215,9 +221,11 @@ export class ClubController {
     return await this.clubService.deleteClub(id);
   }
 
-  /*
-  --------------------GETTING  ALL REQUESTS OF THE SPECIFIED CLUB----------------------------
-  */
+  /**
+   * Gets all pending join requests for a specific club
+   * @param clubId - ID of the club
+   * @returns Array of pending join requests
+   */
   @Get('club-requests/:clubId')
   @ApiOperation({ summary: 'Get all requests of a club' })
   @ApiResponse({
@@ -230,7 +238,11 @@ export class ClubController {
     return await this.clubService.getAllRequestsOfClub(CLUBID);
   }
 
-  //---------------------GETTING ALL REQUESTS OF THE SPECIFIED USER ----------------------------
+  /**
+   * Gets all join requests made by the current user
+   * @param req - Express request object containing user info
+   * @returns Array of user's join requests
+   */
   @Get('user-join-requests')
   @ApiOperation({ summary: 'Get all requests of a user' })
   @ApiResponse({
@@ -243,9 +255,12 @@ export class ClubController {
     return await this.clubService.getAllRequestsOfUser(userId);
   }
 
-
-  /*----------------------REQUESTING OR JOINING THE CLUB---------------
-  @PARAM groupId @user :userId*/
+  /**
+   * Handles user requests to join a club
+   * @param req - Express request object containing user info
+   * @param clubId - ID of the club to join
+   * @returns Result of join request operation
+   */
   @Put('request-join/:clubId')
   @ApiOperation({ summary: 'Request or join a club' })
   @ApiParam({ name: 'groupId', type: 'string' })
@@ -262,23 +277,33 @@ export class ClubController {
     @Req() req: Request,
     @Param('clubId') clubId: string,
   ) {
-    //service
     const userId = new Types.ObjectId(req.user._id);
     const CLUBID = new Types.ObjectId(clubId);
-    // retuning response
     return await this.clubService.requestOrJoinClub(CLUBID, userId);
   }
 
-  //---------------------CANCEL JOIN REQUEST OF THE CLUB---------------
+  /**
+   * Cancels a pending join request
+   * @param req - Express request object containing user info
+   * @param clubId - ID of the club
+   * @returns Result of cancellation operation
+   */
   @Delete('cancel-join-request/:clubId')
-  async cancelJoinRequest(@Req() req: Request, @Param('clubId') clubId: string) {
+  async cancelJoinRequest(
+    @Req() req: Request,
+    @Param('clubId') clubId: string,
+  ) {
     const userId = new Types.ObjectId(req.user._id);
     const CLUBID = new Types.ObjectId(clubId);
     return await this.clubService.cancelJoinRequest(CLUBID, userId);
   }
 
-  /*----------------------------CHECKING THE STATUS OF THE USER OF A CLUB---------------------------- */
-
+  /**
+   * Checks the membership status of current user in a club
+   * @param req - Express request object containing user info
+   * @param clubId - ID of the club
+   * @returns User's membership status
+   */
   @Get('check-status/:clubId')
   @ApiOperation({ summary: 'Check the status of the user in a club' })
   @ApiParam({ name: 'clubId', type: 'string' })
@@ -293,7 +318,11 @@ export class ClubController {
     return await this.clubService.checkStatus(CLUBID, userId);
   }
 
-  /* ------------------GETTING ALL THE MEMBERS OF THE SINGLE CLUB------------------------- */
+  /**
+   * Gets all members of a specific club
+   * @param clubId - ID of the club
+   * @returns Array of club members
+   */
   @Get('club-members/:clubId')
   @ApiOperation({ summary: 'Get all members of a club' })
   @ApiParam({ name: 'clubId', type: 'string' })
@@ -307,7 +336,12 @@ export class ClubController {
     return await this.clubService.getAllMembersOfClub(CLUBID);
   }
 
-  /*----------------SEARCHING FOR MEMBER OF THE SINGLE CLUB ------------------------*/
+  /**
+   * Searches for members within a club
+   * @param clubId - ID of the club to search in
+   * @param search - Search term
+   * @returns Array of matching members
+   */
   @Get('search-member/:clubId')
   @ApiParam({
     name: 'clubId',
@@ -335,7 +369,12 @@ export class ClubController {
       search,
     );
   }
-  /*----------------------ACCEPTING OR REJECTING THE REQUEST---------------
+
+  /**
+   * Handles accepting or rejecting join requests
+   * @param requestBody - Contains request details and decision
+   * @param req - Express request object containing user info
+   * @returns Result of request handling operation
    */
   @Post('handle-request')
   async acceptOrRejectRequest(
@@ -350,12 +389,10 @@ export class ClubController {
     const { clubId, requestId, status } = requestBody;
     const userId = req.user.id;
 
-    // Convert strings to ObjectIds
     const REQUESTID = new Types.ObjectId(requestId);
     const USERID = new Types.ObjectId(userId);
     const CLUBID = new Types.ObjectId(clubId);
 
-    // returning response
     return await this.clubService.acceptOrRejectRequest(
       REQUESTID,
       USERID,
@@ -364,7 +401,12 @@ export class ClubController {
     );
   }
 
-  /*--------------------LEAVING CLUB API ----------------------------*/
+  /**
+   * Handles user leaving a club
+   * @param req - Express request object containing user info
+   * @param clubId - ID of the club to leave
+   * @returns Result of leave operation
+   */
   @Delete('leave-club/:clubId')
   @ApiOperation({ summary: 'Leave a club' })
   @ApiParam({ name: 'clubId', type: 'string' })
@@ -382,7 +424,12 @@ export class ClubController {
     return await this.clubService.leaveClub(CLUBID, userId);
   }
 
-  /*----------------------------PINNING CLUB-------------------------- */
+  /**
+   * Pins a club for quick access
+   * @param clubId - ID of the club to pin
+   * @param req - Express request object containing user info
+   * @returns Result of pin operation
+   */
   @Put('pin-club/:clubId')
   async pinNode(@Param('clubId') clubId: string, @Req() req: Request) {
     const CLUBID = new Types.ObjectId(clubId);
@@ -390,18 +437,25 @@ export class ClubController {
     return await this.clubService.pinNode(CLUBID, userId);
   }
 
-  /*----------------------------UNPINNING CLUB-------------------------- */
+  /**
+   * Unpins a previously pinned club
+   * @param clubId - ID of the club to unpin
+   * @param req - Express request object containing user info
+   * @returns Result of unpin operation
+   */
   @Put('unpin-club/:clubId')
   async unpinNode(@Param('clubId') clubId: string, @Req() req: Request) {
     const CLUBID = new Types.ObjectId(clubId);
     const userId = new Types.ObjectId(req.user._id);
     return await this.clubService.unpinNode(CLUBID, userId);
   }
-  /*
-  --------------------GETTING SINGLE CLUB----------------------------
 
-  @Returns {Promise<Club>} - SINGLE CLUB
-  */
+  /**
+   * Gets details of a specific club
+   * @param id - ID of the club to retrieve
+   * @returns Club details
+   * @throws NotFoundException if club doesn't exist
+   */
   @Get(':id')
   @ApiOperation({ summary: 'Get a club by id' })
   @ApiParam({ name: 'id', type: 'string' })
@@ -414,8 +468,6 @@ export class ClubController {
     status: HttpStatus.NOT_FOUND,
     description: 'Club not found',
   })
-
-  //method to  get one club
   async getClub(@Param('id') id: Types.ObjectId) {
     const club = await this.clubService.getClubById(id);
     if (!club) {

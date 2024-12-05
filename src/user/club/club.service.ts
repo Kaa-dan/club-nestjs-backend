@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
-
 import { CreateClubDto, UpdateClubDto } from './dto/club.dto';
 import { Club } from 'src/shared/entities/club.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
@@ -26,11 +25,10 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
-  ) { }
+  ) {}
 
   /*
   --------------------CREATING A CLUB----------------------------
-
   parameter {CreateClubDto} createClubDto - The data to create a new club
   @Returns {Promise<Club>} - The created club 
   */
@@ -63,7 +61,7 @@ export class ClubService {
       const createClubMember = new this.clubMembersModel({
         club: clubResponse._id,
         user: clubResponse.createdBy,
-        role: 'admin',
+        role: 'owner',
         status: 'MEMBER',
       });
 
@@ -226,7 +224,7 @@ export class ClubService {
       return await this.clubMembersModel
         .find({ user: userId })
         .populate('club')
-        .populate('user')
+        .populate('user', '-password')
         .exec();
     } catch (error) {
       console.log(error);
@@ -390,6 +388,8 @@ export class ClubService {
         .populate('user')
         .exec();
 
+      console.log('ismember', isMember);
+
       if (isMember) {
         status = isMember.status;
         return {
@@ -522,7 +522,7 @@ export class ClubService {
       if (status === 'REJECTED') {
         const response = await this.clubJoinRequestsModel.findOneAndDelete({
           _id: requestId,
-        })
+        });
 
         return response;
       }
@@ -755,7 +755,7 @@ export class ClubService {
       console.log(error);
       throw new BadRequestException(
         'Failed to fetch user join requests. Please try again later.',
-      )
+      );
     }
   }
-}   
+}

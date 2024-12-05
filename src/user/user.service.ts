@@ -5,38 +5,129 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import mongoose, { Model, Types } from 'mongoose';
 
 import { UserResponseDto } from './dto/user.dto';
 import { plainToClass } from 'class-transformer';
 import { User } from 'src/shared/entities/user.entity';
 import { UserWithoutPassword } from './dto/user.type';
+import { AccessDto } from './dto/access.dto';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
+import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
 
 @Injectable()
 export class UserService {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<User>) { }
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<User>,
+    @InjectModel(NodeMembers.name)
+    private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(ClubMembers.name)
+    private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(NodeJoinRequest.name)
+    private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
+    @InjectModel(ClubJoinRequests.name)
+    private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
+  ) {}
 
-  async getAllUsers(search: string): Promise<UserWithoutPassword[]> {
+  async getUsersNotInClubOrNode(
+    search: string,
+    type: 'node' | 'club',
+    id: Types.ObjectId,
+  ): Promise<UserWithoutPassword[]> {
     try {
-      const searchRegex = new RegExp(search, 'i'); // case-insensitive search
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
 
-      const users = await this.userModel
-        .find({
-          $or: [
-            { firstName: { $regex: searchRegex } },
-            { lastName: { $regex: searchRegex } },
-            { email: { $regex: searchRegex } },
-          ],
-        })
-        .select('-password')
-        .lean()
-        .exec();
+      const aggregationPipeline: any[] = [
+        // Stage 1: Initial match for search criteria
+        {
+          $match: {
+            $or: [
+              { userName: searchRegex },
+              { firstName: searchRegex },
+              { lastName: searchRegex },
+              { email: searchRegex },
+            ],
+          },
+        },
+        // Stage 2: Look up membership based on type
+        {
+          $lookup: {
+            from: type === 'node' ? 'nodemembers' : 'clubmembers',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'membership',
+          },
+        },
+        // Stage 3: Look up invitations based on type
+        {
+          $lookup: {
+            from: 'invitations',
+            let: { userId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      {
+                        $eq: [
+                          type === 'node' ? '$node' : '$club',
+                          new mongoose.Types.ObjectId(id),
+                        ],
+                      },
+                      { $eq: ['$user', '$$userId'] },
+                      // { $eq: ['$isUsed', false] },
+                      // { $eq: ['$isRevoked', false] },
+                      { $gt: ['$expiresAt', new Date()] }, // Check if invitation is not expired
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'invitations',
+          },
+        },
+        // Stage 4: Filter out users already in the node/club and with active invitations
+        {
+          $match: {
+            membership: { $eq: [] },
+            invitations: { $eq: [] },
+          },
+        },
+        // Stage 5: Project to remove sensitive information
+        {
+          $project: {
+            password: 0,
+            membership: 0,
+            invitations: 0,
+          },
+        },
+      ];
 
-      return users as unknown as UserWithoutPassword[];
+      return await this.userModel.aggregate(aggregationPipeline);
     } catch (error) {
+      console.error('Error fetching users:', error);
       throw new InternalServerErrorException('Error fetching users');
     }
   }
+
   /**
    * Find user by ID
    * @param userId - MongoDB ObjectId of the user
@@ -108,7 +199,7 @@ export class UserService {
       if (!user) {
         return {
           data: null,
-          message: 'user not found successfully',
+          message: 'User not found.',
           success: false,
         };
       }
@@ -177,12 +268,312 @@ export class UserService {
       const user = await this.userModel.findById(userId).select('-password');
       if (!user) {
         return {
-          isLogged: false
+          isLogged: false,
         };
       }
       return { isLogged: true, user };
-    } catch (error) {
+    } catch (error) {}
+  }
 
+  /**
+   * Assigns admin role to a user in a specified entity (node or club).
+   *
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the admin role.
+   *
+   * @returns The updated node or club member document with the new admin role.
+   *
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating admin access.
+   */
+  async makeAdmin(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto;
+
+      if (entity === 'node') {
+        const nodeMember = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(entityId),
+        });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'admin' } },
+          { new: true },
+        );
+      } else {
+        const clubMember = await this.clubMembersModel.findOne({
+          club: new Types.ObjectId(entityId),
+        });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'admin' } },
+          { new: true },
+        );
+      }
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    }
+  }
+
+  /**
+   * Assigns moderator role to a user in a specified entity (node or club).
+   *
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the moderator role.
+   *
+   * @returns The updated node or club member document with the new moderator role.
+   *
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating moderator access.
+   */
+  async makeModerator(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto;
+
+      if (entity === 'node') {
+        const nodeMember = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(entityId),
+        });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'moderator' } },
+          { new: true },
+        );
+      } else {
+        const clubMember = await this.clubMembersModel.findOne({
+          club: new Types.ObjectId(entityId),
+        });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'moderator' } },
+          { new: true },
+        );
+      }
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    }
+  }
+
+  /**
+   * Assigns member role to a user in a specified entity (node or club).
+   *
+   * @param accessDto - Data transfer object containing entity details and user ID:
+   *   - entity: The type of entity ('node' or 'club').
+   *   - entityId: The ID of the entity where the role is to be assigned.
+   *   - accessToUserId: The ID of the user to be granted the member role.
+   *
+   * @returns The updated node or club member document with the new member role.
+   *
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating admin access.
+   */
+  async makeMember(accessDto: AccessDto) {
+    try {
+      const { entity, entityId, accessToUserId } = accessDto;
+
+      if (entity === 'node') {
+        const nodeMember = await this.nodeMembersModel.findOne({
+          node: new Types.ObjectId(entityId),
+        });
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.nodeMembersModel.findOneAndUpdate(
+          { node: nodeMember.node, user: user._id },
+          { $set: { role: 'member' } },
+          { new: true },
+        );
+      } else {
+        const clubMember = await this.clubMembersModel.findOne({
+          club: new Types.ObjectId(entityId),
+        });
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.clubMembersModel.findOneAndUpdate(
+          { club: clubMember.club, user: user._id },
+          { $set: { role: 'member' } },
+          { new: true },
+        );
+      }
+    } catch (error) {
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    }
+  }
+
+  /**
+   * Removes a user from a node or club.
+   *
+   * @param accessDto - The data transfer object containing the entity type,
+   *                    entity ID, and user ID of the user to be removed.
+   *
+   * @returns The deleted node or club member document.
+   *
+   * @throws NotFoundException - If the node or club member, or the user is not found.
+   * @throws InternalServerErrorException - If an error occurs while updating admin access.
+   */
+  async removeMember(accessDto: AccessDto) {
+    const session = await this.userModel.startSession();
+    session.startTransaction();
+
+    try {
+      const { entity, entityId, accessToUserId } = accessDto;
+
+      if (entity === 'node') {
+        const nodeMember = await this.nodeMembersModel
+          .findOne({
+            node: new Types.ObjectId(entityId),
+          })
+          .session(session);
+
+        if (!nodeMember) {
+          throw new NotFoundException('Node Member not found');
+        }
+
+        const user = await this.userModel
+          .findById(new Types.ObjectId(accessToUserId))
+          .session(session);
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        const deletedMember = await this.nodeMembersModel
+          .findOneAndDelete(
+            { node: nodeMember.node, user: user._id },
+            { new: true },
+          )
+          .session(session);
+
+        await this.nodeJoinRequestModel
+          .findOneAndDelete({
+            node: nodeMember.node,
+            user: user._id,
+          })
+          .session(session);
+
+        await session.commitTransaction();
+        return deletedMember;
+      } else {
+        const clubMember = await this.clubMembersModel
+          .findOne({
+            club: new Types.ObjectId(entityId),
+          })
+          .session(session);
+
+        if (!clubMember) {
+          throw new NotFoundException('Club Member not found');
+        }
+
+        const user = await this.userModel
+          .findById(new Types.ObjectId(accessToUserId))
+          .session(session);
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        const deletedMember = await this.clubMembersModel
+          .findOneAndDelete(
+            { club: clubMember.club, user: user._id },
+            { new: true },
+          )
+          .session(session);
+
+        await this.clubJoinRequestsModel
+          .findOneAndDelete({
+            club: new Types.ObjectId(entityId),
+            user: new Types.ObjectId(accessToUserId),
+          })
+          .session(session);
+
+        await session.commitTransaction();
+        return deletedMember;
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      console.log(error, 'error');
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error updating admin access');
+    } finally {
+      await session.endSession();
     }
   }
 }

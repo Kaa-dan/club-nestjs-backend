@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Put,
   Query,
@@ -19,6 +20,7 @@ import e, { Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
+import { Issues } from 'src/shared/entities/issues.entity';
 
 @Controller('issues')
 export class IssuesController {
@@ -80,6 +82,7 @@ export class IssuesController {
         createdBy: new Types.ObjectId(req.user._id),
         isActive: false,
         files,
+        whoShouldAddress: createIssuesData.whoShouldAddress.split(','),
       };
 
       return await this.issuesService.createIssue(dataToSave);
@@ -92,6 +95,7 @@ export class IssuesController {
         isActive: false,
         files,
         publishedStatus: 'proposed',
+        whoShouldAddress: createIssuesData.whoShouldAddress.split(','),
       };
 
       return await this.issuesService.createIssue(dataToSave);
@@ -105,6 +109,7 @@ export class IssuesController {
       isActive: true,
       version: 1,
       files,
+      whoShouldAddress: createIssuesData.whoShouldAddress.split(','),
     };
 
     return await this.issuesService.createIssue(dataToSave);
@@ -158,6 +163,11 @@ export class IssuesController {
     );
   }
 
+  @Get('get-issue/:issueId')
+  async getIssue(@Req() req: Request, @Param('issueId') issueId) {
+    return await this.issuesService.getIssue(new Types.ObjectId(issueId));
+  }
+
   @Get('get-all-active-issues')
   async getAllActiveIssues(
     @Req() req: Request,
@@ -165,6 +175,18 @@ export class IssuesController {
     @Query('entityId') entityId: string,
   ) {
     return await this.issuesService.getAllActiveIssues(
+      entity,
+      new Types.ObjectId(entityId),
+    );
+  }
+
+  @Get('all-issues')
+  async getAllIssues(
+    @Req() req: Request,
+    @Query('entity') entity: 'node' | 'club',
+    @Query('entityId') entityId: string,
+  ) {
+    return await this.issuesService.getAllIssues(
       entity,
       new Types.ObjectId(entityId),
     );
@@ -182,8 +204,11 @@ export class IssuesController {
       new Types.ObjectId(entityId),
     );
   }
-
-  @Post('adopt-issue/:issueId')
+  @Get('global-active-issues')
+  async getGlobalActiveIssues() {
+    return await this.issuesService.getGlobalActiveIssues();
+  }
+  @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
     return await this.issuesService.adoptIssueAndPropose(
       new Types.ObjectId(req.user._id),
@@ -192,8 +217,49 @@ export class IssuesController {
   }
 
   @Post('adopt-proposed-issue/:issueId')
-  async adoptProposedIssue(@Req() req: Request, @Query('issueId') issueId) {
+  async adoptProposedIssue(@Req() req: Request, @Param('issueId') issueId) {
     return this.issuesService.adoptProposedIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
+  @Get('proposed-issues/:entity/:entityId')
+  async getProposedIssues(
+    @Req() req: Request,
+    @Param('entity') entity,
+    @Param('entityId') entityId,
+  ) {
+    return this.issuesService.getProposedIssues(
+      entity,
+      new Types.ObjectId(entityId),
+    );
+  }
+
+  @Put('like/:issueId')
+  async likeIssue(@Req() req: Request, @Param('issueId') issueId) {
+    console.log('like');
+    return await this.issuesService.likeIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
+  @Put('dislike/:issueId')
+  async dislikeIssue(@Req() req: Request, @Param('issueId') issueId) {
+    console.log('dislike');
+    return await this.issuesService.dislikeIssue(
+      new Types.ObjectId(req.user._id),
+      new Types.ObjectId(issueId),
+    );
+  }
+
+  @Get('get-clubs-and-nodes-not-adopted/:issueId')
+  async getClubsNodesNotAdopted(
+    @Req() req: Request,
+    @Param('issueId') issueId,
+  ) {
+    return await this.issuesService.getClubsNodesNotAdopted(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),
     );

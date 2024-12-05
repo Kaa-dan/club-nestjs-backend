@@ -1,10 +1,15 @@
-import { IsMongoId } from 'class-validator';
+import { IsEmpty, IsEnum, IsMongoId, IsString } from 'class-validator';
 import { Types } from 'mongoose';
 
 export class CreateInvitationDto {
   @IsMongoId()
-  clubId: Types.ObjectId;
+  entityId: Types.ObjectId;
 
   @IsMongoId()
   userId: Types.ObjectId;
+
+  @IsEmpty()
+  @IsString()
+  @IsEnum(['node', 'club'], { message: 'invalid type' })
+  type: 'node' | 'club';
 }

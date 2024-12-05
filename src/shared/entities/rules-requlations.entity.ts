@@ -9,14 +9,7 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-interface AdoptedClub {
-  club: Types.ObjectId;
-  date: Date;
-}
-interface AdoptedNode {
-  node: Types.ObjectId;
-  date: Date;
-}
+
 @Schema({ timestamps: true })
 export class RulesRegulations extends Document {
   //older version of rules and regulation :copy of the schema
@@ -102,7 +95,7 @@ export class RulesRegulations extends Document {
   @Prop({})
   publishedDate: Date;
 
-  @Prop({ required: true, ref: User.name })
+  @Prop({ required: false, ref: User.name })
   publishedBy: Types.ObjectId;
 
   @Prop()
@@ -113,6 +106,8 @@ export class RulesRegulations extends Document {
   adoptedDate: Date;
 
   adoptedParent: null | Types.ObjectId;
+
+  rootParent: null | Types.ObjectId;
 
   @Prop({
     type: [{ type: Types.ObjectId, ref: User.name }],
