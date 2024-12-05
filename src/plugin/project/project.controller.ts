@@ -55,7 +55,7 @@ export class ProjectController {
   @ProjectFiles()
   async create(
     @Req() req: Request,
-    // @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    // @Body() createProjectDto: CreateProjectDto,
     @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
@@ -180,6 +180,7 @@ export class ProjectController {
     @Param('id') id: string,
     @Body() updateProjectDto: UpdateProjectDto,
     @Req() req: Request,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -203,6 +204,8 @@ export class ProjectController {
     },
   ) {
     // Extract files from request
+    console.log({ files });
+
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     // Forward request to service layer

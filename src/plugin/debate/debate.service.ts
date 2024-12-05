@@ -190,7 +190,6 @@ export class DebateService {
       const existingDebate = await this.debateModel.findById(
         new Types.ObjectId(dataToSave.debateId),
       );
-      console.log({ existingDebate });
 
       if (!existingDebate) {
         throw new NotFoundException('Debate not found');

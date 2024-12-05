@@ -1,20 +1,19 @@
-import { Prop, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
-import { Project } from './project.entity';
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document, Types } from 'mongoose';
 
-export class Parameter {
-  @Prop({ type: String, required: true })
+@Schema({ timestamps: true })
+export class Parameter extends Document {
+  @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
+  project: Types.ObjectId;
+
+  @Prop({ required: true })
   title: string;
 
-  @Prop({ type: [String, Number], required: true })
-  value: string | number;
+  @Prop({ required: true })
+  value: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ required: true })
   unit: string;
-
-  @Prop({ type: Types.ObjectId, required: true, ref: Project.name })
-  project: Types.ObjectId;
 }
 
-export type ParameterDocument = HydratedDocument<Parameter>;
 export const ParameterSchema = SchemaFactory.createForClass(Parameter);
