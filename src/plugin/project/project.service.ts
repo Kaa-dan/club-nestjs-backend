@@ -57,13 +57,6 @@ export class ProjectService {
     session.startTransaction();
 
     try {
-      // Log incoming data for debugging and audit purposes
-      console.log('Incoming Files:', {
-        documentFiles,
-        bannerImage,
-        createProjectDto,
-      });
-
       // Extract all fields from the DTO for easier access
       const {
         club,
@@ -165,6 +158,9 @@ export class ProjectService {
             ? 'proposed'
             : 'published'
           : 'draft',
+        createdBy: new Types.ObjectId(userId),
+        publishedBy:
+          membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
 
       // Create and save the project
@@ -297,6 +293,7 @@ export class ProjectService {
         risksAndChallenges,
         bannerImage: bannerImage ?? uploadedBannerImageObject,
         files: [...files, ...fileObjects],
+        createdBy: new Types.ObjectId(userId),
       };
 
       // Determine membership type
@@ -471,6 +468,7 @@ export class ProjectService {
         risksAndChallenges,
         status,
         faqs,
+        createdBy,
         parameters,
       } = updateProjectDto;
 
@@ -528,8 +526,14 @@ export class ProjectService {
         keyTakeaways,
         risksAndChallenges,
         status: finalStatus,
+        publishedBy:
+          membership.role !== 'member' && finalStatus === 'published'
+            ? new Types.ObjectId(userId)
+            : null,
+
         bannerImage: uploadedBannerImageObject || project.bannerImage,
         files: [...(project.files || []), ...fileObjects],
+        createdBy,
       };
 
       // Update project document
@@ -648,25 +652,109 @@ export class ProjectService {
    * @returns Array of all projects
    * @throws BadRequestException if query fails
    */
-  async getAllProjects(status: 'proposed' | 'published') {
+  /**
+   * Retrieves a paginated list of projects based on provided filters
+   * @param status - Filter projects by status ('proposed' or 'published')
+   * @param page - Page number for pagination
+   * @param limit - Number of items per page
+   * @param isActive - Filter by project active status
+   * @param search - Optional search term to filter projects by title, region or significance
+   * @param node - Optional node ID to filter projects by node
+   * @param club - Optional club ID to filter projects by club
+   * @returns Object containing paginated projects list and pagination metadata
+   * @throws BadRequestException if query fails
+   */
+  async getAllProjects(
+    status: 'proposed' | 'published',
+    page: number,
+    limit: number,
+    isActive: boolean,
+    search: string,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
+  ) {
     try {
-      return await this.projectModel.find();
+      const query: any = {
+        status,
+        active: isActive,
+      };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { region: { $regex: search, $options: 'i' } },
+          { significance: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      const projects = await this.projectModel
+        .find(query)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name');
+
+      const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
     } catch (error) {
       throw new BadRequestException(
         'Failed to get all projects. Please try again later.',
       );
     }
   }
-
   /**
    * Retrieves all projects where the user is listed as a champion
    * @param userId - ID of the user to find projects for
    * @returns Array of projects where user is a champion
    */
-  async getMyProjects(userId: Types.ObjectId) {
-    return await this.projectModel.find({
-      ...(userId ? { champions: userId } : {}),
-    });
+  async getMyProjects(
+    userId: Types.ObjectId,
+    status: boolean,
+    page: number,
+    limit: number,
+  ) {
+    try {
+      const query = {
+        createdBy: userId,
+        status: status,
+      };
+
+      const projects = await this.projectModel
+        .find(query)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name');
+
+      const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
   }
 
   /**
