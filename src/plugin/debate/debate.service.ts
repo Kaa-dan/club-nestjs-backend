@@ -18,7 +18,7 @@ import { CreateDebateDto } from './dto/create.dto';
 import { DebateArgument } from 'src/shared/entities/debate-argument';
 import { CreateDebateArgumentDto } from './dto/argument.dto';
 import { DebatesResponse } from 'typings';
-import { url } from 'node:inspector';
+import { console, url } from 'node:inspector';
 @Injectable()
 export class DebateService {
   constructor(
@@ -37,12 +37,11 @@ export class DebateService {
         club,
         node,
         closingDate,
-        openingDate,
         tags,
-        openingCommentsFor,
-        openingCommentsAgainst,
+        startingComment,
         ...rest
       } = createDebateDto;
+      console.log({ createDebateDto });
 
       const parsedTags = JSON.parse(tags);
 
@@ -114,9 +113,9 @@ export class DebateService {
 
       const debate = new this.debateModel({
         ...rest,
+        startingComment,
         node: section === 'node' ? new Types.ObjectId(sectionId) : null,
         club: section === 'club' ? new Types.ObjectId(sectionId) : null,
-        openingDate,
         closingDate,
         tags: parsedTags,
         createdBy: userId,
@@ -129,37 +128,6 @@ export class DebateService {
       const savedDebate = await debate.save();
 
       // Save the opening comments in the DebateArgument collection
-      const debateArguments = [];
-
-      if (openingCommentsFor) {
-        debateArguments.push(
-          new this.debateArgumentModel({
-            debate: new Types.ObjectId(savedDebate._id as string),
-            participant: {
-              user: userId,
-              side: 'support',
-            },
-            startingPoint: true,
-            content: openingCommentsFor,
-          }).save(),
-        );
-      }
-
-      if (openingCommentsAgainst) {
-        debateArguments.push(
-          new this.debateArgumentModel({
-            debate: new Types.ObjectId(savedDebate._id as string),
-            participant: {
-              user: userId,
-              side: 'against',
-            },
-            content: openingCommentsAgainst,
-            startingPoint: true,
-          }).save(),
-        );
-      }
-
-      await Promise.all(debateArguments);
 
       const statusMessages = {
         draft: 'Debate saved as draft successfully.',
@@ -222,6 +190,7 @@ export class DebateService {
       const existingDebate = await this.debateModel.findById(
         new Types.ObjectId(dataToSave.debateId),
       );
+      console.log({ existingDebate });
 
       if (!existingDebate) {
         throw new NotFoundException('Debate not found');
@@ -230,20 +199,16 @@ export class DebateService {
       // Get the root ID (original source debate)
       const rootId = existingDebate.rootParentId || existingDebate._id;
 
-      ``;
-
       // Check if the debate is already adopted by checking both rootParentId and _id
       const alreadyAdopted = await this.debateModel.findOne({
         $or: [
-          // Check if any debate exists with this root ID
           {
-            rootParentId: rootId,
+            rootParentId: new Types.ObjectId(rootId as string),
             [dataToSave.type]:
               dataToSave.type === 'club'
                 ? dataToSave.clubId
                 : dataToSave.nodeId,
           },
-          // Also check if the root debate itself is in the target club/node
           {
             _id: rootId,
             [dataToSave.type]:
@@ -263,36 +228,12 @@ export class DebateService {
       }
 
       // Prepare base data for the new debate
-      // const debateData = {
-      //   ...existingDebate.toObject(),
-      //   _id: undefined,
-
-      //   adoptedBy: new Types.ObjectId(dataToSave.userId),
-      //   createdBy: new Types.ObjectId(dataToSave.userId),
-      //   adoptedClubs: [],
-      //   adoptedNodes: [],
-      //   club:
-      //     dataToSave.type === 'club'
-      //       ? new Types.ObjectId(dataToSave.clubId)
-      //       : null,
-      //   node:
-      //     dataToSave.type === 'node'
-      //       ? new Types.ObjectId(dataToSave.nodeId)
-      //       : null,
-      //   adoptedDate: new Date(),
-      //   publishedDate: isAuthorized ? new Date() : null,
-      //   publishedStatus: isAuthorized ? 'published' : 'proposed',
-      //   adoptedFrom: new Types.ObjectId(existingDebate._id as string),
-      //   rootParentId: rootId, // Keep track of original source
-      // };
-
-      // Prepare base data for the new debate
       const debateData = {
         ...existingDebate.toObject(),
         _id: undefined,
-        createdAt: new Date(), // Add new creation date
-        updatedAt: new Date(), // Add new update date
-        views: [], // Reset views array
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        views: [],
         adoptedBy: new Types.ObjectId(dataToSave.userId),
         createdBy: new Types.ObjectId(dataToSave.userId),
         adoptedClubs: [],
@@ -309,15 +250,16 @@ export class DebateService {
         publishedDate: isAuthorized ? new Date() : null,
         publishedStatus: isAuthorized ? 'published' : 'proposed',
         adoptedFrom: new Types.ObjectId(existingDebate._id as string),
-        rootParentId: rootId, // Keep track of original source
+        rootParentId: rootId,
       };
 
       let updateOperation;
       let newDebate;
 
+      // Update only the root parent debate
       if (dataToSave.type === 'club') {
         updateOperation = this.debateModel.findByIdAndUpdate(
-          dataToSave.debateId,
+          rootId, // Update root parent instead of immediate parent
           {
             $addToSet: {
               adoptedClubs: isAuthorized
@@ -337,7 +279,7 @@ export class DebateService {
         });
       } else if (dataToSave.type === 'node') {
         updateOperation = this.debateModel.findByIdAndUpdate(
-          dataToSave.debateId,
+          rootId, // Update root parent instead of immediate parent
           {
             $addToSet: {
               adoptedNodes: isAuthorized

@@ -74,6 +74,7 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
+    console.log('nithinS');
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
     let fileObjects = null;
     if (files) {
@@ -342,27 +343,45 @@ export class RulesRegulationsService {
         dataToSave.rulesId,
       );
 
-      console.log({ existingRule });
-
       if (!existingRule) {
         throw new NotFoundException('Rules regulation not found');
       }
 
       // Create the new rule document without the _id field
-      const ruleData = existingRule.toObject();
-      delete ruleData._id;
+      const {
+        title,
+        description,
+        category,
+        significance,
+        tags,
+        isPublic,
+        files,
+        publishedStatus,
+        publishedBy,
+        isActive,
+        domain,
+      } = existingRule;
 
       // Prepare base data for the new rule
       const baseRuleData = {
-        ...ruleData,
+        title,
+        description,
+        category,
+        significance,
+        tags,
+        isPublic,
+        files,
+        publishedStatus,
+        publishedBy,
+        isActive,
+        domain,
         adoptedBy: dataToSave.userId,
         adoptedDate: new Date(),
         adoptedParent: dataToSave.rulesId,
         publishedDate: new Date(),
+        rootParent: existingRule?.rootParent ?? existingRule?._id,
         version: 1,
       };
-
-      console.log({ baseRuleData });
 
       let updateOperation;
       let newRule;
@@ -370,14 +389,14 @@ export class RulesRegulationsService {
       if (dataToSave.type === 'club') {
         // First check if this club is already in adoptedClubs
         const alreadyAdopted = await this.rulesregulationModel.findOne({
-          _id: dataToSave.rulesId,
+          _id: baseRuleData.rootParent,
           'adoptedClubs.club': new Types.ObjectId(dataToSave.clubId),
         });
 
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-            dataToSave.rulesId,
+            baseRuleData.rootParent,
             {
               $push: {
                 adoptedClubs: {
@@ -400,14 +419,14 @@ export class RulesRegulationsService {
       } else if (dataToSave.type === 'node') {
         // First check if this node is already in adoptedNodes
         const alreadyAdopted = await this.rulesregulationModel.findOne({
-          _id: dataToSave.rulesId,
+          _id: baseRuleData.rootParent,
           'adoptedNodes.node': new Types.ObjectId(dataToSave.nodeId),
         });
 
         if (!alreadyAdopted) {
           // Only update if not already present
           updateOperation = this.rulesregulationModel.findByIdAndUpdate(
-            dataToSave.rulesId,
+            baseRuleData.rootParent,
             {
               $push: {
                 adoptedNodes: {
@@ -459,115 +478,107 @@ export class RulesRegulationsService {
     }
   }
   // get all the nodes and clubs that the user is admin and the rules and regulations are not adopted
+  // async getClubsNodesNotAdopted(
+  //   userId: Types.ObjectId,
+  //   rulesId: Types.ObjectId,
+  // ): Promise<Node_[]> {
+  //   try {
+  //     console.log('Input Parameters:', { userId, rulesId });
+
+  //     const existingRule = this.rulesregulationModel.findById(
+  //       new Types.ObjectId(rulesId),
+  //     );
+  //     if (!existingRule) {
+  //       throw new NotFoundException('Rules regulation not found');
+  //     }
+  //     const rootParent =
+  //       (await existingRule).rootParent ?? new Types.ObjectId(rulesId);
+  //     // Stage 1: Match
+  //     const nodeAggregation = [
+  //       {
+  //         $match: {
+  //           user: userId,
+  //           // Optional: remove this filter if unnecessary
+  //         },
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'node_', // Collection name for nodes
+  //           localField: 'node',
+  //           foreignField: '_id',
+  //           as: 'nodeDetails',
+  //         },
+  //       },
+  //       {
+  //         $unwind: '$nodeDetails',
+  //       },
+  //       {
+  //         $lookup: {
+  //           from: 'rulesregulations', // Collection name for rules
+  //           let: { nodeId: '$node' },
+  //           pipeline: [
+  //             {
+  //               $match: {
+  //                 $or: [
+  //                   { _id: new Types.ObjectId(rulesId) },
+  //                   { rootParent: rootParent },
+  //                 ],
+  //                 $expr: {
+  //                   $not: {
+  //                     $in: ['$$nodeId', '$adoptedNodes.node'],
+  //                   },
+  //                 },
+  //               },
+  //             },
+  //           ],
+  //           as: 'unadoptedRules',
+  //         },
+  //       },
+  //       {
+  //         $match: {
+  //           unadoptedRules: { $ne: [] },
+  //         },
+  //       },
+  //       {
+  //         $replaceRoot: {
+  //           newRoot: '$nodeDetails',
+  //         },
+  //       },
+  //     ];
+
+  //     const nodes = await this.nodeMembersModel.aggregate(nodeAggregation);
+
+  //     return nodes;
+  //   } catch (error) {
+  //     console.error('Error while fetching unadopted nodes:', error);
+  //     throw new InternalServerErrorException(
+  //       'Error while fetching unadopted nodes',
+  //       error,
+  //     );
+  //   }
+  // }
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     rulesId: Types.ObjectId,
-  ): Promise<{ clubs: any[]; nodes: any[] }> {
+  ): Promise<{ clubs: Club[]; nodes: Node_[] }> {
     try {
-      console.log({ userId, rulesId });
-      // Get all clubs where user is admin
-      const clubsQuery = await this.clubMembersModel.aggregate([
-        {
-          $match: {
-            user: userId,
-            role: 'admin',
-            status: 'MEMBER',
-          },
-        },
-        {
-          $lookup: {
-            from: 'rulesregulations',
-            let: { clubId: '$club' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$_id', rulesId] },
-                      {
-                        $not: [
-                          {
-                            $in: [
-                              '$clubId',
-                              { $ifNull: ['$adoptedNodes', []] },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'notAdoptedRules',
-          },
-        },
-        {
-          $match: {
-            'notAdoptedRules.0': { $exists: true },
-          },
-        },
-        {
-          $lookup: {
-            from: 'clubs',
-            localField: 'club',
-            foreignField: '_id',
-            as: 'clubDetails',
-          },
-        },
-        {
-          $unwind: '$clubDetails',
-        },
-        {
-          $project: {
-            _id: '$clubDetails._id',
-            name: '$clubDetails.name',
-            description: '$clubDetails.description',
-            // add other fields according to the requirements
-          },
-        },
-      ]);
+      console.log('Input Parameters:', { userId, rulesId });
 
-      // Get all nodes where user is admin
-      const nodesQuery = await this.nodeMembersModel.aggregate([
+      const existingRule = await this.rulesregulationModel.findById(
+        new Types.ObjectId(rulesId),
+      );
+
+      if (!existingRule) {
+        throw new NotFoundException('Rules regulation not found');
+      }
+
+      const rootParent = existingRule.rootParent ?? new Types.ObjectId(rulesId);
+
+      // Nodes Aggregation Pipeline
+      const nodeAggregation = [
         {
           $match: {
             user: userId,
-            role: 'admin',
-            status: 'MEMBER',
-          },
-        },
-        {
-          $lookup: {
-            from: 'rulesregulations',
-            let: { nodeId: '$node' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$_id', rulesId] },
-                      {
-                        $not: [
-                          {
-                            $in: [
-                              '$$nodeId',
-                              { $ifNull: ['$adoptedNodes', []] },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                },
-              },
-            ],
-            as: 'notAdoptedRules',
-          },
-        },
-        {
-          $match: {
-            'notAdoptedRules.0': { $exists: true },
           },
         },
         {
@@ -582,29 +593,106 @@ export class RulesRegulationsService {
           $unwind: '$nodeDetails',
         },
         {
-          $project: {
-            _id: '$nodeDetails._id',
-            name: '$nodeDetails.name',
-            description: '$nodeDetails.description',
+          $lookup: {
+            from: 'rulesregulations',
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(rulesId) },
+                    { rootParent: rootParent },
+                  ],
+                  $expr: {
+                    $not: {
+                      $in: ['$$nodeId', '$adoptedNodes.node'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedRules',
           },
         },
+        {
+          $match: {
+            unadoptedRules: { $ne: [] },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$nodeDetails',
+          },
+        },
+      ];
+
+      // Clubs Aggregation Pipeline
+      const clubAggregation = [
+        {
+          $match: {
+            user: userId,
+          },
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'clubDetails',
+          },
+        },
+        {
+          $unwind: '$clubDetails',
+        },
+        {
+          $lookup: {
+            from: 'rulesregulations',
+            let: { clubId: '$club' },
+            pipeline: [
+              {
+                $match: {
+                  $or: [
+                    { _id: new Types.ObjectId(rulesId) },
+                    { rootParent: rootParent },
+                  ],
+                  $expr: {
+                    $not: {
+                      $in: ['$$clubId', '$adoptedClubs.club'],
+                    },
+                  },
+                },
+              },
+            ],
+            as: 'unadoptedRules',
+          },
+        },
+        {
+          $match: {
+            unadoptedRules: { $ne: [] },
+          },
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$clubDetails',
+          },
+        },
+      ];
+
+      // Run both aggregations concurrently
+      const [nodes, clubs] = await Promise.all([
+        this.nodeMembersModel.aggregate(nodeAggregation),
+        this.clubMembersModel.aggregate(clubAggregation),
       ]);
 
-      // Execute both queries in parallel
-      const [clubs, nodes] = await Promise.all([clubsQuery, nodesQuery]);
-
-      console.log({ clubs, nodes });
-
-      return { clubs, nodes };
+      return { nodes, clubs };
     } catch (error) {
-      console.log({ error });
+      console.error('Error while fetching unadopted nodes and clubs:', error);
       throw new InternalServerErrorException(
-        'Error while fetching clubs and nodes',
+        'Error while fetching unadopted nodes and clubs',
         error,
       );
     }
   }
-
   //---------GET SINGLE RULES AND REGULATION
 
   async getRules(ruleId: Types.ObjectId) {
