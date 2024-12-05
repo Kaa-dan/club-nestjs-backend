@@ -8,7 +8,7 @@ import {
   CreateProjectDto,
   UpdateProjectDto,
 } from './dto/create-update-project.dto';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
@@ -33,7 +33,7 @@ export class ProjectService {
     @InjectModel(Parameter.name)
     private readonly parameterModel: Model<Parameter>,
     private readonly s3FileUpload: UploadService,
-    @Inject(Connection) private connection: Connection,
+    @InjectConnection() private connection: Connection,
   ) {}
 
   /**
