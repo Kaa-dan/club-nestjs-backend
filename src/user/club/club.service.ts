@@ -120,7 +120,6 @@ export class ClubService {
           select: '-password',
         });
 
-      console.log({ members });
       if (!club) {
         throw new NotFoundException('Club not found');
       }
@@ -387,8 +386,6 @@ export class ClubService {
         .populate('club')
         .populate('user')
         .exec();
-
-      console.log('ismember', isMember);
 
       if (isMember) {
         status = isMember.status;

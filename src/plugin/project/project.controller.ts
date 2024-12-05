@@ -55,7 +55,8 @@ export class ProjectController {
   @ProjectFiles()
   async create(
     @Req() req: Request,
-    @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    // @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -228,6 +229,15 @@ export class ProjectController {
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
   ) {
+    console.log('getting all projects', {
+      status,
+      page,
+      limit,
+      isActive,
+      search,
+      node,
+      club,
+    });
     return await this.projectService.getAllProjects(
       status,
       page,
@@ -241,15 +251,17 @@ export class ProjectController {
   @Get('my-projects')
   async getMyProjects(
     @Req() req: Request,
-    @Query('status', new ParseBoolPipe()) status: boolean,
     @Query('page', new ParseIntPipe()) page: number,
     @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('node') node?: Types.ObjectId,
+    @Query('club') club?: Types.ObjectId,
   ) {
     return await this.projectService.getMyProjects(
       req.user._id,
-      status,
       page,
       limit,
+      node,
+      club,
     );
   }
 }

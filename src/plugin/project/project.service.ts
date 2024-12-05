@@ -676,7 +676,7 @@ export class ProjectService {
     try {
       const query: any = {
         status,
-        active: isActive,
+        // active: isActive,
       };
 
       if (node) {
@@ -702,6 +702,8 @@ export class ProjectService {
         .populate('node', 'name')
         .populate('club', 'name');
 
+      console.log({ query, projects });
+
       const total = await this.projectModel.countDocuments(query);
 
       return {
@@ -724,15 +726,23 @@ export class ProjectService {
    */
   async getMyProjects(
     userId: Types.ObjectId,
-    status: boolean,
     page: number,
     limit: number,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
   ) {
     try {
-      const query = {
+      const query: any = {
         createdBy: userId,
-        status: status,
       };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
 
       const projects = await this.projectModel
         .find(query)
