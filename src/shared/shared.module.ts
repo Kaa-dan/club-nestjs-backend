@@ -42,6 +42,10 @@ import {
   Parameter,
   ParameterSchema,
 } from './entities/projects/parameter.entity';
+import {
+  Contribution,
+  ContributionSchema,
+} from './entities/projects/contribution.entity';
 
 @Module({
   imports: [
@@ -69,6 +73,7 @@ import {
       { name: Project.name, schema: ProjectSchema },
       { name: Faq.name, schema: FaqSchema },
       { name: Parameter.name, schema: ParameterSchema },
+      { name: Contribution.name, schema: ContributionSchema },
     ]),
     forwardRef(() => SearchModule),
   ],
