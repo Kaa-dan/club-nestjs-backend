@@ -13,6 +13,7 @@ import {
   DefaultValuePipe,
   ParseIntPipe,
   Query,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -221,11 +222,37 @@ export class ProjectController {
   }
 
   @Get('all-projects')
-  async getAllProjects(@Query('status') status: 'published' | 'proposed') {
-    return await this.projectService.getAllProjects(status);
+  async getAllProjects(
+    @Query('status') status: 'published' | 'proposed',
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('isActive', new ParseBoolPipe()) isActive: boolean,
+    @Query('search') search: string,
+    @Query('node') node?: Types.ObjectId,
+    @Query('club') club?: Types.ObjectId,
+  ) {
+    return await this.projectService.getAllProjects(
+      status,
+      page,
+      limit,
+      isActive,
+      search,
+      node,
+      club,
+    );
   }
   @Get('my-projects')
-  async getMyProjects(@Req() req: Request) {
-    return await this.projectService.getMyProjects(req.user._id);
+  async getMyProjects(
+    @Req() req: Request,
+    @Query('status', new ParseBoolPipe()) status: boolean,
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+  ) {
+    return await this.projectService.getMyProjects(
+      req.user._id,
+      status,
+      page,
+      limit,
+    );
   }
 }

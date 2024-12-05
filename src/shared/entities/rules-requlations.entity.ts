@@ -9,14 +9,7 @@ interface View {
   user: Types.ObjectId;
   date: Date;
 }
-interface AdoptedClub {
-  club: Types.ObjectId;
-  date: Date;
-}
-interface AdoptedNode {
-  node: Types.ObjectId;
-  date: Date;
-}
+
 @Schema({ timestamps: true })
 export class RulesRegulations extends Document {
   //older version of rules and regulation :copy of the schema
