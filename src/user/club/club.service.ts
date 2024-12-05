@@ -508,7 +508,7 @@ export class ClubService {
       const isAdminOrModerator = await this.clubMembersModel.findOne({
         club: clubId,
         user: userId,
-        $or: [{ role: 'admin' }, { role: 'moderator' }],
+        $or: [{ role: 'admin' }, { role: 'moderator' }, { role: 'owner' }],
       });
 
       if (!isAdminOrModerator) {
