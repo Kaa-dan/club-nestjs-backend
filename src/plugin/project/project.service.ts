@@ -81,6 +81,7 @@ export class ProjectService {
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
+      console.log({ parameters });
 
       // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
@@ -174,13 +175,21 @@ export class ProjectService {
         JSON.parse(parameters as any).length > 0
       ) {
         const parametersToCreate = JSON.parse(parameters as any).map(
-          (param) => ({
-            ...param,
-            project: savedProject._id,
-          }),
+          (param) => {
+            console.log({ param });
+            return {
+              project: savedProject._id,
+              ...param,
+            };
+          },
+        );
+        console.log({ parametersToCreate });
+        const parameterValue = await this.parameterModel.create(
+          parametersToCreate,
+          { session },
         );
 
-        await this.parameterModel.create(parametersToCreate, { session });
+        console.log({ parameterValue });
       }
 
       // Handle FAQs if provided
@@ -608,28 +617,54 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
-    console.log({ id });
     try {
+      // First, let's verify the parameters collection exists
+      const collections = await this.connection.db.listCollections().toArray();
+      console.log(
+        'Available collections:',
+        collections.map((c) => c.name),
+      );
+
       const result = await this.projectModel.aggregate([
-        // Match project by ID
         {
-          $match: { _id: new Types.ObjectId(id) },
+          $match: {
+            _id: new Types.ObjectId(id),
+          },
         },
-        // Get associated FAQs
+        // Lookup FAQs
         {
           $lookup: {
             from: 'faqs',
             localField: '_id',
             foreignField: 'project',
+            pipeline: [
+              { $sort: { createdAt: -1 } }, // Sort FAQs by creation date
+            ],
             as: 'faqs',
           },
         },
-        // Get associated parameters
+        // Lookup parameters with error checking
         {
           $lookup: {
-            from: 'parameters',
-            localField: '_id',
-            foreignField: 'project',
+            from: 'parameters', // Make sure this matches your actual collection name
+            let: { projectId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$project', '$$projectId'] },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  value: 1,
+                  unit: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                },
+              },
+            ],
             as: 'parameters',
           },
         },
@@ -638,25 +673,65 @@ export class ProjectService {
           $addFields: {
             totalFaqs: { $size: '$faqs' },
             totalParameters: { $size: '$parameters' },
+            hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
+          },
+        },
+        // Project specific fields if needed
+        {
+          $project: {
+            title: 1,
+            region: 1,
+            budget: 1,
+            deadline: 1,
+            significance: 1,
+            solution: 1,
+            committees: 1,
+            champions: 1,
+            faqs: 1,
+            parameters: 1,
+            aboutPromoters: 1,
+            fundingDetails: 1,
+            keyTakeaways: 1,
+            risksAndChallenges: 1,
+            bannerImage: 1,
+            files: 1,
+            status: 1,
+            createdBy: 1,
+            publishedBy: 1,
+            totalFaqs: 1,
+            totalParameters: 1,
+            hasParameters: 1,
+            createdAt: 1,
+            updatedAt: 1,
           },
         },
       ]);
+
+      // Add debug logging
+      console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      return result[0];
+      // Debug: Check if parameters are present
+      const project = result[0];
+      console.log('Parameters found:', project.parameters?.length || 0);
+      console.log('Sample parameters:', project.parameters);
+
+      return project;
     } catch (error) {
+      console.error('Error in getSingleProject:', error);
+
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new BadRequestException(
-        'Failed to get single project. Please try again later.',
+        `Failed to get single project: ${error.message}`,
       );
     }
   }
-
   /**
    * Retrieves all projects in the system
    * @returns Array of all projects
