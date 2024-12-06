@@ -1124,7 +1124,7 @@ export class ProjectService {
   async acceptProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId) {
     try {
 
-      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: 'accepted', publishedBy: userID })
+      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: 'published', publishedBy: userID })
 
     } catch (error) {
       throw new BadRequestException('error while accepting project', error)
