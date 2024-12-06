@@ -34,7 +34,7 @@ export class ProjectService {
     private readonly parameterModel: Model<Parameter>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   /**
    * Creates a new project with all associated data and files
@@ -100,11 +100,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Construct core project data
@@ -176,7 +176,6 @@ export class ProjectService {
       ) {
         const parametersToCreate = JSON.parse(parameters as any).map(
           (param) => {
-            console.log({ param });
             return {
               project: savedProject._id,
               ...param,
@@ -286,11 +285,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: prevBannerImage.originalname,
-            mimetype: prevBannerImage.mimetype,
-            size: prevBannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: prevBannerImage.originalname,
+          mimetype: prevBannerImage.mimetype,
+          size: prevBannerImage.size,
+        }
         : null;
 
       // Construct base project data
@@ -520,11 +519,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Prepare update data
@@ -618,12 +617,7 @@ export class ProjectService {
    */
   async getSingleProject(id: Types.ObjectId) {
     try {
-      // First, let's verify the parameters collection exists
-      const collections = await this.connection.db.listCollections().toArray();
-      console.log(
-        'Available collections:',
-        collections.map((c) => c.name),
-      );
+
 
       const result = await this.projectModel.aggregate([
         {
@@ -643,10 +637,10 @@ export class ProjectService {
             as: 'faqs',
           },
         },
-        // Lookup parameters with error checking
+        // Lookup parameters
         {
           $lookup: {
-            from: 'parameters', // Make sure this matches your actual collection name
+            from: 'parameters',
             let: { projectId: '$_id' },
             pipeline: [
               {
@@ -668,15 +662,91 @@ export class ProjectService {
             as: 'parameters',
           },
         },
+        // Lookup contributions with parameter details
+        {
+          $lookup: {
+            from: 'contributions',
+            let: { projectId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$rootProject', '$$projectId'] }
+                    ]
+                  }
+                }
+              },
+              // Lookup parameter details for each contribution
+              {
+                $lookup: {
+                  from: 'parameters',
+                  localField: 'parameter',
+                  foreignField: '_id',
+                  as: 'parameterDetails'
+                }
+              },
+              {
+                $unwind: '$parameterDetails'
+              },
+              {
+                $project: {
+                  value: 1,
+                  status: 1,
+                  files: 1,
+                  parameter: 1,
+                  parameterTitle: '$parameterDetails.title',
+                  user: 1,
+                  club: 1,
+                  node: 1,
+                  createdAt: 1
+                }
+              }
+            ],
+            as: 'contributions'
+          }
+        },
         // Add metadata
         {
           $addFields: {
             totalFaqs: { $size: '$faqs' },
+            totalContributions: { $size: '$contributions' },
             totalParameters: { $size: '$parameters' },
             hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
-          },
+            contributionsByParameter: {
+              $reduce: {
+                input: '$contributions',
+                initialValue: {},
+                in: {
+                  $mergeObjects: [
+                    '$$value',
+                    {
+                      $arrayToObject: [
+                        [
+                          {
+                            k: { $toString: '$$this.parameter' },
+                            v: {
+                              $concatArrays: [
+                                {
+                                  $ifNull: [
+                                    { $getField: { input: '$$value', field: { $toString: '$$this.parameter' } } },
+                                    []
+                                  ]
+                                },
+                                ['$$this']
+                              ]
+                            }
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
         },
-        // Project specific fields if needed
+        // Project specific fields
         {
           $project: {
             title: 1,
@@ -701,23 +771,27 @@ export class ProjectService {
             totalFaqs: 1,
             totalParameters: 1,
             hasParameters: 1,
+            totalContributions: 1,
+            contributions: 1,
+            contributionsByParameter: 1,
             createdAt: 1,
             updatedAt: 1,
           },
         },
       ]);
 
-      // Add debug logging
+      // Debug logging
       console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      // Debug: Check if parameters are present
+      // Debug: Check parameters and contributions
       const project = result[0];
       console.log('Parameters found:', project.parameters?.length || 0);
-      console.log('Sample parameters:', project.parameters);
+      console.log('Contributions found:', project.contributions?.length || 0);
+      console.log('Contributions by Parameter:', project.contributionsByParameter);
 
       return project;
     } catch (error) {
