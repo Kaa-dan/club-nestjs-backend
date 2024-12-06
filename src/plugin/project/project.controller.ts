@@ -41,7 +41,7 @@ import { Query as NestQuery } from '@nestjs/common';
 @ApiTags('Projects')
 @Controller('project')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(private readonly projectService: ProjectService) { }
 
   /**
    * Creates a new project with provided details and files
@@ -275,5 +275,11 @@ export class ProjectController {
     @Query('limit', new ParseIntPipe()) limit: number,
   ) {
     return await this.projectService.getGlobalProjects(page, limit);
+  }
+
+
+  @Get('contributions/:projectId/:status')
+  async getContributions(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('status') status: 'accepted' | 'pending' | 'rejected') {
+    return await this.projectService.getContributions(user._id, projectId, status)
   }
 }
