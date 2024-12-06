@@ -14,6 +14,7 @@ export class Parameter extends Document {
 
   @Prop({ required: true })
   unit: string;
+
 }
 
 export const ParameterSchema = SchemaFactory.createForClass(Parameter);
