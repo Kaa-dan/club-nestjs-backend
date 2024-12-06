@@ -51,10 +51,7 @@ export class CreateDebateDto {
   files?: FileDto[];
 
   @IsString()
-  openingCommentsFor: string;
-
-  @IsString()
-  openingCommentsAgainst: string;
+  startingComment: string;
 
   @IsBoolean()
   isPublic: boolean;

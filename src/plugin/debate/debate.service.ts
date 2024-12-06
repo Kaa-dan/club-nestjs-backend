@@ -190,7 +190,6 @@ export class DebateService {
       const existingDebate = await this.debateModel.findById(
         new Types.ObjectId(dataToSave.debateId),
       );
-      console.log({ existingDebate });
 
       if (!existingDebate) {
         throw new NotFoundException('Debate not found');
@@ -766,13 +765,10 @@ export class DebateService {
         .populate('club')
         .select('club role')
         .lean();
-      console.log({ userClubs });
 
       const userClubIds = userClubs?.map((club) => club?.club?._id.toString());
 
       const userClubDetails = userClubs?.reduce((acc, club: any) => {
-        console.log({ club });
-
         acc[club?.club?._id.toString()] = {
           role: club.role,
           name: club.club.name,
@@ -780,7 +776,6 @@ export class DebateService {
         };
         return acc;
       }, {});
-      console.log({ userClubDetails });
 
       // Fetch all nodes the user is part of
       const userNodes = await this.nodeMembersModel

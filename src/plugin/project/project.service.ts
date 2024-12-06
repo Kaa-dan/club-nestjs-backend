@@ -11,11 +11,11 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Parameter } from 'src/shared/entities/projects/parameter.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { Faq } from 'src/shared/entities/projects/faq.enitity';
 
 /**
  * Service responsible for managing all project-related operations
@@ -71,16 +71,17 @@ export class ProjectService {
         champions,
         aboutPromoters,
         fundingDetails,
+        faqs,
         keyTakeaways,
         risksAndChallenges,
         parameters,
-        faqs,
       } = createProjectDto;
 
       // Ensure required fields are present
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
+      console.log({ parameters });
 
       // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
@@ -110,12 +111,13 @@ export class ProjectService {
       const baseProjectData = {
         title,
         region,
-        budget,
+        budget: JSON.parse(budget),
         deadline,
         significance,
         solution,
-        committees,
+        committees: JSON.parse(committees as any),
         champions,
+        faqs: JSON.parse(faqs as any),
         aboutPromoters,
         fundingDetails,
         keyTakeaways,
@@ -141,7 +143,7 @@ export class ProjectService {
       if (membershipModel) {
         membership = await membershipModel.findOne({
           ...membershipIdentifier,
-          member: new Types.ObjectId(userId),
+          user: new Types.ObjectId(userId),
         });
 
         if (!membership || !membership.role) {
@@ -168,21 +170,35 @@ export class ProjectService {
       const savedProject = await newProject.save({ session });
 
       // Handle parameters if provided
-      if (parameters && parameters.length > 0) {
-        const parametersToCreate = parameters.map((param) => ({
-          ...param,
-          project: savedProject._id,
-        }));
+      if (
+        JSON.parse(parameters as any) &&
+        JSON.parse(parameters as any).length > 0
+      ) {
+        const parametersToCreate = JSON.parse(parameters as any).map(
+          (param) => {
+            console.log({ param });
+            return {
+              project: savedProject._id,
+              ...param,
+            };
+          },
+        );
+        console.log({ parametersToCreate });
+        const parameterValue = await this.parameterModel.create(
+          parametersToCreate,
+          { session },
+        );
 
-        await this.parameterModel.create(parametersToCreate, { session });
+        console.log({ parameterValue });
       }
 
       // Handle FAQs if provided
-      if (faqs && faqs.length > 0) {
-        const faqsToCreate = faqs.map((faq) => ({
+      if (JSON.parse(faqs as any) && JSON.parse(faqs.length as any) > 0) {
+        const faqsToCreate = JSON.parse(faqs as any).map((faq) => ({
           ...faq,
           project: savedProject._id,
           askedBy: userId,
+          answeredBy: userId,
           status: 'proposed',
           Date: new Date(),
         }));
@@ -550,11 +566,13 @@ export class ProjectService {
           { session },
         );
 
-        if (parameters.length > 0) {
-          const parametersToCreate = parameters.map((param) => ({
-            ...param,
-            project: project._id,
-          }));
+        if (JSON.parse(parameters as any).length > 0) {
+          const parametersToCreate = JSON.parse(parameters as any).map(
+            (param) => ({
+              ...param,
+              project: project._id,
+            }),
+          );
 
           await this.parameterModel.create(parametersToCreate, { session });
         }
@@ -600,26 +618,53 @@ export class ProjectService {
    */
   async getSingleProject(id: Types.ObjectId) {
     try {
+      // First, let's verify the parameters collection exists
+      const collections = await this.connection.db.listCollections().toArray();
+      console.log(
+        'Available collections:',
+        collections.map((c) => c.name),
+      );
+
       const result = await this.projectModel.aggregate([
-        // Match project by ID
         {
-          $match: { _id: id },
+          $match: {
+            _id: new Types.ObjectId(id),
+          },
         },
-        // Get associated FAQs
+        // Lookup FAQs
         {
           $lookup: {
             from: 'faqs',
             localField: '_id',
             foreignField: 'project',
+            pipeline: [
+              { $sort: { createdAt: -1 } }, // Sort FAQs by creation date
+            ],
             as: 'faqs',
           },
         },
-        // Get associated parameters
+        // Lookup parameters with error checking
         {
           $lookup: {
-            from: 'parameters',
-            localField: '_id',
-            foreignField: 'project',
+            from: 'parameters', // Make sure this matches your actual collection name
+            let: { projectId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$project', '$$projectId'] },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  value: 1,
+                  unit: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                },
+              },
+            ],
             as: 'parameters',
           },
         },
@@ -628,25 +673,65 @@ export class ProjectService {
           $addFields: {
             totalFaqs: { $size: '$faqs' },
             totalParameters: { $size: '$parameters' },
+            hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
+          },
+        },
+        // Project specific fields if needed
+        {
+          $project: {
+            title: 1,
+            region: 1,
+            budget: 1,
+            deadline: 1,
+            significance: 1,
+            solution: 1,
+            committees: 1,
+            champions: 1,
+            faqs: 1,
+            parameters: 1,
+            aboutPromoters: 1,
+            fundingDetails: 1,
+            keyTakeaways: 1,
+            risksAndChallenges: 1,
+            bannerImage: 1,
+            files: 1,
+            status: 1,
+            createdBy: 1,
+            publishedBy: 1,
+            totalFaqs: 1,
+            totalParameters: 1,
+            hasParameters: 1,
+            createdAt: 1,
+            updatedAt: 1,
           },
         },
       ]);
+
+      // Add debug logging
+      console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      return result[0];
+      // Debug: Check if parameters are present
+      const project = result[0];
+      console.log('Parameters found:', project.parameters?.length || 0);
+      console.log('Sample parameters:', project.parameters);
+
+      return project;
     } catch (error) {
+      console.error('Error in getSingleProject:', error);
+
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new BadRequestException(
-        'Failed to get single project. Please try again later.',
+        `Failed to get single project: ${error.message}`,
       );
     }
   }
-
   /**
    * Retrieves all projects in the system
    * @returns Array of all projects
@@ -676,7 +761,7 @@ export class ProjectService {
     try {
       const query: any = {
         status,
-        active: isActive,
+        // active: isActive,
       };
 
       if (node) {
@@ -700,7 +785,10 @@ export class ProjectService {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      console.log({ query, projects });
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -724,24 +812,61 @@ export class ProjectService {
    */
   async getMyProjects(
     userId: Types.ObjectId,
-    status: boolean,
     page: number,
     limit: number,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
   ) {
     try {
-      const query = {
+      const query: any = {
         createdBy: userId,
-        status: status,
       };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
 
       const projects = await this.projectModel
         .find(query)
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
 
       const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
+  }
+
+  async getGlobalProjects(page: number, limit: number) {
+    try {
+      const projects = await this.projectModel
+        .find({ status: 'published' })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      const total = await this.projectModel.countDocuments({
+        status: 'published',
+      });
 
       return {
         projects,

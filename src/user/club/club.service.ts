@@ -120,7 +120,6 @@ export class ClubService {
           select: '-password',
         });
 
-      console.log({ members });
       if (!club) {
         throw new NotFoundException('Club not found');
       }
@@ -388,8 +387,6 @@ export class ClubService {
         .populate('user')
         .exec();
 
-      console.log('ismember', isMember);
-
       if (isMember) {
         status = isMember.status;
         return {
@@ -508,7 +505,7 @@ export class ClubService {
       const isAdminOrModerator = await this.clubMembersModel.findOne({
         club: clubId,
         user: userId,
-        $or: [{ role: 'admin' }, { role: 'moderator' }],
+        $or: [{ role: 'admin' }, { role: 'moderator' }, { role: 'owner' }],
       });
 
       if (!isAdminOrModerator) {
