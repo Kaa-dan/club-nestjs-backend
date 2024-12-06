@@ -44,12 +44,9 @@ export class AdoptContributionController {
         },
       }),
     )
-    files: {
-      file?: Express.Multer.File[];
-      bannerImage?: Express.Multer.File[];
-    },
+    files: Express.Multer.File[],
   ) {
-    const documentFiles = files.file || [];
+    const documentFiles = files || [];
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
