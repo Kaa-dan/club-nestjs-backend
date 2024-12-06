@@ -9,7 +9,7 @@ import {
   IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Node_ } from '../node.entity';
 import { Club } from '../club.entity';
 import { User } from '../user.entity';
@@ -38,7 +38,7 @@ type Budget = { from: number; to: number; currency: string };
     getters: true,
   },
 })
-export class Project {
+export class Project extends Document {
   @Prop({ type: Types.ObjectId, ref: Club.name })
   @IsOptional()
   club: Types.ObjectId;
