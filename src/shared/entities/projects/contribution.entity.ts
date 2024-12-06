@@ -20,10 +20,10 @@ export class Contribution {
   @Prop({ type: Types.ObjectId, required: true, ref: User.name })
   user: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: Club.name })
+  @Prop({ type: Types.ObjectId, required: false, ref: Club.name })
   club: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: Node_.name })
+  @Prop({ type: Types.ObjectId, required: false, ref: Node_.name })
   node: Types.ObjectId;
 
   @Prop({ type: Number, required: true })
