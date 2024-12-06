@@ -785,7 +785,8 @@ export class ProjectService {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
 
       console.log({ query, projects });
 
@@ -834,9 +835,38 @@ export class ProjectService {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
 
       const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
+  }
+
+  async getGlobalProjects(page: number, limit: number) {
+    try {
+      const projects = await this.projectModel
+        .find({ status: 'published' })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      const total = await this.projectModel.countDocuments({
+        status: 'published',
+      });
 
       return {
         projects,

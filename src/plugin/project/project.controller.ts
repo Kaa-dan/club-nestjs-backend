@@ -267,4 +267,13 @@ export class ProjectController {
       club,
     );
   }
+
+  @Get('global-projects')
+  async getGlobalProjects(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+  ) {
+    return await this.projectService.getGlobalProjects(page, limit);
+  }
 }
