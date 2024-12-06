@@ -289,4 +289,10 @@ export class ProjectController {
   async acceptContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId) {
     return this.projectService.acceptContributions(user._id, contributionId)
   }
+
+
+  @Put('accept-proposed-project/:projectId')
+  async acceptProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId) {
+    return this.projectService.acceptProposedProjectInForum(user._id, projectId)
+  }
 }

@@ -1116,6 +1116,20 @@ export class ProjectService {
       );
     }
   }
+
+
+  /**
+   * 
+   */
+  async acceptProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId) {
+    try {
+
+      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: 'accepted', publishedBy: userID })
+
+    } catch (error) {
+      throw new BadRequestException('error while accepting project', error)
+    }
+  }
   /**
    * Handles file upload to S3 storage
    * @param file - File to be uploaded
