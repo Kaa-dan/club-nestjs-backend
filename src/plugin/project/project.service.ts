@@ -956,6 +956,109 @@ export class ProjectService {
     }
   }
 
+
+
+  /** 
+  *Retrieves all contributions and parameter of Project
+  * @param user - id of the user
+  * @param projectId - id of the project
+  * @returns  single project with all parametes and contributions with total accepted contibution and pending contribution field 
+   */
+
+  async getContributions(
+    userId: Types.ObjectId,
+    projectId: Types.ObjectId,
+    status: "accepted" | "pending" | "rejected"
+  ) {
+
+    console.log({ userId, projectId, status })
+
+    try {
+      const query = [
+
+        {
+          $match: {
+            _id: new Types.ObjectId(projectId)
+          }
+        },
+
+        {
+          $lookup: {
+            from: 'parameters',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'parameters'
+          }
+        },
+        {
+          $unwind: '$parameters'
+        },
+
+        {
+          $lookup: {
+            from: 'contributions',
+            let: {
+              parameterId: '$parameters._id',
+              userId: new Types.ObjectId(userId)
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$parameter', '$$parameterId'] },
+                      { $eq: ['$user', '$$userId'] },
+                      { $eq: ['$status', status] }
+                    ]
+                  }
+                }
+              },
+              {
+                $group: {
+                  _id: '$parameter',
+                  contributions: { $push: '$$ROOT' },
+                  totalValue: { $sum: '$value' },
+                  contributionCount: { $sum: 1 }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'contributions.user',
+                  foreignField: '_id',
+                  as: 'userDetails'
+                }
+              }
+            ],
+            as: 'contributions'
+          }
+        },
+        {
+          $project: {
+            projectTitle: '$title',
+            parameterId: '$parameters._id',
+            parameterTitle: '$parameters.title',
+            contributions: {
+              $ifNull: [
+                {
+                  $arrayElemAt: ['$contributions', 0]
+                },
+                {
+                  contributions: [],
+                  totalValue: 0,
+                  contributionCount: 0
+                }
+              ]
+            }
+          }
+        }
+      ];
+
+      return await this.projectModel.aggregate(query);
+    } catch (error) {
+      throw new BadRequestException(`Error while trying to fetch contributions: ${error?.message}`)
+    }
+  }
   /**
    * Handles file upload to S3 storage
    * @param file - File to be uploaded
