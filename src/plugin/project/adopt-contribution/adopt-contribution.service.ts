@@ -34,7 +34,7 @@ export class AdoptContributionService {
   async create(
     createAdoptContributionDto: CreateAdoptContributionDto,
     userId: Types.ObjectId,
-    files: Express.Multer.File[],
+    files: { file: Express.Multer.File[] },
   ) {
     try {
       const { rootProject, project, parameter, club, node, value, status } =
@@ -47,15 +47,15 @@ export class AdoptContributionService {
 
       // Upload all files concurrently for better performance
       const uploadedFiles = await Promise.all(
-        files.map((file) => this.uploadFiles(file)),
+        files.file.map((file) => this.uploadFiles(file)),
       );
-
+      console.log({ uploadedFiles });
       // Create standardized file objects with metadata
       const fileObjects = uploadedFiles.map((file, index) => ({
         url: file.url,
-        originalname: files[index].originalname,
-        mimetype: files[index].mimetype,
-        size: files[index].size,
+        originalname: files.file[index].originalname,
+        mimetype: files.file[index].mimetype,
+        size: files.file[index].size,
       }));
 
       // Check if user is the original project creator
@@ -85,6 +85,7 @@ export class AdoptContributionService {
 
       return newContribution;
     } catch (error) {
+      console.log({ error });
       throw new BadRequestException(
         'You are not authorized to create contribution',
       );
