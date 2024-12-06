@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  NotAcceptableException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   CreateProjectDto,
@@ -16,6 +18,8 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { Parameter } from 'src/shared/entities/projects/parameter.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Faq } from 'src/shared/entities/projects/faq.enitity';
+import { Contribution } from 'src/shared/entities/projects/contribution.entity';
+import { PopulatedProject } from './project.interface';
 
 /**
  * Service responsible for managing all project-related operations
@@ -32,6 +36,7 @@ export class ProjectService {
     @InjectModel(Faq.name) private readonly faqModel: Model<Faq>,
     @InjectModel(Parameter.name)
     private readonly parameterModel: Model<Parameter>,
+    @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
   ) { }
@@ -1057,6 +1062,58 @@ export class ProjectService {
       return await this.projectModel.aggregate(query);
     } catch (error) {
       throw new BadRequestException(`Error while trying to fetch contributions: ${error?.message}`)
+    }
+  }
+
+  /**
+   * Accepts pending contributions
+   * @param  userId- id of the user
+   * @param contributionId  - id of the contribution
+   * @returns  updated contributions
+   * 
+   */
+  async acceptContributions(userId: Types.ObjectId, contributionId: Types.ObjectId) {
+    try {
+      // Properly typed population
+      const contributionDetails = await this.contributionModel.findById(contributionId)
+        .populate<{ project: PopulatedProject }>({
+          path: 'project',
+          select: 'createdBy',
+          model: this.projectModel
+        })
+        .lean();
+
+      // Check if contribution exists
+      if (!contributionDetails) {
+        throw new NotAcceptableException('CONTRIBUTION NOT FOUND');
+      }
+
+      // Check if the user is the project creator
+      if (!contributionDetails.project ||
+        contributionDetails.project.createdBy.toString() !== userId.toString()) {
+        throw new UnauthorizedException('You are not authorized to accept this contribution');
+      }
+
+      // Update contribution status in a single operation
+      const result = await this.contributionModel.findByIdAndUpdate(
+        contributionId,
+        {
+          status: 'accepted',
+          publishedBy: userId
+        },
+        { new: true }
+      );
+
+      return {
+        status: true,
+        message: 'Contribution accepted',
+        data: result
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Error while accepting contributions',
+        error instanceof Error ? error.message : String(error)
+      );
     }
   }
   /**
