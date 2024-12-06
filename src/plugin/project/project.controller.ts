@@ -41,7 +41,7 @@ import { Query as NestQuery } from '@nestjs/common';
 @ApiTags('Projects')
 @Controller('project')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(private readonly projectService: ProjectService) { }
 
   /**
    * Creates a new project with provided details and files
@@ -55,7 +55,8 @@ export class ProjectController {
   @ProjectFiles()
   async create(
     @Req() req: Request,
-    @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    // @Body() createProjectDto: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -179,6 +180,7 @@ export class ProjectController {
     @Param('id') id: string,
     @Body() updateProjectDto: UpdateProjectDto,
     @Req() req: Request,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -202,6 +204,8 @@ export class ProjectController {
     },
   ) {
     // Extract files from request
+    console.log({ files });
+
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     // Forward request to service layer
@@ -228,6 +232,15 @@ export class ProjectController {
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
   ) {
+    console.log('getting all projects', {
+      status,
+      page,
+      limit,
+      isActive,
+      search,
+      node,
+      club,
+    });
     return await this.projectService.getAllProjects(
       status,
       page,
@@ -241,15 +254,39 @@ export class ProjectController {
   @Get('my-projects')
   async getMyProjects(
     @Req() req: Request,
-    @Query('status', new ParseBoolPipe()) status: boolean,
     @Query('page', new ParseIntPipe()) page: number,
     @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('node') node?: Types.ObjectId,
+    @Query('club') club?: Types.ObjectId,
   ) {
     return await this.projectService.getMyProjects(
       req.user._id,
-      status,
       page,
       limit,
+      node,
+      club,
     );
+  }
+
+  @Get('global-projects')
+  async getGlobalProjects(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+  ) {
+    return await this.projectService.getGlobalProjects(page, limit);
+  }
+
+
+  @Get('contributions/:projectId/:status')
+  async getContributions(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('status') status: 'accepted' | 'pending' | 'rejected') {
+    return await this.projectService.getContributions(user._id, projectId, status)
+  }
+  /**
+   * 
+   */
+  @Put('accept-contributions/:contributionId')
+  async acceptContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId) {
+    return this.projectService.acceptContributions(user._id, contributionId)
   }
 }

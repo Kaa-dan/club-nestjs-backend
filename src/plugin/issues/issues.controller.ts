@@ -238,7 +238,6 @@ export class IssuesController {
 
   @Put('like/:issueId')
   async likeIssue(@Req() req: Request, @Param('issueId') issueId) {
-    console.log('like');
     return await this.issuesService.likeIssue(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),
@@ -247,7 +246,6 @@ export class IssuesController {
 
   @Put('dislike/:issueId')
   async dislikeIssue(@Req() req: Request, @Param('issueId') issueId) {
-    console.log('dislike');
     return await this.issuesService.dislikeIssue(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),

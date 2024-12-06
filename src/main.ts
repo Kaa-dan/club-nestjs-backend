@@ -4,11 +4,15 @@ import { ENV } from './utils/config/env.config';
 import { printWithBorder } from './utils/text';
 import * as morgan from 'morgan';
 import { SpinUp } from 'spin-up-ping';
-import { ValidationPipe } from '@nestjs/common';
-
+import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
+  app.enableCors({
+    origin: ['http://localhost:3000'], // Your frontend URL exactly
+    credentials: true,
+  });
+  app.use(cookieParser());
   // app.useGlobalPipes(
   //   new ValidationPipe({
   //     transform: true, // Enable transformation
@@ -32,10 +36,10 @@ async function bootstrap() {
 
   pinger.start();
 
-  app.enableCors({
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  // app.enableCors({
+  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  //   credentials: true,
+  // });
   await app.listen(ENV.PORT ?? 4000).then(() => {
     printWithBorder('Server running successfully on Port ' + ENV.PORT);
   });

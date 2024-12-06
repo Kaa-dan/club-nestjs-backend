@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  NotAcceptableException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   CreateProjectDto,
@@ -11,11 +13,13 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Parameter } from 'src/shared/entities/projects/parameter.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { Faq } from 'src/shared/entities/projects/faq.enitity';
+import { Contribution } from 'src/shared/entities/projects/contribution.entity';
+import { PopulatedProject } from './project.interface';
 
 /**
  * Service responsible for managing all project-related operations
@@ -32,9 +36,10 @@ export class ProjectService {
     @InjectModel(Faq.name) private readonly faqModel: Model<Faq>,
     @InjectModel(Parameter.name)
     private readonly parameterModel: Model<Parameter>,
+    @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   /**
    * Creates a new project with all associated data and files
@@ -71,16 +76,17 @@ export class ProjectService {
         champions,
         aboutPromoters,
         fundingDetails,
+        faqs,
         keyTakeaways,
         risksAndChallenges,
         parameters,
-        faqs,
       } = createProjectDto;
 
       // Ensure required fields are present
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
+      console.log({ parameters });
 
       // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
@@ -99,23 +105,24 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Construct core project data
       const baseProjectData = {
         title,
         region,
-        budget,
+        budget: JSON.parse(budget),
         deadline,
         significance,
         solution,
-        committees,
+        committees: JSON.parse(committees as any),
         champions,
+        faqs: JSON.parse(faqs as any),
         aboutPromoters,
         fundingDetails,
         keyTakeaways,
@@ -141,7 +148,7 @@ export class ProjectService {
       if (membershipModel) {
         membership = await membershipModel.findOne({
           ...membershipIdentifier,
-          member: new Types.ObjectId(userId),
+          user: new Types.ObjectId(userId),
         });
 
         if (!membership || !membership.role) {
@@ -168,21 +175,34 @@ export class ProjectService {
       const savedProject = await newProject.save({ session });
 
       // Handle parameters if provided
-      if (parameters && parameters.length > 0) {
-        const parametersToCreate = parameters.map((param) => ({
-          ...param,
-          project: savedProject._id,
-        }));
+      if (
+        JSON.parse(parameters as any) &&
+        JSON.parse(parameters as any).length > 0
+      ) {
+        const parametersToCreate = JSON.parse(parameters as any).map(
+          (param) => {
+            return {
+              project: savedProject._id,
+              ...param,
+            };
+          },
+        );
+        console.log({ parametersToCreate });
+        const parameterValue = await this.parameterModel.create(
+          parametersToCreate,
+          { session },
+        );
 
-        await this.parameterModel.create(parametersToCreate, { session });
+        console.log({ parameterValue });
       }
 
       // Handle FAQs if provided
-      if (faqs && faqs.length > 0) {
-        const faqsToCreate = faqs.map((faq) => ({
+      if (JSON.parse(faqs as any) && JSON.parse(faqs.length as any) > 0) {
+        const faqsToCreate = JSON.parse(faqs as any).map((faq) => ({
           ...faq,
           project: savedProject._id,
           askedBy: userId,
+          answeredBy: userId,
           status: 'proposed',
           Date: new Date(),
         }));
@@ -270,11 +290,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: prevBannerImage.originalname,
-            mimetype: prevBannerImage.mimetype,
-            size: prevBannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: prevBannerImage.originalname,
+          mimetype: prevBannerImage.mimetype,
+          size: prevBannerImage.size,
+        }
         : null;
 
       // Construct base project data
@@ -504,11 +524,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Prepare update data
@@ -550,11 +570,13 @@ export class ProjectService {
           { session },
         );
 
-        if (parameters.length > 0) {
-          const parametersToCreate = parameters.map((param) => ({
-            ...param,
-            project: project._id,
-          }));
+        if (JSON.parse(parameters as any).length > 0) {
+          const parametersToCreate = JSON.parse(parameters as any).map(
+            (param) => ({
+              ...param,
+              project: project._id,
+            }),
+          );
 
           await this.parameterModel.create(parametersToCreate, { session });
         }
@@ -600,53 +622,195 @@ export class ProjectService {
    */
   async getSingleProject(id: Types.ObjectId) {
     try {
+
+
       const result = await this.projectModel.aggregate([
-        // Match project by ID
         {
-          $match: { _id: id },
+          $match: {
+            _id: new Types.ObjectId(id),
+          },
         },
-        // Get associated FAQs
+        // Lookup FAQs
         {
           $lookup: {
             from: 'faqs',
             localField: '_id',
             foreignField: 'project',
+            pipeline: [
+              { $sort: { createdAt: -1 } }, // Sort FAQs by creation date
+            ],
             as: 'faqs',
           },
         },
-        // Get associated parameters
+        // Lookup parameters
         {
           $lookup: {
             from: 'parameters',
-            localField: '_id',
-            foreignField: 'project',
+            let: { projectId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$project', '$$projectId'] },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  title: 1,
+                  value: 1,
+                  unit: 1,
+                  createdAt: 1,
+                  updatedAt: 1,
+                },
+              },
+            ],
             as: 'parameters',
           },
+        },
+        // Lookup contributions with parameter details
+        {
+          $lookup: {
+            from: 'contributions',
+            let: { projectId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$rootProject', '$$projectId'] }
+                    ]
+                  }
+                }
+              },
+              // Lookup parameter details for each contribution
+              {
+                $lookup: {
+                  from: 'parameters',
+                  localField: 'parameter',
+                  foreignField: '_id',
+                  as: 'parameterDetails'
+                }
+              },
+              {
+                $unwind: '$parameterDetails'
+              },
+              {
+                $project: {
+                  value: 1,
+                  status: 1,
+                  files: 1,
+                  parameter: 1,
+                  parameterTitle: '$parameterDetails.title',
+                  user: 1,
+                  club: 1,
+                  node: 1,
+                  createdAt: 1
+                }
+              }
+            ],
+            as: 'contributions'
+          }
         },
         // Add metadata
         {
           $addFields: {
             totalFaqs: { $size: '$faqs' },
+            totalContributions: { $size: '$contributions' },
             totalParameters: { $size: '$parameters' },
+            hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
+            contributionsByParameter: {
+              $reduce: {
+                input: '$contributions',
+                initialValue: {},
+                in: {
+                  $mergeObjects: [
+                    '$$value',
+                    {
+                      $arrayToObject: [
+                        [
+                          {
+                            k: { $toString: '$$this.parameter' },
+                            v: {
+                              $concatArrays: [
+                                {
+                                  $ifNull: [
+                                    { $getField: { input: '$$value', field: { $toString: '$$this.parameter' } } },
+                                    []
+                                  ]
+                                },
+                                ['$$this']
+                              ]
+                            }
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        // Project specific fields
+        {
+          $project: {
+            title: 1,
+            region: 1,
+            budget: 1,
+            deadline: 1,
+            significance: 1,
+            solution: 1,
+            committees: 1,
+            champions: 1,
+            faqs: 1,
+            parameters: 1,
+            aboutPromoters: 1,
+            fundingDetails: 1,
+            keyTakeaways: 1,
+            risksAndChallenges: 1,
+            bannerImage: 1,
+            files: 1,
+            status: 1,
+            createdBy: 1,
+            publishedBy: 1,
+            totalFaqs: 1,
+            totalParameters: 1,
+            hasParameters: 1,
+            totalContributions: 1,
+            contributions: 1,
+            contributionsByParameter: 1,
+            createdAt: 1,
+            updatedAt: 1,
           },
         },
       ]);
+
+      // Debug logging
+      console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      return result[0];
+      // Debug: Check parameters and contributions
+      const project = result[0];
+      console.log('Parameters found:', project.parameters?.length || 0);
+      console.log('Contributions found:', project.contributions?.length || 0);
+      console.log('Contributions by Parameter:', project.contributionsByParameter);
+
+      return project;
     } catch (error) {
+      console.error('Error in getSingleProject:', error);
+
       if (error instanceof NotFoundException) {
         throw error;
       }
+
       throw new BadRequestException(
-        'Failed to get single project. Please try again later.',
+        `Failed to get single project: ${error.message}`,
       );
     }
   }
-
   /**
    * Retrieves all projects in the system
    * @returns Array of all projects
@@ -676,7 +840,7 @@ export class ProjectService {
     try {
       const query: any = {
         status,
-        active: isActive,
+        // active: isActive,
       };
 
       if (node) {
@@ -700,7 +864,10 @@ export class ProjectService {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      console.log({ query, projects });
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -724,22 +891,31 @@ export class ProjectService {
    */
   async getMyProjects(
     userId: Types.ObjectId,
-    status: boolean,
     page: number,
     limit: number,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
   ) {
     try {
-      const query = {
+      const query: any = {
         createdBy: userId,
-        status: status,
       };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
 
       const projects = await this.projectModel
         .find(query)
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -757,6 +933,189 @@ export class ProjectService {
     }
   }
 
+  async getGlobalProjects(page: number, limit: number) {
+    try {
+      const projects = await this.projectModel
+        .find({ status: 'published' })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      const total = await this.projectModel.countDocuments({
+        status: 'published',
+      });
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
+  }
+
+
+
+  /** 
+  *Retrieves all contributions and parameter of Project
+  * @param user - id of the user
+  * @param projectId - id of the project
+  * @returns  single project with all parametes and contributions with total accepted contibution and pending contribution field 
+   */
+
+  async getContributions(
+    userId: Types.ObjectId,
+    projectId: Types.ObjectId,
+    status: "accepted" | "pending" | "rejected"
+  ) {
+
+    console.log({ userId, projectId, status })
+
+    try {
+      const query = [
+
+        {
+          $match: {
+            _id: new Types.ObjectId(projectId)
+          }
+        },
+
+        {
+          $lookup: {
+            from: 'parameters',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'parameters'
+          }
+        },
+        {
+          $unwind: '$parameters'
+        },
+
+        {
+          $lookup: {
+            from: 'contributions',
+            let: {
+              parameterId: '$parameters._id',
+              userId: new Types.ObjectId(userId)
+            },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$parameter', '$$parameterId'] },
+                      { $eq: ['$user', '$$userId'] },
+                      { $eq: ['$status', status] }
+                    ]
+                  }
+                }
+              },
+              {
+                $group: {
+                  _id: '$parameter',
+                  contributions: { $push: '$$ROOT' },
+                  totalValue: { $sum: '$value' },
+                  contributionCount: { $sum: 1 }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'contributions.user',
+                  foreignField: '_id',
+                  as: 'userDetails'
+                }
+              }
+            ],
+            as: 'contributions'
+          }
+        },
+        {
+          $project: {
+            projectTitle: '$title',
+            parameterId: '$parameters._id',
+            parameterTitle: '$parameters.title',
+            contributions: {
+              $ifNull: [
+                {
+                  $arrayElemAt: ['$contributions', 0]
+                },
+                {
+                  contributions: [],
+                  totalValue: 0,
+                  contributionCount: 0
+                }
+              ]
+            }
+          }
+        }
+      ];
+
+      return await this.projectModel.aggregate(query);
+    } catch (error) {
+      throw new BadRequestException(`Error while trying to fetch contributions: ${error?.message}`)
+    }
+  }
+
+  /**
+   * Accepts pending contributions
+   * @param  userId- id of the user
+   * @param contributionId  - id of the contribution
+   * @returns  updated contributions
+   * 
+   */
+  async acceptContributions(userId: Types.ObjectId, contributionId: Types.ObjectId) {
+    try {
+      // Properly typed population
+      const contributionDetails = await this.contributionModel.findById(contributionId)
+        .populate<{ project: PopulatedProject }>({
+          path: 'project',
+          select: 'createdBy',
+          model: this.projectModel
+        })
+        .lean();
+
+      // Check if contribution exists
+      if (!contributionDetails) {
+        throw new NotAcceptableException('CONTRIBUTION NOT FOUND');
+      }
+
+      // Check if the user is the project creator
+      if (!contributionDetails.project ||
+        contributionDetails.project.createdBy.toString() !== userId.toString()) {
+        throw new UnauthorizedException('You are not authorized to accept this contribution');
+      }
+
+      // Update contribution status in a single operation
+      const result = await this.contributionModel.findByIdAndUpdate(
+        contributionId,
+        {
+          status: 'accepted',
+          publishedBy: userId
+        },
+        { new: true }
+      );
+
+      return {
+        status: true,
+        message: 'Contribution accepted',
+        data: result
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Error while accepting contributions',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
   /**
    * Handles file upload to S3 storage
    * @param file - File to be uploaded
