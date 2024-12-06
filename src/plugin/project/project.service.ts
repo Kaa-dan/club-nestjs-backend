@@ -761,7 +761,7 @@ export class ProjectService {
     try {
       const query: any = {
         status,
-        active: isActive,
+        // active: isActive,
       };
 
       if (node) {
@@ -785,7 +785,10 @@ export class ProjectService {
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      console.log({ query, projects });
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -809,24 +812,61 @@ export class ProjectService {
    */
   async getMyProjects(
     userId: Types.ObjectId,
-    status: boolean,
     page: number,
     limit: number,
+    node?: Types.ObjectId,
+    club?: Types.ObjectId,
   ) {
     try {
-      const query = {
+      const query: any = {
         createdBy: userId,
-        status: status,
       };
+
+      if (node) {
+        query.node = node;
+      }
+
+      if (club) {
+        query.club = club;
+      }
 
       const projects = await this.projectModel
         .find(query)
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
-        .populate('club', 'name');
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
 
       const total = await this.projectModel.countDocuments(query);
+
+      return {
+        projects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get my projects. Please try again later.',
+      );
+    }
+  }
+
+  async getGlobalProjects(page: number, limit: number) {
+    try {
+      const projects = await this.projectModel
+        .find({ status: 'published' })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('node', 'name')
+        .populate('club', 'name')
+        .populate('createdBy', 'userName profileImage firstName lastName');
+
+      const total = await this.projectModel.countDocuments({
+        status: 'published',
+      });
 
       return {
         projects,
