@@ -44,13 +44,13 @@ export class AdoptContributionController {
         },
       }),
     )
-    files: Express.Multer.File[],
+    files: { file: Express.Multer.File[] },
   ) {
-    const documentFiles = files || [];
+    console.log(files);
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
-      documentFiles,
+      files,
     );
   }
 
