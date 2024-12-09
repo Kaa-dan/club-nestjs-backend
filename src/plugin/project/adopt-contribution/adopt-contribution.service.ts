@@ -7,6 +7,7 @@ import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { of } from 'rxjs';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
 
 /**
  * Service responsible for handling project contribution adoptions
@@ -21,7 +22,8 @@ export class AdoptContributionService {
     @InjectModel(ClubMembers.name)
     private clubMemberModel: Model<ClubMembers>,
     private s3FileUpload: UploadService,
-  ) {}
+    @InjectModel(ProjectAdoption.name) private projectAdoptionModel: Model<ProjectAdoption>
+  ) { }
 
   /**
    * Creates a new contribution for a project
@@ -91,22 +93,58 @@ export class AdoptContributionService {
       );
     }
   }
+  /**
+   * Adopt or propose project in a forum based on user role
+   * @param userId 
+   * @param adoptForumDto 
+   * @returns proposed project with message
+   */
 
-  async adoptForum(userId: Types.ObjectId, adoptForumDto) {
+  async adoptForum(userId: Types.ObjectId, adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
     try {
-      const clubs = await this.clubMemberModel.find({
+
+      if (adoptForumDto.club && adoptForumDto.node) {
+        throw new BadRequestException('forum be either club or node')
+
+      }
+      const userDetails = await this.clubMemberModel.findOne({
         user: new Types.ObjectId(userId),
       });
+      const adoptionData = {
+        project: new Types.ObjectId(adoptForumDto.project),
+        proposedBy: userId,
+        ...(userDetails.role !== 'member' && { acceptedBy: userId }),
+        node: adoptForumDto.node ?? null,
+        club: adoptForumDto.club ?? null
+      };
+
+      // Create adoption record
+      const adoptedProject = await this.projectAdoptionModel.create(adoptionData);
+
+      return {
+        success: true,
+        data: adoptedProject,
+        message: "Project adopted successfully"
+      };
+
     } catch (error) {
       throw new BadRequestException('Failed to adopt forum');
     }
   }
+
+  /**
+   * Get not adopted forum list of a user based on project
+   * @param userId 
+   * @param projectId   
+   */
 
   async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
       const clubs = await this.clubMemberModel.find({
         user: new Types.ObjectId(userId),
       });
+
+
     } catch (error) {
       throw new BadRequestException('Failed to fetch not adopted forum');
     }
