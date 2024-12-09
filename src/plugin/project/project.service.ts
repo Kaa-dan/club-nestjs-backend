@@ -39,7 +39,7 @@ export class ProjectService {
     @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) { }
+  ) {}
 
   /**
    * Creates a new project with all associated data and files
@@ -86,7 +86,6 @@ export class ProjectService {
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
-      console.log({ parameters });
 
       // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
@@ -105,11 +104,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Construct core project data
@@ -290,11 +289,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: prevBannerImage.originalname,
-          mimetype: prevBannerImage.mimetype,
-          size: prevBannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: prevBannerImage.originalname,
+            mimetype: prevBannerImage.mimetype,
+            size: prevBannerImage.size,
+          }
         : null;
 
       // Construct base project data
@@ -524,11 +523,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Prepare update data
@@ -621,9 +620,8 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
+    console.log({ id });
     try {
-
-
       const result = await this.projectModel.aggregate([
         {
           $match: {
@@ -676,11 +674,9 @@ export class ProjectService {
               {
                 $match: {
                   $expr: {
-                    $and: [
-                      { $eq: ['$rootProject', '$$projectId'] }
-                    ]
-                  }
-                }
+                    $and: [{ $eq: ['$rootProject', '$$projectId'] }],
+                  },
+                },
               },
               // Lookup parameter details for each contribution
               {
@@ -688,11 +684,11 @@ export class ProjectService {
                   from: 'parameters',
                   localField: 'parameter',
                   foreignField: '_id',
-                  as: 'parameterDetails'
-                }
+                  as: 'parameterDetails',
+                },
               },
               {
-                $unwind: '$parameterDetails'
+                $unwind: '$parameterDetails',
               },
               {
                 $project: {
@@ -704,12 +700,12 @@ export class ProjectService {
                   user: 1,
                   club: 1,
                   node: 1,
-                  createdAt: 1
-                }
-              }
+                  createdAt: 1,
+                },
+              },
             ],
-            as: 'contributions'
-          }
+            as: 'contributions',
+          },
         },
         // Add metadata
         {
@@ -734,22 +730,29 @@ export class ProjectService {
                               $concatArrays: [
                                 {
                                   $ifNull: [
-                                    { $getField: { input: '$$value', field: { $toString: '$$this.parameter' } } },
-                                    []
-                                  ]
+                                    {
+                                      $getField: {
+                                        input: '$$value',
+                                        field: {
+                                          $toString: '$$this.parameter',
+                                        },
+                                      },
+                                    },
+                                    [],
+                                  ],
                                 },
-                                ['$$this']
-                              ]
-                            }
-                          }
-                        ]
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
+                                ['$$this'],
+                              ],
+                            },
+                          },
+                        ],
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          },
         },
         // Project specific fields
         {
@@ -796,7 +799,10 @@ export class ProjectService {
       const project = result[0];
       console.log('Parameters found:', project.parameters?.length || 0);
       console.log('Contributions found:', project.contributions?.length || 0);
-      console.log('Contributions by Parameter:', project.contributionsByParameter);
+      console.log(
+        'Contributions by Parameter:',
+        project.contributionsByParameter,
+      );
 
       return project;
     } catch (error) {

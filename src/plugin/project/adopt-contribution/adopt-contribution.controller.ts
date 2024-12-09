@@ -20,7 +20,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) {}
+  ) { }
 
   @Post()
   @ProjectFiles()
@@ -55,7 +55,7 @@ export class AdoptContributionController {
   }
 
   @Post('adopt-forum')
-  adoptForum(@Req() { user }, @Body() adoptForumDto) {
+  adoptForum(@Req() { user }, @Body() adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 

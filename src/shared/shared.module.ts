@@ -46,6 +46,7 @@ import {
   Contribution,
   ContributionSchema,
 } from './entities/projects/contribution.entity';
+import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/project-adoption.entity';
 
 @Module({
   imports: [
@@ -74,9 +75,10 @@ import {
       { name: Faq.name, schema: FaqSchema },
       { name: Parameter.name, schema: ParameterSchema },
       { name: Contribution.name, schema: ContributionSchema },
+      { name: ProjectAdoption.name, schema: ProjectAdoptionSchema }
     ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule {}
+export class SharedModule { }
