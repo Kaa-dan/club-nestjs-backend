@@ -55,6 +55,6 @@ jobs:
           rm deploy.zip
           pnpm install
           pnpm run build
-          echo "${{ secrets.ENV_FILE }}" > .env
+          echo "${{ secrets.PROD }}" > .env
           pm2 restart clubwize-backend || pm2 start dist/main.js --name "clubwize-backend"
           pm2 save
