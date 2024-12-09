@@ -1,0 +1,60 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: Setup PNPM
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+        
+    - name: Install Dependencies
+      run: pnpm install
+
+    - name: Build
+      run: pnpm run build
+      env:
+        NODE_ENV: production
+        PROD: ${{ secrets.PROD }}
+
+    - name: Generate deployment package
+      run: |
+        zip -r deploy.zip . -x "node_modules/*" "test/*" ".git/*"
+
+    - name: Deploy to EC2
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "deploy.zip"
+        target: "/var/www/clubwize-backend"
+
+    - name: Execute deployment commands
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USERNAME }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /var/www/clubwize-backend
+          unzip -o deploy.zip
+          rm deploy.zip
+          pnpm install
+          pnpm run build
+          echo "${{ secrets.ENV_FILE }}" > .env
+          pm2 restart clubwize-backend || pm2 start dist/main.js --name "clubwize-backend"
+          pm2 save
