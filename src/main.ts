@@ -41,7 +41,7 @@ async function bootstrap() {
   //   credentials: true,
   // });
   await app.listen(ENV.PORT ?? 4000).then(() => {
-    printWithBorder('Server running successfully on Port ' + ENV.PORT);
+    printWithBorder('Server alive and running successfully on Port ' + ENV.PORT);
   });
 }
 bootstrap();
