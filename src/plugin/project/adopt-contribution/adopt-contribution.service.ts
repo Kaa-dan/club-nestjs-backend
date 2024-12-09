@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotAcceptableException } from '@nestjs/common';
 import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,6 +7,9 @@ import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { of } from 'rxjs';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
+import { Club } from 'src/shared/entities/club.entity';
+import { Node_ } from 'src/shared/entities/node.entity';
 
 /**
  * Service responsible for handling project contribution adoptions
@@ -21,7 +24,10 @@ export class AdoptContributionService {
     @InjectModel(ClubMembers.name)
     private clubMemberModel: Model<ClubMembers>,
     private s3FileUpload: UploadService,
-  ) {}
+    @InjectModel(ProjectAdoption.name) private projectAdoptionModel: Model<ProjectAdoption>,
+    @InjectModel(Club.name) private clubModel: Model<Club>,
+    @InjectModel(Node_.name) private nodeModel: Model<Node_>
+  ) { }
 
   /**
    * Creates a new contribution for a project
@@ -91,22 +97,156 @@ export class AdoptContributionService {
       );
     }
   }
+  /**
+   * Adopt or propose project in a forum based on user role
+   * @param userId 
+   * @param adoptForumDto 
+   * @returns proposed project with message
+   */
 
-  async adoptForum(userId: Types.ObjectId, adoptForumDto) {
+  async adoptForum(userId: Types.ObjectId, adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
     try {
-      const clubs = await this.clubMemberModel.find({
+
+      if (adoptForumDto.club && adoptForumDto.node) {
+        throw new BadRequestException('forum be either club or node')
+
+      }
+      const userDetails = await this.clubMemberModel.findOne({
         user: new Types.ObjectId(userId),
       });
+      const adoptionData = {
+        project: new Types.ObjectId(adoptForumDto.project),
+        proposedBy: userId,
+        ...(userDetails.role !== 'member' && { acceptedBy: userId }),
+        node: adoptForumDto?.node || null,
+        club: adoptForumDto?.club || null
+      };
+
+      // Create adoption record
+      const adoptedProject = await this.projectAdoptionModel.create(adoptionData);
+
+      return {
+        success: true,
+        data: adoptedProject,
+        message: "Project adopted successfully"
+      };
+
     } catch (error) {
-      throw new BadRequestException('Failed to adopt forum');
+      throw new NotAcceptableException('Failed to adopt forum');
     }
   }
 
+  /**
+   * Get not adopted forum list of a user based on project
+   * @param userId 
+   * @param projectId   
+   */
+
   async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
-      const clubs = await this.clubMemberModel.find({
-        user: new Types.ObjectId(userId),
-      });
+      const notAdoptedClubs = await this.clubModel.aggregate([
+        // Stage 1: Find clubs where the user is a member
+        {
+          $lookup: {
+            from: "clubmembers",
+            localField: "_id",
+            foreignField: "club",
+            as: "membership"
+          }
+        },
+        {
+          $match: {
+            "membership.user": userId
+          }
+        },
+
+        // Stage 2: Exclude clubs that have already adopted the project
+        {
+          $lookup: {
+            from: "projects",
+            let: { clubId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$club", "$$clubId"] },
+                      { $eq: ["$_id", projectId] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "projectAdoption"
+          }
+        },
+        {
+          $match: {
+            "projectAdoption": { $size: 0 }
+          }
+        },
+
+        {
+          $project: {
+            _id: 1,
+            name: 1
+          }
+        }
+      ]);
+
+      const notAdoptedNodes = await this.nodeModel.aggregate([
+        // Stage 1: Find clubs where the user is a member
+        {
+          $lookup: {
+            from: "clubmembers",
+            localField: "_id",
+            foreignField: "club",
+            as: "membership"
+          }
+        },
+        {
+          $match: {
+            "membership.user": userId
+          }
+        },
+
+        // Stage 2: Exclude clubs that have already adopted the project
+        {
+          $lookup: {
+            from: "projects",
+            let: { clubId: "$_id" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$club", "$$clubId"] },
+                      { $eq: ["$_id", projectId] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: "projectAdoption"
+          }
+        },
+        {
+          $match: {
+            "projectAdoption": { $size: 0 }
+          }
+        },
+
+        {
+          $project: {
+            _id: 1,
+            name: 1
+          }
+        }
+      ]);
+
+
+
+      return { data: { notAdoptedClubs, notAdoptedNodes } };
     } catch (error) {
       throw new BadRequestException('Failed to fetch not adopted forum');
     }

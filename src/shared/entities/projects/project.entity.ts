@@ -21,8 +21,7 @@ class TeamMember {
   @IsMongoId()
   user: Types.ObjectId;
 
-  @IsString()
-  designation: string;
+  designation: string[];
 }
 //type for budget
 type Budget = { from: number; to: number; currency: string };
@@ -113,8 +112,7 @@ export class Project extends Document {
 
   @Prop({ type: [Object] })
   @IsArray()
-  @Type(() => TeamMember)
-  champions: TeamMember[];
+  champions: { user: Types.ObjectId }[];
 
   @Prop({
     type: String,

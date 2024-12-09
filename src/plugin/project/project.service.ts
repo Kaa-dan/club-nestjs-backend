@@ -86,7 +86,6 @@ export class ProjectService {
       if (!title || (!club && !node)) {
         throw new Error('Missing required project details');
       }
-      console.log({ parameters });
 
       // Handle file uploads concurrently for better performance
       const [uploadedBannerImage, uploadedDocumentFiles] = await Promise.all([
