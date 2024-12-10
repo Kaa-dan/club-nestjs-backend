@@ -35,7 +35,7 @@ export class AdoptContributionService {
     @InjectModel(Node_.name) private nodeModel: Model<Node_>,
     @InjectModel(ProjectActivities.name)
     private projectActivities: Model<ProjectActivities>,
-  ) {}
+  ) { }
 
   /**
    * Creates a new contribution for a project
@@ -161,24 +161,32 @@ export class AdoptContributionService {
    * @param projectId
    */
 
+
   async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
+
       const nonAdoptedClubs = await this.clubModel.aggregate([
-        // Stage 1: Find clubs where the user is a member
+        // Stage 1: Find clubs where the user is a member and get their role
         {
           $lookup: {
-            from: 'clubmembers',
-            localField: '_id',
-            foreignField: 'club',
-            as: 'membership',
-          },
+            from: "clubmembers",
+            localField: "_id",
+            foreignField: "club",
+            as: "membership"
+          }
+        },
+        {
+          $unwind: {
+            path: "$membership",
+            preserveNullAndEmptyArrays: false
+          }
         },
         {
           $match: {
-            'membership.user': userId,
-          },
+            "membership.user": userId,
+            // "membership.status": "MEMBER"
+          }
         },
-
         // Stage 2: Exclude clubs that have already adopted the project
         {
           $lookup: {
@@ -204,26 +212,32 @@ export class AdoptContributionService {
             projectAdoption: { $size: 0 },
           },
         },
-
         {
           $project: {
             _id: 0,
             clubId: '$_id',
             name: 1,
-            image: '$profileImage.url',
-          },
-        },
+            profileImage: 1,
+            userRole: "$membership.role"
+          }
+        }
       ]);
 
       const nonAdoptedNodes = await this.nodeModel.aggregate([
         // Stage 1: Find clubs where the user is a member
         {
           $lookup: {
-            from: 'nodemembers',
-            localField: '_id',
-            foreignField: 'club',
-            as: 'membership',
-          },
+            from: "nodemembers",
+            localField: "_id",
+            foreignField: "club",
+            as: "membership"
+          }
+        },
+        {
+          $unwind: {
+            path: "$membership",
+            preserveNullAndEmptyArrays: false
+          }
         },
         {
           $match: {
@@ -298,4 +312,6 @@ export class AdoptContributionService {
       );
     }
   }
+
+
 }
