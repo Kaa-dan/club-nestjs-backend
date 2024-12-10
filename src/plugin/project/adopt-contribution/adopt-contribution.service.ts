@@ -217,8 +217,8 @@ export class AdoptContributionService {
             _id: 0,
             clubId: '$_id',
             name: 1,
-            profileImage: 1,
-            userRole: "$membership.role"
+            image: '$profileImage.url',
+            role: "$membership.role"
           }
         }
       ]);
@@ -277,6 +277,7 @@ export class AdoptContributionService {
             clubId: '$_id',
             name: 1,
             image: '$profileImage.url',
+            role: "$membership.role"
           },
         },
       ]);
