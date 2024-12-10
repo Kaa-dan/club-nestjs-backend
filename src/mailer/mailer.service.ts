@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { TransactionalEmailsApi, SendSmtpEmail} from '@getbrevo/brevo';
+import { TransactionalEmailsApi, SendSmtpEmail } from '@getbrevo/brevo';
 import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
@@ -9,7 +9,7 @@ export class MailerService {
   constructor() {
     // Initialize the API instance
     this.apiInstance = new TransactionalEmailsApi();
-    
+
     // Set the API key using DefaultApiKeyAuth
     (this.apiInstance as any).defaultHeaders['api-key'] = ENV.BREVO_API_KEY;
   }
@@ -30,7 +30,7 @@ export class MailerService {
 
     try {
       await this.apiInstance.sendTransacEmail(sendSmtpEmail);
-      console.log(`Email sent to ${to}`);
+      (`Email sent to ${to}`);
     } catch (error) {
       console.error(`Error sending email: ${error.message}`);
     }

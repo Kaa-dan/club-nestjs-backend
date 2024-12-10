@@ -31,7 +31,7 @@ export class InvitationService {
     private readonly clubJoinRequest: Model<ClubJoinRequests>,
     @InjectModel(NodeJoinRequest.name)
     private readonly nodeJoinRequest: Model<NodeJoinRequest>,
-  ) {}
+  ) { }
 
   /**
    * Retrieves all invitations for a given user.
@@ -205,7 +205,7 @@ export class InvitationService {
     userId: Types.ObjectId,
     accept: boolean,
   ): Promise<{ message: string; status: boolean; data: {} | null }> {
-    console.log({ invitationId, userId, accept });
+    ({ invitationId, userId, accept });
     const session = await this.invitationModel.db.startSession();
     session.startTransaction();
 

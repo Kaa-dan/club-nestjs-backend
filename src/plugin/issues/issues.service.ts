@@ -37,7 +37,7 @@ export class IssuesService {
     private readonly nodeModel: Model<Node_>,
     @InjectModel(Club.name)
     private readonly clubModel: Model<Club>,
-  ) {}
+  ) { }
 
   /**
    * Create a new issue. This function will also handle the upload of any files
@@ -78,7 +78,6 @@ export class IssuesService {
       const newIssue = new this.issuesModel(dataToSave);
       return await newIssue.save();
     } catch (error) {
-      console.log({ error });
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
         error,
@@ -176,7 +175,6 @@ export class IssuesService {
 
       return updatedDocument;
     } catch (error) {
-      console.log({ error });
       throw new InternalServerErrorException(
         'Error while updating rules-regulations',
         error,
@@ -211,7 +209,6 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -236,7 +233,6 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .exec();
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -272,7 +268,6 @@ export class IssuesService {
       }
       return await this.issuesModel.find(query).exec();
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -293,7 +288,6 @@ export class IssuesService {
         .populate('club')
         .exec();
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -311,10 +305,8 @@ export class IssuesService {
         .populate('club')
         .exec();
 
-      console.log(response, 'ice');
       return response;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting specific issue',
         error,
@@ -334,7 +326,6 @@ export class IssuesService {
       );
       return response;
     } catch (error) {
-      console.log(error);
       throw new BadRequestException(
         'Failed to upload file. Please try again later.',
       );
@@ -348,7 +339,6 @@ export class IssuesService {
           node: new Types.ObjectId(createIssuesData.node),
           user: new Types.ObjectId(userId),
         });
-        console.log(memberInfo);
         return memberInfo.role;
       }
 
@@ -356,10 +346,8 @@ export class IssuesService {
         club: new Types.ObjectId(createIssuesData.club),
         user: new Types.ObjectId(userId),
       });
-      console.log(memberInfo);
       return memberInfo.role;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting user roles',
         error,
@@ -470,7 +458,6 @@ export class IssuesService {
 
       // return adoptedIssue;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
@@ -560,7 +547,6 @@ export class IssuesService {
           .exec();
       }
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting proposed issues',
         error,
@@ -609,7 +595,6 @@ export class IssuesService {
         { new: true },
       );
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -663,7 +648,6 @@ export class IssuesService {
         { new: true },
       );
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -810,7 +794,6 @@ export class IssuesService {
         nodes: memberNodes,
       };
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;

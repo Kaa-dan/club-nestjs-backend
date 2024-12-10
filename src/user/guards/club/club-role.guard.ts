@@ -13,7 +13,6 @@ export class ClubRoleGuard implements CanActivate {
         const clubId = new Types.ObjectId(request.params.id);
 
 
-        console.log(userId, "userId")
         const clubMember = await this.clubMembersModel.findOne({ user: userId, club: clubId });
 
         if (!clubMember) {

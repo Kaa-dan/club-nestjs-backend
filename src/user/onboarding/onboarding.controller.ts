@@ -19,7 +19,7 @@ import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 
 @Controller('onboarding')
 export class OnboardingController {
-  constructor(private readonly onBoardingService: OnboardingService) {}
+  constructor(private readonly onBoardingService: OnboardingService) { }
 
   @Get()
   async getOnboarding(@Req() req: Request) {
@@ -76,7 +76,6 @@ export class OnboardingController {
         coverImage: files?.coverImage?.[0],
       };
 
-      console.log(imageFiles, 'imageFiles');
 
       return await this.onBoardingService.updateImages(
         String(req.user._id),

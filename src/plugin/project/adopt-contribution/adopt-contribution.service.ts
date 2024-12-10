@@ -10,6 +10,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { Node_ } from 'src/shared/entities/node.entity';
+import { ProjectActivities } from 'src/shared/entities/projects/project-activities.entity';
 
 /**
  * Service responsible for handling project contribution adoptions
@@ -26,7 +27,8 @@ export class AdoptContributionService {
     private s3FileUpload: UploadService,
     @InjectModel(ProjectAdoption.name) private projectAdoptionModel: Model<ProjectAdoption>,
     @InjectModel(Club.name) private clubModel: Model<Club>,
-    @InjectModel(Node_.name) private nodeModel: Model<Node_>
+    @InjectModel(Node_.name) private nodeModel: Model<Node_>,
+    @InjectModel(ProjectActivities.name) private projectActivities: Model<ProjectActivities>
   ) { }
 
   /**
@@ -51,11 +53,12 @@ export class AdoptContributionService {
         throw new BadRequestException('Club or node is required');
       }
 
+
+
       // Upload all files concurrently for better performance
       const uploadedFiles = await Promise.all(
         files.file.map((file) => this.uploadFiles(file)),
       );
-      console.log({ uploadedFiles });
       // Create standardized file objects with metadata
       const fileObjects = uploadedFiles.map((file, index) => ({
         url: file.url,
@@ -88,10 +91,14 @@ export class AdoptContributionService {
           size: file.size,
         })),
       });
+      const newActivity = await this.projectActivities.create({
+        author: new Types.ObjectId(userId),
+        contribution: newContribution._id
 
-      return newContribution;
+      })
+
+      return { succes: true, data: { newContribution, newActivity }, message: 'contributed succesfully' };
     } catch (error) {
-      console.log({ error });
       throw new BadRequestException(
         'You are not authorized to create contribution',
       );
@@ -189,7 +196,9 @@ export class AdoptContributionService {
         {
           $project: {
             _id: 1,
-            name: 1
+            name: 1,
+            profileImage: 1,
+
           }
         }
       ]);
@@ -198,7 +207,7 @@ export class AdoptContributionService {
         // Stage 1: Find clubs where the user is a member
         {
           $lookup: {
-            from: "clubmembers",
+            from: "nodemembers",
             localField: "_id",
             foreignField: "club",
             as: "membership"
@@ -214,13 +223,13 @@ export class AdoptContributionService {
         {
           $lookup: {
             from: "projects",
-            let: { clubId: "$_id" },
+            let: { nodeId: "$_id" },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
-                      { $eq: ["$club", "$$clubId"] },
+                      { $eq: ["$node", "$$nodeId"] },
                       { $eq: ["$_id", projectId] }
                     ]
                   }
@@ -244,9 +253,7 @@ export class AdoptContributionService {
         }
       ]);
 
-
-
-      return { data: { notAdoptedClubs, notAdoptedNodes } };
+      return { data: { notAdoptedClubs, notAdoptedNodes }, message: 'data fetched succesfully', success: true };
     } catch (error) {
       throw new BadRequestException('Failed to fetch not adopted forum');
     }

@@ -16,7 +16,7 @@ import { Types } from 'mongoose';
 
 @Controller('invitation')
 export class InvitationController {
-  constructor(private readonly invitationService: InvitationService) {}
+  constructor(private readonly invitationService: InvitationService) { }
 
   @Get()
   getInvitations(@Req() req: Request) {
@@ -39,7 +39,7 @@ export class InvitationController {
     @Param('invitationId') invitationId: Types.ObjectId,
     @Param('accept', ParseBoolPipe) accept: boolean,
   ) {
-    console.log('nithin');
+    ('nithin');
     return this.invitationService.acceptInvitation(
       invitationId,
       req.user._id,

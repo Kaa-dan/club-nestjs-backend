@@ -69,7 +69,7 @@ export class NodeController {
       coverImage: Express.Multer.File[];
     },
   ) {
-    console.log(files.profileImage, "createNodeBody");
+    (files.profileImage, "createNodeBody");
 
     if (!files.profileImage?.[0] || !files.coverImage?.[0]) {
       throw new BadRequestException(
@@ -152,7 +152,6 @@ export class NodeController {
     nodeId = new Types.ObjectId(nodeId);
     requestId = new Types.ObjectId(requestId);
 
-    console.log(status, "status");
     return await this.nodeService.acceptOrRejectRequest(nodeId, userId, requestId, status);
   }
 
