@@ -25,7 +25,7 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
-  ) {}
+  ) { }
 
   /*
   --------------------CREATING A CLUB----------------------------
@@ -33,7 +33,7 @@ export class ClubService {
   @Returns {Promise<Club>} - The created club 
   */
   async createClub(createClubDto: CreateClubDto): Promise<Club> {
-    console.log({ createClubDto });
+    ({ createClubDto });
     // Start a session for the transaction
     const session = await this.clubModel.db.startSession();
 
@@ -56,7 +56,7 @@ export class ClubService {
 
       // Save the club within the transaction
       const clubResponse = await createdClub.save({ session });
-      console.log({ clubResponse });
+      ({ clubResponse });
       // Create the club member document for admin
       const createClubMember = new this.clubMembersModel({
         club: clubResponse._id,
@@ -126,7 +126,7 @@ export class ClubService {
 
       return { club, members };
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -165,7 +165,7 @@ export class ClubService {
         (key) => updateData[key] === undefined && delete updateData[key],
       );
 
-      console.log({ updateData });
+      ({ updateData });
 
       const updatedClub = await this.clubModel
         .findByIdAndUpdate(id, updateData, { new: true })
@@ -226,7 +226,7 @@ export class ClubService {
         .populate('user', '-password')
         .exec();
     } catch (error) {
-      console.log(error);
+      (error);
     }
   }
 
@@ -368,7 +368,7 @@ export class ClubService {
   //       .exec();
   //     return requests;
   //   } catch (error) {
-  //     console.log(error);
+  //     (error);
   //     throw new BadRequestException(
   //       'Failed to fetch club join requests. Please try again later.',
   //     );
@@ -405,7 +405,7 @@ export class ClubService {
       }
       return { status };
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to fetch club join requests. Please try again later.',
       );
@@ -424,7 +424,7 @@ export class ClubService {
         .exec();
       return members;
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to fetch club members. Please try again later.',
       );
@@ -543,7 +543,7 @@ export class ClubService {
 
       return response;
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to process club join request. Please try again later.',
       );
@@ -727,7 +727,7 @@ export class ClubService {
         .exec();
       return requests;
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to fetch club join requests. Please try again later.',
       );
@@ -749,7 +749,7 @@ export class ClubService {
         .exec();
       return requests;
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to fetch user join requests. Please try again later.',
       );

@@ -16,7 +16,7 @@ export class CommentService {
     @InjectModel(Comment.name) private readonly commentModel: Model<Comment>,
     private readonly s3FileUpload: UploadService,
     private socketGateway: SocketGateway,
-  ) {}
+  ) { }
 
   async getAllComments() {
     return await this.commentModel
@@ -354,7 +354,7 @@ export class CommentService {
         );
       }
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof BadRequestException) {
         throw error;
       }

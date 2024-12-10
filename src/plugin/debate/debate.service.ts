@@ -28,7 +28,7 @@ export class DebateService {
     @InjectModel(DebateArgument.name)
     private debateArgumentModel: Model<DebateArgument>,
     private readonly s3FileUpload: UploadService,
-  ) {}
+  ) { }
   async createDebate(createDebateDto, userId: string) {
     try {
       const {
@@ -41,7 +41,6 @@ export class DebateService {
         startingComment,
         ...rest
       } = createDebateDto;
-      console.log({ createDebateDto });
 
       const parsedTags = JSON.parse(tags);
 
@@ -263,9 +262,9 @@ export class DebateService {
             $addToSet: {
               adoptedClubs: isAuthorized
                 ? {
-                    club: new Types.ObjectId(dataToSave.clubId),
-                    date: new Date(),
-                  }
+                  club: new Types.ObjectId(dataToSave.clubId),
+                  date: new Date(),
+                }
                 : [],
             },
           },
@@ -283,9 +282,9 @@ export class DebateService {
             $addToSet: {
               adoptedNodes: isAuthorized
                 ? {
-                    node: new Types.ObjectId(dataToSave.nodeId),
-                    date: new Date(),
-                  }
+                  node: new Types.ObjectId(dataToSave.nodeId),
+                  date: new Date(),
+                }
                 : [],
             },
           },
@@ -872,7 +871,7 @@ export class DebateService {
         throw new NotFoundException('Debate not found');
       }
       return debate;
-    } catch (error) {}
+    } catch (error) { }
   }
 
   async createArgument(
@@ -984,13 +983,13 @@ export class DebateService {
       const query =
         entity === 'club'
           ? {
-              club: new Types.ObjectId(entityId),
-              user: new Types.ObjectId(userId),
-            }
+            club: new Types.ObjectId(entityId),
+            user: new Types.ObjectId(userId),
+          }
           : {
-              node: new Types.ObjectId(entityId),
-              user: new Types.ObjectId(userId),
-            };
+            node: new Types.ObjectId(entityId),
+            user: new Types.ObjectId(userId),
+          };
 
       const member = await membershipModel.findOne(query).exec();
 

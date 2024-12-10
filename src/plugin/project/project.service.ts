@@ -39,7 +39,7 @@ export class ProjectService {
     @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   /**
    * Creates a new project with all associated data and files
@@ -104,11 +104,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Construct core project data
@@ -186,13 +186,11 @@ export class ProjectService {
             };
           },
         );
-        console.log({ parametersToCreate });
         const parameterValue = await this.parameterModel.create(
           parametersToCreate,
           { session },
         );
 
-        console.log({ parameterValue });
       }
 
       // Handle FAQs if provided
@@ -289,11 +287,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: prevBannerImage.originalname,
-            mimetype: prevBannerImage.mimetype,
-            size: prevBannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: prevBannerImage.originalname,
+          mimetype: prevBannerImage.mimetype,
+          size: prevBannerImage.size,
+        }
         : null;
 
       // Construct base project data
@@ -523,11 +521,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Prepare update data
@@ -620,7 +618,6 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
-    console.log({ id });
     try {
       const result = await this.projectModel.aggregate([
         {
@@ -788,8 +785,6 @@ export class ProjectService {
         },
       ]);
 
-      // Debug logging
-      console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
@@ -797,12 +792,7 @@ export class ProjectService {
 
       // Debug: Check parameters and contributions
       const project = result[0];
-      console.log('Parameters found:', project.parameters?.length || 0);
-      console.log('Contributions found:', project.contributions?.length || 0);
-      console.log(
-        'Contributions by Parameter:',
-        project.contributionsByParameter,
-      );
+
 
       return project;
     } catch (error) {
@@ -844,6 +834,7 @@ export class ProjectService {
     club?: Types.ObjectId,
   ) {
     try {
+      console.log("hey")
       const query: any = {
         status,
         // active: isActive,
@@ -873,7 +864,6 @@ export class ProjectService {
         .populate('club', 'name')
         .populate('createdBy', 'userName profileImage firstName lastName');
 
-      console.log({ query, projects });
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -982,7 +972,6 @@ export class ProjectService {
     status: "accepted" | "pending" | "rejected"
   ) {
 
-    console.log({ userId, projectId, status })
 
     try {
       const query = [

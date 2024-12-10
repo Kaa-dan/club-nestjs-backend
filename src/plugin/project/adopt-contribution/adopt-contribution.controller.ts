@@ -46,7 +46,6 @@ export class AdoptContributionController {
     )
     files: { file: Express.Multer.File[] },
   ) {
-    console.log(files);
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
