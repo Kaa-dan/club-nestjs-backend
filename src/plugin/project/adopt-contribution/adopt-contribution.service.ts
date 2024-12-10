@@ -151,7 +151,7 @@ export class AdoptContributionService {
 
   async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
-      const notAdoptedClubs = await this.clubModel.aggregate([
+      const nonAdoptedClubs = await this.clubModel.aggregate([
         // Stage 1: Find clubs where the user is a member
         {
           $lookup: {
@@ -203,7 +203,7 @@ export class AdoptContributionService {
         }
       ]);
 
-      const notAdoptedNodes = await this.nodeModel.aggregate([
+      const nonAdoptedNodes = await this.nodeModel.aggregate([
         // Stage 1: Find clubs where the user is a member
         {
           $lookup: {
@@ -253,7 +253,7 @@ export class AdoptContributionService {
         }
       ]);
 
-      return { data: { notAdoptedClubs, notAdoptedNodes }, message: 'data fetched succesfully', success: true };
+      return { data: { nonAdoptedClubs, nonAdoptedNodes }, message: 'data fetched succesfully', success: true };
     } catch (error) {
       throw new BadRequestException('Failed to fetch not adopted forum');
     }
