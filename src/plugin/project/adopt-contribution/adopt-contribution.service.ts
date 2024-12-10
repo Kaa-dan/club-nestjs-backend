@@ -149,10 +149,12 @@ export class AdoptContributionService {
    * @param projectId   
    */
 
+
   async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
+
       const nonAdoptedClubs = await this.clubModel.aggregate([
-        // Stage 1: Find clubs where the user is a member
+        // Stage 1: Find clubs where the user is a member and get their role
         {
           $lookup: {
             from: "clubmembers",
@@ -162,11 +164,17 @@ export class AdoptContributionService {
           }
         },
         {
-          $match: {
-            "membership.user": userId
+          $unwind: {
+            path: "$membership",
+            preserveNullAndEmptyArrays: false
           }
         },
-
+        {
+          $match: {
+            "membership.user": userId,
+            // "membership.status": "MEMBER"
+          }
+        },
         // Stage 2: Exclude clubs that have already adopted the project
         {
           $lookup: {
@@ -192,13 +200,12 @@ export class AdoptContributionService {
             "projectAdoption": { $size: 0 }
           }
         },
-
         {
           $project: {
             _id: 1,
             name: 1,
             profileImage: 1,
-
+            userRole: "$membership.role"
           }
         }
       ]);
@@ -211,6 +218,12 @@ export class AdoptContributionService {
             localField: "_id",
             foreignField: "club",
             as: "membership"
+          }
+        },
+        {
+          $unwind: {
+            path: "$membership",
+            preserveNullAndEmptyArrays: false
           }
         },
         {
@@ -280,4 +293,6 @@ export class AdoptContributionService {
       );
     }
   }
+
+
 }
