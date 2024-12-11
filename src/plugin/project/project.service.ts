@@ -1068,9 +1068,8 @@ export class ProjectService {
    * @returns  updated contributions
    * 
    */
-  async acceptContributions(userId: Types.ObjectId, contributionId: Types.ObjectId) {
+  async acceptOrRejectContributions(userId: Types.ObjectId, contributionId: Types.ObjectId, type: boolean) {
     try {
-      console.log({ contributionId })
       // Properly typed population
       const contributionDetails = await this.contributionModel.findById(contributionId)
         .populate<{ project: PopulatedProject }>({
@@ -1094,7 +1093,7 @@ export class ProjectService {
       const result = await this.contributionModel.findByIdAndUpdate(
         contributionId,
         {
-          status: 'accepted',
+          status: type ? 'accepted' : 'rejected',
           publishedBy: userId
         },
         { new: true }
