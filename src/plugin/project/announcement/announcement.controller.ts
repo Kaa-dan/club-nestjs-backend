@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseInterceptors, BadRequestException, UploadedFile, UploadedFiles } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseInterceptors, BadRequestException, UploadedFile, Query, UploadedFiles } from '@nestjs/common';
 import { AnnouncementService } from './announcement.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
@@ -6,6 +6,7 @@ import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.d
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
+import { Types } from 'mongoose';
 
 @Controller('announcement')
 export class AnnouncementController {
@@ -44,23 +45,9 @@ export class AnnouncementController {
     return await this.announcementService.create(user._id, createAnnouncementDto, documentFiles);
   }
 
-  @Get()
-  findAll() {
-    return this.announcementService.findAll();
+  @Get("all-project-announcement/:id")
+  getAllAnnouncementsOfProject(@Req() { user }, @Param('projectID') projectID: Types.ObjectId) {
+    return this.announcementService.getAllAnnouncementsOfProject(user._id, projectID);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.announcementService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAnnouncementDto: UpdateAnnouncementDto) {
-    return this.announcementService.update(+id, updateAnnouncementDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.announcementService.remove(+id);
-  }
 }

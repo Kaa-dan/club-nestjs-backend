@@ -21,35 +21,45 @@ export class AnnouncementService {
    */
   async create(userId: Types.ObjectId, createAnnouncementDto: CreateAnnouncementDto, documentFiles: Express.Multer.File[],) {
 
+    try {
+      //checking if the user is the creator
+      const isCreator = await this.projectModel.findOne({ _id: new Types.ObjectId(createAnnouncementDto.projectId), createdBy: userId }, { createdBy: 1, _id: 0 });
 
-    //checking if the user is the creator
-    const isCreator = await this.projectModel.findOne({ _id: new Types.ObjectId(createAnnouncementDto.projectId), createdBy: userId }, { createdBy: 1, _id: 0 });
+      const uploadedDocumentFiles = await Promise.all(documentFiles.map(file => this.uploadFile(file)))
 
-    const uploadedDocumentFiles = await Promise.all(documentFiles.map(file => this.uploadFile(file)))
-
-    // Create file objects with metadata
-    const fileObjects = uploadedDocumentFiles.map((file, index) => ({
-      url: file.url,
-      originalname: documentFiles[index].originalname,
-      mimetype: documentFiles[index].mimetype,
-      size: documentFiles[index].size,
-    }));
+      // Create file objects with metadata
+      const fileObjects = uploadedDocumentFiles.map((file, index) => ({
+        url: file.url,
+        originalname: documentFiles[index].originalname,
+        mimetype: documentFiles[index].mimetype,
+        size: documentFiles[index].size,
+      }));
 
 
-    //throwing error if user is not the creator
-    if (!isCreator) {
-      throw new UnauthorizedException('you are not the creator of this club')
+      //throwing error if user is not the creator
+      if (!isCreator) {
+        throw new UnauthorizedException('you are not the creator of this club')
+      }
+      //creating announcement
+      const createdAnnouncement = await this.projectAnnouncementModel.create({ announcement: createAnnouncementDto.announcement, project: new Types.ObjectId(createAnnouncementDto.projectId), files: fileObjects })
+
+
+      return { createdAnnouncement, success: true, message: "announcement created successfully" };
+    } catch (error) {
+      throw new BadRequestException(error)
     }
-    //creating announcement
-    const createdAnnouncement = await this.projectAnnouncementModel.create({ announcement: createAnnouncementDto.announcement, project: new Types.ObjectId(createAnnouncementDto.projectId), files: fileObjects })
-
-
-    return { createdAnnouncement, success: true, message: "announcement created successfully" };
   }
 
 
-  findAll() {
-    return `This action returns all announcement`;
+  async getAllAnnouncementsOfProject(userId: Types.ObjectId, projectId: Types.ObjectId) {
+    try {
+      //fetching all announcements of certain projects
+      const announcements = await this.projectAnnouncementModel.find({ project: new Types.ObjectId(projectId) })
+
+      return { data: announcements, success: true, message: 'data fetched sucessfully' }
+    } catch (error) {
+      throw new BadRequestException('server error')
+    }
   }
 
   findOne(id: number) {
