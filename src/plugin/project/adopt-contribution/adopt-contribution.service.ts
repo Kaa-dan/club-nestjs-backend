@@ -452,16 +452,15 @@ export class AdoptContributionService {
 
 
 
-  async createAnnouncement() {
-    try {
+  /** 
+   * 
+  */
 
-    } catch (error) {
-
-    }
-  }
   /**
    * 
    */
+
+
   async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
     try {
 
@@ -469,12 +468,15 @@ export class AdoptContributionService {
 
     }
   }
+
+
   /**
    * Helper method to upload files to S3 storage
    * @param file - File to be uploaded
    * @returns Upload response containing the file URL
    * @throws BadRequestException if upload fails
    */
+
   private async uploadFiles(file: Express.Multer.File) {
     try {
       const response = await this.s3FileUpload.uploadFile(
