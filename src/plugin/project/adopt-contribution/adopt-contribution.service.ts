@@ -88,6 +88,7 @@ export class AdoptContributionService {
         node: node ? new Types.ObjectId(node) : null,
         user: new Types.ObjectId(userId),
         value,
+        // reamarks,
         status: isCreater ? 'accepted' : 'pending', // Auto-accept if user is project creator
         files: fileObjects?.map((file) => ({
           url: file.url,
@@ -526,9 +527,71 @@ export class AdoptContributionService {
 
   async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
     try {
+      // Aggregate contributions for the given project
+      const leaderboard = await this.contributionModel.aggregate([
+        // Match contributions for the specific project
+        {
+          $match: {
+            rootProject: forumId,
+            ...(forumType === 'club' ? { club: userId } : { node: userId }),
+            status: 'accepted' // Only count accepted contributions
+          }
+        },
+        // Group by user and calculate total contribution
+        {
+          $group: {
+            _id: '$user',
+            totalContribution: { $sum: '$value' },
+            contributionCount: { $sum: 1 },
+            contributions: {
+              $push: {
+                project: '$project',
+                parameter: '$parameter',
+                value: '$value',
+                files: '$files'
+              }
+            }
+          }
+        },
+        // Lookup user details
+        {
+          $lookup: {
+            from: 'users', // Assuming the collection name for users
+            localField: '_id',
+            foreignField: '_id',
+            as: 'userDetails'
+          }
+        },
+        // Unwind user details
+        {
+          $unwind: '$userDetails'
+        },
+        // Sort by total contribution in descending order
+        {
+          $sort: { totalContribution: -1 }
+        },
+        // Project to shape the output
+        {
+          $project: {
+            userId: '$_id',
+            name: '$userDetails.name',
+            email: '$userDetails.email',
+            profilePicture: '$userDetails.profilePicture',
+            totalContribution: 1,
+            contributionCount: 1,
+            contributions: 1
+          }
+        }
+      ]);
 
+      return {
+        totalContributors: leaderboard.length,
+        leaderboard
+      };
     } catch (error) {
-
+      // Handle any errors
+      console.error('Error fetching leaderboard:', error);
+      throw new Error('Failed to retrieve leaderboard');
     }
   }
 
