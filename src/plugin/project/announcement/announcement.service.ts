@@ -46,6 +46,8 @@ export class AnnouncementService {
 
       return { createdAnnouncement, success: true, message: "announcement created successfully" };
     } catch (error) {
+      console.log(error);
+
       throw new BadRequestException(error)
     }
   }
