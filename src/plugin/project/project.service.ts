@@ -1069,6 +1069,7 @@ export class ProjectService {
    */
   async acceptContributions(userId: Types.ObjectId, contributionId: Types.ObjectId) {
     try {
+      console.log({ contributionId })
       // Properly typed population
       const contributionDetails = await this.contributionModel.findById(contributionId)
         .populate<{ project: PopulatedProject }>({
@@ -1077,7 +1078,6 @@ export class ProjectService {
           model: this.projectModel
         })
         .lean();
-
       // Check if contribution exists
       if (!contributionDetails) {
         throw new NotAcceptableException('CONTRIBUTION NOT FOUND');
