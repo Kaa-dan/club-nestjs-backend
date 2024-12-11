@@ -67,6 +67,10 @@ export class AdoptContributionController {
     return this.adoptContributionService.notAdoptedForum(user._id, projectId);
   }
 
+  @Get('project-activities/:projectId')
+  getActivitiesOfProject(@Param('projectId') projectId: Types.ObjectId) {
+    return this.adoptContributionService.getActivitiesOfProject(projectId)
+  }
   @Get('leaderboard')
   getLeaderBoard(@Req() { user }, @Query('forumId') forumId: Types.ObjectId, @Query('forumType') forumType: "club" | "node") {
     return this.adoptContributionService.getLeaderBoard(user._id, forumId, forumType)
