@@ -41,6 +41,8 @@ export class Contribution {
   })
   files: { url: string; originalname: string; size: number }[];
 
+  @Prop({ required: false })
+  reamarks: string
   @Prop({
     type: String,
     enum: ['accepted', 'pending', 'rejected'],

@@ -29,7 +29,7 @@ export class UserService {
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
-  ) {}
+  ) { }
 
   async getUsersNotInClubOrNode(
     search: string,
@@ -168,7 +168,7 @@ export class UserService {
 
       return userResponse;
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -210,7 +210,7 @@ export class UserService {
         success: true,
       };
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -272,7 +272,7 @@ export class UserService {
         };
       }
       return { isLogged: true, user };
-    } catch (error) {}
+    } catch (error) { }
   }
 
   /**
@@ -334,7 +334,6 @@ export class UserService {
         );
       }
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -401,7 +400,6 @@ export class UserService {
         );
       }
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -468,7 +466,6 @@ export class UserService {
         );
       }
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -567,7 +564,6 @@ export class UserService {
       }
     } catch (error) {
       await session.abortTransaction();
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }

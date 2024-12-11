@@ -22,11 +22,11 @@ interface FileValidationConfig {
 
 @Injectable()
 export class FileValidationPipe implements PipeTransform {
-  constructor(private config: Record<string, FileValidationConfig>) {}
+  constructor(private config: Record<string, FileValidationConfig>) { }
   transform(value: any, metadata: ArgumentMetadata) {
     // Handle array of files directly
     if (Array.isArray(value)) {
-      console.log('Processing array of files');
+      ('Processing array of files');
       const fieldName = Object.keys(this.config)[0];
       return this.validateFiles(value, fieldName);
     }
@@ -40,7 +40,6 @@ export class FileValidationPipe implements PipeTransform {
 
     for (const field of fileFields) {
       const fieldConfig = this.config[field];
-      console.log(fieldConfig, 'asda');
 
       // For single file or array of files
       if (value[field]) {

@@ -46,7 +46,7 @@ export class RulesRegulationsService {
     private readonly reportOffenceModel: Model<ReportOffence>,
     @InjectModel(ProposeRulesAndRegulation.name)
     private readonly ProposeRulesAndRegulationModel: Model<ProposeRulesAndRegulation>,
-  ) {}
+  ) { }
 
   /*
   @Param type :strgin  "node"|"club"
@@ -74,7 +74,7 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
-    console.log('nithinS');
+    ('nithinS');
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
     let fileObjects = null;
     if (files) {
@@ -110,7 +110,7 @@ export class RulesRegulationsService {
 
       return await newRulesRegulations.save();
     } catch (error) {
-      console.log({ error });
+      ({ error });
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
         error,
@@ -152,7 +152,7 @@ export class RulesRegulationsService {
 
       return await newRulesRegulations.save();
     } catch (error) {
-      console.log({ error });
+      ({ error });
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
         error,
@@ -265,13 +265,13 @@ export class RulesRegulationsService {
 
   async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
     try {
-      console.log({ hehe: forId, type });
+      ({ hehe: forId, type });
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
           .populate('createdBy')
           .exec();
-        console.log({ response });
+        ({ response });
         return response;
       } else if (type === 'node') {
         return await this.rulesregulationModel
@@ -295,7 +295,7 @@ export class RulesRegulationsService {
     entity: Types.ObjectId,
   ) {
     try {
-      console.log({ userId, type, entity });
+      ({ userId, type, entity });
       let query = {};
 
       if (type === 'club') {
@@ -464,7 +464,7 @@ export class RulesRegulationsService {
 
       return savedRule;
     } catch (error) {
-      console.log({ error });
+      ({ error });
       if (
         error instanceof NotFoundException ||
         error instanceof BadRequestException
@@ -483,7 +483,7 @@ export class RulesRegulationsService {
   //   rulesId: Types.ObjectId,
   // ): Promise<Node_[]> {
   //   try {
-  //     console.log('Input Parameters:', { userId, rulesId });
+  //     ('Input Parameters:', { userId, rulesId });
 
   //     const existingRule = this.rulesregulationModel.findById(
   //       new Types.ObjectId(rulesId),
@@ -562,7 +562,6 @@ export class RulesRegulationsService {
     rulesId: Types.ObjectId,
   ): Promise<{ clubs: Club[]; nodes: Node_[] }> {
     try {
-      console.log('Input Parameters:', { userId, rulesId });
 
       const existingRule = await this.rulesregulationModel.findById(
         new Types.ObjectId(rulesId),
@@ -715,7 +714,7 @@ export class RulesRegulationsService {
     rulesRegulationId: Types.ObjectId,
   ) {
     try {
-      console.log({ userId, rulesRegulationId });
+      ({ userId, rulesRegulationId });
       // Check if the user has already liked
       const rulesRegulation = await this.rulesregulationModel.findOne({
         _id: rulesRegulationId,
@@ -741,7 +740,7 @@ export class RulesRegulationsService {
           { new: true, upsert: true },
         )
         .exec();
-      console.log({ updatedRulesRegulation });
+      ({ updatedRulesRegulation });
       if (!updatedRulesRegulation) {
         throw new NotFoundException('Rules regulation not found');
       }
@@ -880,7 +879,7 @@ export class RulesRegulationsService {
         .populate('reportedBy')
         .populate('rulesId');
     } catch (error) {
-      console.log(error);
+      (error);
       throw new InternalServerErrorException(
         'Error while getting all reports',
         error,
@@ -893,7 +892,7 @@ export class RulesRegulationsService {
     userId: Types.ObjectId,
     rulesRegulationId: Types.ObjectId,
   ) {
-    console.log({ userId });
+    ({ userId });
 
     try {
       // Check if the user has already liked

@@ -8,6 +8,7 @@ import {
   Delete,
   Req,
   UploadedFiles,
+  Query,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { AdoptContributionService } from './adopt-contribution.service';
@@ -46,7 +47,6 @@ export class AdoptContributionController {
     )
     files: { file: Express.Multer.File[] },
   ) {
-    console.log(files);
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
@@ -66,4 +66,15 @@ export class AdoptContributionController {
   ) {
     return this.adoptContributionService.notAdoptedForum(user._id, projectId);
   }
+
+  @Get('project-activities/:projectId')
+  getActivitiesOfProject(@Param('projectId') projectId: Types.ObjectId) {
+    return this.adoptContributionService.getActivitiesOfProject(projectId)
+  }
+  @Get('leaderboard')
+  getLeaderBoard(@Req() { user }, @Query('forumId') forumId: Types.ObjectId, @Query('forumType') forumType: "club" | "node") {
+    return this.adoptContributionService.getLeaderBoard(user._id, forumId, forumType)
+  }
+
+
 }

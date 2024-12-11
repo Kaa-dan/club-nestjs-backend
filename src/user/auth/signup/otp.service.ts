@@ -184,7 +184,6 @@ export class OtpService {
       const token = generateToken({ email }, '10min');
       return { status: true };
     } catch (error) {
-      console.log(error, 'errrr');
 
       throw error;
     }
@@ -221,7 +220,6 @@ export class OtpService {
         token,
       };
     } catch (error) {
-      console.log(error, 'Err');
       throw error;
     }
   }

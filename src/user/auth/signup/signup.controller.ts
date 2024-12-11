@@ -13,7 +13,7 @@ import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 @SkipAuth()
 @Controller()
 export class SignupController {
-  constructor(private readonly signupService: SignupService) {}
+  constructor(private readonly signupService: SignupService) { }
 
   @Post('sign-up')
   async registerUser(@Body() createUser: CreateUserDto, @Res() res: Response) {
@@ -24,8 +24,7 @@ export class SignupController {
       // Return a success response
       return res.status(HttpStatus.CREATED).json(result);
     } catch (error) {
-      console.log(error,"err");
-      
+
       // Use instanceof to check for specific exceptions
       if (error instanceof ConflictException) {
         return res.status(HttpStatus.CONFLICT).json(error);

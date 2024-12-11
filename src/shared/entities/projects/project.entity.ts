@@ -112,6 +112,7 @@ export class Project extends Document {
 
   @Prop({ type: [Object] })
   @IsArray()
+  @IsOptional()
   champions: { user: Types.ObjectId }[];
 
   @Prop({

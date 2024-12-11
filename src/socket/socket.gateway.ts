@@ -24,19 +24,16 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleConnection(client: any, ...args: any[]) {
     this.connectedClients.set(client.id, client);
-    console.log('Client connected:', client.id);
-    console.log({ connectedClients: this.connectedClients });
+    ({ connectedClients: this.connectedClients });
   }
 
   handleDisconnect(client: any) {
     this.connectedClients.delete(client.id);
-    console.log('Client disconnected:', client.id);
-    console.log({ connectedClients: this.connectedClients });
+    ({ connectedClients: this.connectedClients });
   }
 
   @SubscribeMessage('newComment')
   handleNewComment(client: Socket, @MessageBody() payload: any) {
-    console.log('newcomme', payload);
     // client.broadcast.emit('commentAdded', payload);
     this.server.emit('commentAdded', payload);
   }

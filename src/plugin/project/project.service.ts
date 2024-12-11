@@ -20,6 +20,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
+import { error } from 'console';
 
 /**
  * Service responsible for managing all project-related operations
@@ -39,7 +40,7 @@ export class ProjectService {
     @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   /**
    * Creates a new project with all associated data and files
@@ -104,11 +105,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Construct core project data
@@ -186,13 +187,11 @@ export class ProjectService {
             };
           },
         );
-        console.log({ parametersToCreate });
         const parameterValue = await this.parameterModel.create(
           parametersToCreate,
           { session },
         );
 
-        console.log({ parameterValue });
       }
 
       // Handle FAQs if provided
@@ -289,11 +288,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: prevBannerImage.originalname,
-            mimetype: prevBannerImage.mimetype,
-            size: prevBannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: prevBannerImage.originalname,
+          mimetype: prevBannerImage.mimetype,
+          size: prevBannerImage.size,
+        }
         : null;
 
       // Construct base project data
@@ -523,11 +522,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Prepare update data
@@ -620,7 +619,6 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
-    console.log({ id });
     try {
       const result = await this.projectModel.aggregate([
         {
@@ -788,8 +786,6 @@ export class ProjectService {
         },
       ]);
 
-      // Debug logging
-      console.log('Query result:', JSON.stringify(result, null, 2));
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
@@ -797,12 +793,7 @@ export class ProjectService {
 
       // Debug: Check parameters and contributions
       const project = result[0];
-      console.log('Parameters found:', project.parameters?.length || 0);
-      console.log('Contributions found:', project.contributions?.length || 0);
-      console.log(
-        'Contributions by Parameter:',
-        project.contributionsByParameter,
-      );
+
 
       return project;
     } catch (error) {
@@ -844,6 +835,7 @@ export class ProjectService {
     club?: Types.ObjectId,
   ) {
     try {
+      console.log("hey")
       const query: any = {
         status,
         // active: isActive,
@@ -873,7 +865,6 @@ export class ProjectService {
         .populate('club', 'name')
         .populate('createdBy', 'userName profileImage firstName lastName');
 
-      console.log({ query, projects });
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -982,7 +973,6 @@ export class ProjectService {
     status: "accepted" | "pending" | "rejected"
   ) {
 
-    console.log({ userId, projectId, status })
 
     try {
       const query = [
@@ -1080,6 +1070,7 @@ export class ProjectService {
    */
   async acceptContributions(userId: Types.ObjectId, contributionId: Types.ObjectId) {
     try {
+      console.log({ contributionId })
       // Properly typed population
       const contributionDetails = await this.contributionModel.findById(contributionId)
         .populate<{ project: PopulatedProject }>({
@@ -1088,7 +1079,6 @@ export class ProjectService {
           model: this.projectModel
         })
         .lean();
-
       // Check if contribution exists
       if (!contributionDetails) {
         throw new NotAcceptableException('CONTRIBUTION NOT FOUND');
@@ -1127,15 +1117,18 @@ export class ProjectService {
   /**
    * 
    */
-  async acceptProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId) {
+  async acceptOrRejectProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId, type: 'accept' | 'reject') {
     try {
 
-      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: 'published', publishedBy: userID })
+      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: type === "accept" ? 'published' : 'rejected', publishedBy: userID })
 
     } catch (error) {
       throw new BadRequestException('error while accepting project', error)
     }
   }
+
+
+
   /**
    * Handles file upload to S3 storage
    * @param file - File to be uploaded
