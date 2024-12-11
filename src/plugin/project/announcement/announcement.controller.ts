@@ -41,7 +41,7 @@ export class AnnouncementController {
     return this.announcementService.create(user._id, createAnnouncementDto, documentFiles);
   }
 
-  @Get("all-project-announcement/:id")
+  @Get("all-project-announcement/:projectID")
   getAllAnnouncementsOfProject(@Req() { user }, @Param('projectID') projectID: Types.ObjectId) {
     return this.announcementService.getAllAnnouncementsOfProject(user._id, projectID);
   }
