@@ -35,7 +35,7 @@ export class AdoptContributionService {
     @InjectModel(Club.name) private clubModel: Model<Club>,
     @InjectModel(Node_.name) private nodeModel: Model<Node_>,
     @InjectModel(ProjectActivities.name)
-    private projectActivities: Model<ProjectActivities>,
+    private projectActivitiesModel: Model<ProjectActivities>,
   ) { }
 
   /**
@@ -96,7 +96,7 @@ export class AdoptContributionService {
           size: file.size,
         })),
       });
-      const newActivity = await this.projectActivities.create({
+      const newActivity = await this.projectActivitiesModel.create({
         author: new Types.ObjectId(userId),
         contribution: newContribution._id,
       });
@@ -452,16 +452,78 @@ export class AdoptContributionService {
 
 
 
-  async createAnnouncement() {
-    try {
+  /** 
+   * 
+  */
 
-    } catch (error) {
-
-    }
-  }
   /**
    * 
    */
+  async getActivitiesOfProject(projectID: Types.ObjectId) {
+    try {
+      const activities = await this.projectActivitiesModel.aggregate([
+        // Match activities related to contributions of the specific project
+        {
+          $lookup: {
+            from: 'contributions', // Ensure this matches the actual collection name
+            localField: 'contribution',
+            foreignField: '_id',
+            as: 'contributionDetails'
+          }
+        },
+        {
+          $unwind: '$contributionDetails'
+        },
+        // Filter for contributions related to the project
+        {
+          $match: {
+            // 'contributionDetails.project': projectID,
+            // Optionally include contributions from root project as well
+            $or: [
+              { 'contributionDetails.project': projectID },
+              { 'contributionDetails.rootProject': projectID }
+            ]
+          }
+        },
+        // Lookup author details
+        {
+          $lookup: {
+            from: 'users', // Ensure this matches the actual collection name
+            localField: 'author',
+            foreignField: '_id',
+            as: 'authorDetails'
+          }
+        },
+        {
+          $unwind: '$authorDetails'
+        },
+        // Project and shape the output
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            activityType: 1,
+            contribution: '$contributionDetails',
+            author: {
+              _id: '$authorDetails._id',
+              name: '$authorDetails.name', // Adjust based on your User schema
+              // Add other author fields as needed
+            }
+          }
+        },
+        // Sort by most recent first
+        {
+          $sort: { date: -1 }
+        }
+      ]);
+
+      return activities;
+    } catch (error) {
+      throw new BadRequestException(error.message)
+    }
+  }
+
+
   async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
     try {
 
@@ -469,12 +531,15 @@ export class AdoptContributionService {
 
     }
   }
+
+
   /**
    * Helper method to upload files to S3 storage
    * @param file - File to be uploaded
    * @returns Upload response containing the file URL
    * @throws BadRequestException if upload fails
    */
+
   private async uploadFiles(file: Express.Multer.File) {
     try {
       const response = await this.s3FileUpload.uploadFile(

@@ -20,6 +20,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
+import { error } from 'console';
 
 /**
  * Service responsible for managing all project-related operations
@@ -1125,6 +1126,9 @@ export class ProjectService {
       throw new BadRequestException('error while accepting project', error)
     }
   }
+
+
+
   /**
    * Handles file upload to S3 storage
    * @param file - File to be uploaded
