@@ -48,6 +48,7 @@ import {
 } from './entities/projects/contribution.entity';
 import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/project-adoption.entity';
 import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
+import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 
 @Module({
   imports: [
@@ -77,7 +78,8 @@ import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/
       { name: Parameter.name, schema: ParameterSchema },
       { name: Contribution.name, schema: ContributionSchema },
       { name: ProjectAdoption.name, schema: ProjectAdoptionSchema },
-      { name: ProjectActivities.name, schema: ProjectActivitiesSchema }
+      { name: ProjectActivities.name, schema: ProjectActivitiesSchema },
+      { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema }
     ]),
     forwardRef(() => SearchModule),
   ],

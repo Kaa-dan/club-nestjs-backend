@@ -293,6 +293,14 @@ export class AdoptContributionService {
   }
 
 
+
+  async createAnnouncement() {
+    try {
+
+    } catch (error) {
+
+    }
+  }
   /**
    * 
    */
