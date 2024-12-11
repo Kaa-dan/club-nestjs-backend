@@ -274,9 +274,9 @@ export class ProjectController {
   /**
    * 
    */
-  @Put('accept-contributions/:contributionId')
-  async acceptContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId) {
-    return this.projectService.acceptContributions(user._id, contributionId)
+  @Put('accept-contributions/:contributionId/:type')
+  async acceptOrRejectContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId, @Param('type', ParseBoolPipe) type: boolean) {
+    return this.projectService.acceptOrRejectContributions(user._id, contributionId, type)
   }
 
 
