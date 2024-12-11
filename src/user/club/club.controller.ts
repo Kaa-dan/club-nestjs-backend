@@ -42,7 +42,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 @ApiTags('Clubs')
 @Controller('clubs')
 export class ClubController {
-  constructor(private readonly clubService: ClubService) {}
+  constructor(private readonly clubService: ClubService) { }
 
   /**
    * Creates a new club with provided details and images
@@ -109,7 +109,7 @@ export class ClubController {
     }
 
     const userId = new Types.ObjectId(req.user._id);
-    console.log({ userId });
+    ({ userId });
     return await this.clubService.createClub({
       ...createClubDto,
       profileImage: files?.profileImage[0],
@@ -363,7 +363,7 @@ export class ClubController {
     @Param('clubId') clubId: Types.ObjectId,
     @Query('search') search: string = '',
   ) {
-    console.log({ clubId, search });
+    ({ clubId, search });
     return await this.clubService.searchMemberOfClub(
       new Types.ObjectId(clubId),
       search,

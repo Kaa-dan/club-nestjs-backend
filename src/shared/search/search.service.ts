@@ -43,7 +43,6 @@ export class SearchService {
             }
 
         } catch (error) {
-            console.log("e", error)
             throw new BadRequestException('Failed to search')
         }
     }

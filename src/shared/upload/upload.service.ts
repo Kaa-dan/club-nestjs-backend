@@ -65,7 +65,7 @@ export class UploadService {
         url: publicUrl,
       };
     } catch (error) {
-      console.log(error);
+      (error);
       throw new InternalServerErrorException(
         `Failed to upload file: ${error.message ?? error}`,
       );

@@ -28,7 +28,7 @@ import { AccessDto } from './dto/access.dto';
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Get('search')
   async getUsersNotInClubOrNode(
@@ -70,7 +70,6 @@ export class UserController {
    */
   @Get('username')
   async getUserByUserName(@Query('term') term: string) {
-    console.log('termm ', term);
     return await this.userService.getUserByUserName(term);
   }
 

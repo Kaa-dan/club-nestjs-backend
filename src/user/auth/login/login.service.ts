@@ -15,7 +15,7 @@ import { ENV } from 'src/utils/config/env.config';
 
 @Injectable()
 export class LoginService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(@InjectModel(User.name) private userModel: Model<User>) { }
 
   async login(
     @Res({ passthrough: true }) response: Response,
@@ -23,7 +23,7 @@ export class LoginService {
   ): Promise<{ status: boolean; message: string; token?: string; data: any }> {
     const { email, password } = loginDto;
     try {
-      console.log(email);
+      (email);
       // Check if the user exists
       const user = await this.userModel.findOne({ email });
 
@@ -58,7 +58,7 @@ export class LoginService {
       const sanitizedUser = JSON.parse(JSON.stringify(user));
       delete sanitizedUser.password;
 
-      console.log('setting COKKIE');
+      ('setting COKKIE');
 
       response.cookie('auth_token', token, {
         httpOnly: true,
@@ -68,7 +68,7 @@ export class LoginService {
         path: '/',
       });
 
-      console.log('SETTED COKKIE');
+      ('SETTED COKKIE');
       return {
         status: true,
         message: 'Login successful',
@@ -76,7 +76,7 @@ export class LoginService {
         data: sanitizedUser,
       };
     } catch (error) {
-      console.log(error);
+      (error);
       throw error;
     }
   }

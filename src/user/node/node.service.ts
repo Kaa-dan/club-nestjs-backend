@@ -23,7 +23,7 @@ export class NodeService {
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     private readonly uploadService: UploadService,
-  ) {}
+  ) { }
 
   /**
    * Creates a new node in the database.
@@ -78,7 +78,6 @@ export class NodeService {
       await session.commitTransaction();
       return nodeResponse;
     } catch (error) {
-      console.log(error, 'error');
       await session.abortTransaction();
 
       if (error instanceof ConflictException) {
@@ -111,7 +110,7 @@ export class NodeService {
    */
   async findOne(nodeId: string) {
     try {
-      console.log({ nodeId });
+      ({ nodeId });
       const node = await this.nodeModel.findById(nodeId);
 
       if (!node) {
@@ -152,7 +151,6 @@ export class NodeService {
         .populate('user', '-password')
         .exec();
     } catch (error) {
-      console.log(error, 'error');
       throw new BadRequestException(
         'Error while trying to get nodes. Please try again later.',
       );
@@ -221,7 +219,6 @@ export class NodeService {
           'You have already requested to join this node',
         );
       }
-      console.log(error, 'error');
       throw new BadRequestException(
         'Error while trying to request to join. Please try again later.',
       );
@@ -286,7 +283,6 @@ export class NodeService {
         .exec();
       return requests;
     } catch (error) {
-      console.log(error, 'error');
       throw new BadRequestException(
         'Error while trying to get node join requests. Please try again later.',
       );
@@ -308,7 +304,7 @@ export class NodeService {
         .exec();
       return request;
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Error while trying to get user join requests. Please try again later.',
       );
@@ -331,7 +327,6 @@ export class NodeService {
     status: 'ACCEPTED' | 'REJECTED',
   ) {
     try {
-      console.log('ddd', status);
       const updateData: any = { status };
       if (status === 'REJECTED') {
         const response = await this.nodeJoinRequestModel.findOneAndDelete({
@@ -347,7 +342,6 @@ export class NodeService {
         { new: true },
       );
 
-      console.log(response, 'response');
 
       if (response.status === 'ACCEPTED') {
         const createNodeMember = new this.nodeMembersModel({
@@ -362,7 +356,6 @@ export class NodeService {
 
       return response;
     } catch (error) {
-      console.log(error, 'error');
       throw new BadRequestException(
         'Error while trying to accept or reject request. Please try again later.',
       );
@@ -418,7 +411,6 @@ export class NodeService {
       const updatedNode = await node.save();
       return updatedNode;
     } catch (error) {
-      console.log(error, 'error');
       throw new BadRequestException(
         'Error while trying to update node. Please try again later.',
       );
@@ -467,7 +459,6 @@ export class NodeService {
         message: 'Successfully left node',
       };
     } catch (error) {
-      console.log(error, 'error');
       await session.abortTransaction();
       throw new BadRequestException(
         'Error while trying to leave node. Please try again later.',
@@ -516,7 +507,7 @@ export class NodeService {
       }
       return { status };
     } catch (error) {
-      console.log(error);
+      (error);
       throw new BadRequestException(
         'Failed to fetch node join requests. Please try again later.',
       );

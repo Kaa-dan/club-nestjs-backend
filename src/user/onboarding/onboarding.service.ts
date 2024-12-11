@@ -60,7 +60,7 @@ export class OnboardingService {
         message: 'User onboarding details retrieved successfully',
       };
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException)
         throw new NotFoundException(error.message);
       throw new BadRequestException('Internal Server Error');
@@ -137,7 +137,7 @@ export class OnboardingService {
           imageFiles.profileImage.mimetype,
           'user',
         );
-        console.log({ user });
+        ({ user });
         // Delete old profile image if it exists
         if (user.profileImage && user.signupThrough === 'gmail') {
           await this.uploadService.deleteFile(user.profileImage);
@@ -184,7 +184,7 @@ export class OnboardingService {
         message: 'User images updated successfully',
       };
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof InternalServerErrorException)
         throw new InternalServerErrorException(error.message);
       if (error instanceof NotFoundException)

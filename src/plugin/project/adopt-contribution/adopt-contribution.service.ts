@@ -1,15 +1,21 @@
-import { BadRequestException, Injectable, NotAcceptableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotAcceptableException,
+} from '@nestjs/common';
 import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto';
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
-import { of } from 'rxjs';
+import { async, of } from 'rxjs';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { Node_ } from 'src/shared/entities/node.entity';
+import { ProjectActivities } from 'src/shared/entities/projects/project-activities.entity';
+import { ServiceResponse } from 'src/shared/types/service.response.type';
 
 /**
  * Service responsible for handling project contribution adoptions
@@ -24,9 +30,12 @@ export class AdoptContributionService {
     @InjectModel(ClubMembers.name)
     private clubMemberModel: Model<ClubMembers>,
     private s3FileUpload: UploadService,
-    @InjectModel(ProjectAdoption.name) private projectAdoptionModel: Model<ProjectAdoption>,
+    @InjectModel(ProjectAdoption.name)
+    private projectAdoptionModel: Model<ProjectAdoption>,
     @InjectModel(Club.name) private clubModel: Model<Club>,
-    @InjectModel(Node_.name) private nodeModel: Model<Node_>
+    @InjectModel(Node_.name) private nodeModel: Model<Node_>,
+    @InjectModel(ProjectActivities.name)
+    private projectActivitiesModel: Model<ProjectActivities>,
   ) { }
 
   /**
@@ -55,7 +64,6 @@ export class AdoptContributionService {
       const uploadedFiles = await Promise.all(
         files.file.map((file) => this.uploadFiles(file)),
       );
-      console.log({ uploadedFiles });
       // Create standardized file objects with metadata
       const fileObjects = uploadedFiles.map((file, index) => ({
         url: file.url,
@@ -88,10 +96,17 @@ export class AdoptContributionService {
           size: file.size,
         })),
       });
+      const newActivity = await this.projectActivitiesModel.create({
+        author: new Types.ObjectId(userId),
+        contribution: newContribution._id,
+      });
 
-      return newContribution;
+      return {
+        succes: true,
+        data: { newContribution, newActivity },
+        message: 'contributed succesfully',
+      };
     } catch (error) {
-      console.log({ error });
       throw new BadRequestException(
         'You are not authorized to create contribution',
       );
@@ -99,38 +114,45 @@ export class AdoptContributionService {
   }
   /**
    * Adopt or propose project in a forum based on user role
-   * @param userId 
-   * @param adoptForumDto 
+   * @param userId
+   * @param adoptForumDto
    * @returns proposed project with message
    */
 
-  async adoptForum(userId: Types.ObjectId, adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
+  async adoptForum(
+    userId: Types.ObjectId,
+    adoptForumDto: {
+      project: Types.ObjectId;
+      node?: Types.ObjectId;
+      club?: Types.ObjectId;
+    },
+  ) {
+    console.log({ adoptForumDto })
     try {
-
       if (adoptForumDto.club && adoptForumDto.node) {
-        throw new BadRequestException('forum be either club or node')
-
+        throw new BadRequestException('forum be either club or node');
       }
       const userDetails = await this.clubMemberModel.findOne({
         user: new Types.ObjectId(userId),
       });
       const adoptionData = {
         project: new Types.ObjectId(adoptForumDto.project),
-        proposedBy: userId,
-        ...(userDetails.role !== 'member' && { acceptedBy: userId }),
-        node: adoptForumDto?.node || null,
-        club: adoptForumDto?.club || null
+        proposedBy: new Types.ObjectId(userId),
+        ...(userDetails.role !== 'member' && { acceptedBy: new Types.ObjectId(userId) }),
+        node: adoptForumDto.node ? new Types.ObjectId(adoptForumDto.node) : null,
+        club: adoptForumDto.club ? new Types.ObjectId(adoptForumDto.club) : null,
       };
 
+
       // Create adoption record
-      const adoptedProject = await this.projectAdoptionModel.create(adoptionData);
+      const adoptedProject =
+        await this.projectAdoptionModel.create(adoptionData);
 
       return {
         success: true,
         data: adoptedProject,
-        message: "Project adopted successfully"
+        message: 'Project adopted successfully',
       };
-
     } catch (error) {
       throw new NotAcceptableException('Failed to adopt forum');
     }
@@ -138,119 +160,378 @@ export class AdoptContributionService {
 
   /**
    * Get not adopted forum list of a user based on project
-   * @param userId 
-   * @param projectId   
+   * @param userId
+   * @param projectId
    */
 
-  async notAdoptedForum(userId: Types.ObjectId, projectId: Types.ObjectId) {
+
+
+  async notAdoptedForum(
+    userId: Types.ObjectId,
+    projectId: Types.ObjectId
+  ) {
     try {
-      const notAdoptedClubs = await this.clubModel.aggregate([
-        // Stage 1: Find clubs where the user is a member
-        {
-          $lookup: {
-            from: "clubmembers",
-            localField: "_id",
-            foreignField: "club",
-            as: "membership"
-          }
-        },
-        {
-          $match: {
-            "membership.user": userId
-          }
-        },
 
-        // Stage 2: Exclude clubs that have already adopted the project
-        {
-          $lookup: {
-            from: "projects",
-            let: { clubId: "$_id" },
-            pipeline: [
-              {
+      const [clubResults, nodeResults] = await Promise.all([
+        this.clubModel.aggregate([
+          // Stage 1: Get user's clubs and nodes memberships using $facet
+          {
+            $facet: {
+              clubs: [
+                {
+                  $lookup: {
+                    from: "clubmembers",
+                    localField: "_id",
+                    foreignField: "club",
+                    as: "membership"
+                  }
+                },
+                {
+                  $unwind: {
+                    path: "$membership",
+                    preserveNullAndEmptyArrays: false
+                  }
+                },
+                {
+                  $match: {
+                    "membership.user": userId,
+                  }
+                },
+                // Check if club has directly created/adopted the project
+                {
+                  $lookup: {
+                    from: 'projects',
+                    let: { clubId: '$_id' },
+                    pipeline: [
+                      {
+                        $match: {
+                          $expr: {
+                            $and: [
+                              { $eq: ['$club', '$$clubId'] },
+                              { $eq: ['$_id', projectId] },
+                            ],
+                          },
+                        },
+                      },
+                    ],
+                    as: 'projectAdoption',
+                  },
+                },
+                {
+                  $match: {
+                    projectAdoption: { $size: 0 },
+                  },
+                },
+                // Check if club has adopted through projectadoptions schema
+                {
+                  $lookup: {
+                    from: 'projectadoptions',
+                    let: { clubId: '$_id' },
+                    pipeline: [{
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ['$club', '$$clubId'] },
+                            { $eq: ['$project', projectId] }
+                          ]
+                        }
+                      }
+                    }],
+                    as: 'projectadoptionsdifferentschema'
+                  }
+                },
+                {
+                  $match: {
+                    projectadoptionsdifferentschema: { $size: 0 },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    id: '$_id',
+                    name: 1,
+                    image: '$profileImage.url',
+                    role: "$membership.role",
+                    type: { $literal: 'club' }
+                  }
+                }
+              ],
+              nodes: [
+                // Similar pipeline for nodes
+                {
+                  $lookup: {
+                    from: "nodemembers",
+                    localField: "_id",
+                    foreignField: "node",
+                    as: "membership"
+                  }
+                },
+                {
+                  $unwind: {
+                    path: "$membership",
+                    preserveNullAndEmptyArrays: false
+                  }
+                },
+                {
+                  $match: {
+                    "membership.user": userId,
+                  }
+                },
+                // Check if node has directly created/adopted the project
+                {
+                  $lookup: {
+                    from: 'projects',
+                    let: { nodeId: '$_id' },
+                    pipeline: [
+                      {
+                        $match: {
+                          $expr: {
+                            $and: [
+                              { $eq: ['$node', '$$nodeId'] },
+                              { $eq: ['$_id', projectId] },
+                            ],
+                          },
+                        },
+                      },
+                    ],
+                    as: 'projectAdoption',
+                  },
+                },
+                {
+                  $match: {
+                    projectAdoption: { $size: 0 },
+                  },
+                },
+                // Check if node has adopted through projectadoptions schema
+                {
+                  $lookup: {
+                    from: 'projectadoptions',
+                    let: { nodeId: '$_id' },
+                    pipeline: [{
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ['$node', '$$nodeId'] },
+                            { $eq: ['$project', projectId] }
+                          ]
+                        }
+                      }
+                    }],
+                    as: 'projectadoptionsdifferentschema'
+                  }
+                },
+                {
+                  $match: {
+                    projectadoptionsdifferentschema: { $size: 0 },
+                  },
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    id: '$_id',
+                    name: 1,
+                    image: '$profileImage.url',
+                    role: "$membership.role",
+                    type: { $literal: 'node' }
+                  }
+                }
+              ]
+            }
+          },
+          // Stage 2: Combine results
+          {
+            $project: {
+              all: {
+                $concatArrays: ['$clubs', '$nodes']
+              }
+            }
+          },
+          {
+            $unwind: '$all'
+          },
+          {
+            $replaceRoot: { newRoot: '$all' }
+          }
+        ]),
+
+        this.nodeModel.aggregate([
+          // Stage 1: Find nodes where the user is a member
+          {
+            $lookup: {
+              from: "nodemembers",
+              localField: "_id",
+              foreignField: "node", // Fixed: changed from 'club' to 'node'
+              as: "membership"
+            }
+          },
+          {
+            $unwind: {
+              path: "$membership",
+              preserveNullAndEmptyArrays: false
+            }
+          },
+          {
+            $match: {
+              "membership.user": userId,
+            }
+          },
+          // Stage 2: Exclude nodes that have already adopted the project
+          {
+            $lookup: {
+              from: 'projects',
+              let: { nodeId: '$_id' },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ['$node', '$$nodeId'] },
+                        { $eq: ['$_id', projectId] },
+                      ],
+                    },
+                  },
+                },
+              ],
+              as: 'projectAdoption',
+            },
+          },
+          {
+            $match: {
+              projectAdoption: { $size: 0 },
+            },
+          },
+          // Stage 3: Exclude nodes that have already adopted via projectadoptions schema
+          {
+            $lookup: {
+              from: 'projectadoptions',
+              let: { nodeId: '$_id' },
+              pipeline: [{
                 $match: {
                   $expr: {
                     $and: [
-                      { $eq: ["$club", "$$clubId"] },
-                      { $eq: ["$_id", projectId] }
+                      { $eq: ['$node', '$$nodeId'] },
+                      { $eq: ['$project', projectId] }
                     ]
                   }
                 }
-              }
-            ],
-            as: "projectAdoption"
+              }],
+              as: 'projectadoptionsdifferentschema'
+            }
+          },
+          {
+            $match: {
+              projectadoptionsdifferentschema: { $size: 0 },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              id: '$_id',
+              name: 1,
+              image: '$profileImage.url',
+              role: "$membership.role",
+              type: { $literal: 'node' }
+            }
           }
-        },
-        {
-          $match: {
-            "projectAdoption": { $size: 0 }
-          }
-        },
-
-        {
-          $project: {
-            _id: 1,
-            name: 1
-          }
-        }
+        ])
       ]);
 
-      const notAdoptedNodes = await this.nodeModel.aggregate([
-        // Stage 1: Find clubs where the user is a member
-        {
-          $lookup: {
-            from: "clubmembers",
-            localField: "_id",
-            foreignField: "club",
-            as: "membership"
-          }
-        },
-        {
-          $match: {
-            "membership.user": userId
-          }
-        },
-
-        // Stage 2: Exclude clubs that have already adopted the project
-        {
-          $lookup: {
-            from: "projects",
-            let: { clubId: "$_id" },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ["$club", "$$clubId"] },
-                      { $eq: ["$_id", projectId] }
-                    ]
-                  }
-                }
-              }
-            ],
-            as: "projectAdoption"
-          }
-        },
-        {
-          $match: {
-            "projectAdoption": { $size: 0 }
-          }
-        },
-
-        {
-          $project: {
-            _id: 1,
-            name: 1
-          }
-        }
-      ]);
-
-
-
-      return { data: { notAdoptedClubs, notAdoptedNodes } };
+      // Combine and format results
+      const forums = [...clubResults];
+      console.log({ forums })
+      return {
+        data: { forums },
+        message: 'Forums fetched successfully',
+        success: true,
+      };
     } catch (error) {
-      throw new BadRequestException('Failed to fetch not adopted forum');
+      console.error('Error in notAdoptedForum:', error);
+      throw new BadRequestException('Failed to fetch not adopted forums');
     }
   }
+
+
+
+  /** 
+   * 
+  */
+
+  /**
+   * 
+   */
+  async getActivitiesOfProject(projectID: Types.ObjectId) {
+    try {
+      const activities = await this.projectActivitiesModel.aggregate([
+        // Match activities related to contributions of the specific project
+        {
+          $lookup: {
+            from: 'contributions', // Ensure this matches the actual collection name
+            localField: 'contribution',
+            foreignField: '_id',
+            as: 'contributionDetails'
+          }
+        },
+        {
+          $unwind: '$contributionDetails'
+        },
+        // Filter for contributions related to the project
+        {
+          $match: {
+            // 'contributionDetails.project': projectID,
+            // Optionally include contributions from root project as well
+            $or: [
+              { 'contributionDetails.project': projectID },
+              { 'contributionDetails.rootProject': projectID }
+            ]
+          }
+        },
+        // Lookup author details
+        {
+          $lookup: {
+            from: 'users', // Ensure this matches the actual collection name
+            localField: 'author',
+            foreignField: '_id',
+            as: 'authorDetails'
+          }
+        },
+        {
+          $unwind: '$authorDetails'
+        },
+        // Project and shape the output
+        {
+          $project: {
+            _id: 1,
+            date: 1,
+            activityType: 1,
+            contribution: '$contributionDetails',
+            author: {
+              _id: '$authorDetails._id',
+              name: '$authorDetails.name', // Adjust based on your User schema
+              // Add other author fields as needed
+            }
+          }
+        },
+        // Sort by most recent first
+        {
+          $sort: { date: -1 }
+        }
+      ]);
+
+      return activities;
+    } catch (error) {
+      throw new BadRequestException(error.message)
+    }
+  }
+
+
+  async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
+    try {
+
+    } catch (error) {
+
+    }
+  }
+
 
   /**
    * Helper method to upload files to S3 storage
@@ -258,6 +539,7 @@ export class AdoptContributionService {
    * @returns Upload response containing the file URL
    * @throws BadRequestException if upload fails
    */
+
   private async uploadFiles(file: Express.Multer.File) {
     try {
       const response = await this.s3FileUpload.uploadFile(
@@ -273,4 +555,6 @@ export class AdoptContributionService {
       );
     }
   }
+
+
 }

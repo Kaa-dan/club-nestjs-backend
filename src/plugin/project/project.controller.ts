@@ -32,7 +32,6 @@ import {
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { Types } from 'mongoose';
-import { Query as NestQuery } from '@nestjs/common';
 
 /**
  * Controller handling all project-related operations
@@ -203,7 +202,6 @@ export class ProjectController {
     },
   ) {
     // Extract files from request
-    console.log({ files });
 
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
@@ -231,15 +229,7 @@ export class ProjectController {
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
   ) {
-    console.log('getting all projects', {
-      status,
-      page,
-      limit,
-      isActive,
-      search,
-      node,
-      club,
-    });
+
     return await this.projectService.getAllProjects(
       status,
       page,
@@ -290,8 +280,9 @@ export class ProjectController {
   }
 
 
-  @Put('accept-proposed-project/:projectId')
-  async acceptProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId) {
-    return this.projectService.acceptProposedProjectInForum(user._id, projectId)
+  @Put('accept-proposed-project/:projectId/:type')
+  async acceptOrRejectProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('type') type: 'accept' | 'reject') {
+    return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type)
   }
+
 }
