@@ -450,6 +450,25 @@ export class AdoptContributionService {
     }
   }
 
+
+
+  async createAnnouncement() {
+    try {
+
+    } catch (error) {
+
+    }
+  }
+  /**
+   * 
+   */
+  async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
+    try {
+
+    } catch (error) {
+
+    }
+  }
   /**
    * Helper method to upload files to S3 storage
    * @param file - File to be uploaded
