@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseInterceptors, BadRequestException, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req, UseInterceptors, BadRequestException, UploadedFile, UploadedFiles } from '@nestjs/common';
 import { AnnouncementService } from './announcement.service';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { UpdateAnnouncementDto } from './dto/update-announcement.dto';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 
 @Controller('announcement')
 export class AnnouncementController {
@@ -12,32 +13,35 @@ export class AnnouncementController {
 
   @Post()
   @ProjectFiles()
-  @UseInterceptors(FileFieldsInterceptor([{ name: 'file', maxCount: 5 }], {
-    storage: memoryStorage(),
-    fileFilter: (req, file, cb) => {
-      // Define allowed file types for upload
-      const allowedMimeTypes = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/gif',
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
-      if (allowedMimeTypes.includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new BadRequestException('Invalid file type'), false);
-      }
-    },
-  },))
-  create(@Body() createAnnouncementDto: CreateAnnouncementDto, @Req() { user }, files: {
+  async create(@Body() createAnnouncementDto: CreateAnnouncementDto, @Req() { user }, @UploadedFiles(
+    new FileValidationPipe({
+      files: {
+        maxSizeMB: 5,
+        allowedMimeTypes: [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+        required: false,
+      },
+    }),
+  )
+  files: {
     file?: Express.Multer.File[];
-  },) {
+    bannerImage?: Express.Multer.File[];
+  }
+  ) {
+    console.log(files);
+
+    console.log("nithin raj")
+    console.log({ createAnnouncementDto });
 
     const documentFiles = files.file || []
-    return this.announcementService.create(user._id, createAnnouncementDto, documentFiles);
+    return await this.announcementService.create(user._id, createAnnouncementDto, documentFiles);
   }
 
   @Get()
