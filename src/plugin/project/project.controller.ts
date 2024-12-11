@@ -280,9 +280,9 @@ export class ProjectController {
   }
 
 
-  @Put('accept-proposed-project/:projectId')
-  async acceptProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId) {
-    return this.projectService.acceptProposedProjectInForum(user._id, projectId)
+  @Put('accept-proposed-project/:projectId/:type')
+  async acceptOrRejectProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('type') type: 'accept' | 'reject') {
+    return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type)
   }
 
 }
