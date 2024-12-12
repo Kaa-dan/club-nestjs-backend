@@ -41,7 +41,7 @@ export class AnnouncementService {
         throw new UnauthorizedException('you are not the creator of this club')
       }
       //creating announcement
-      const createdAnnouncement = await this.projectAnnouncementModel.create({ announcement: createAnnouncementDto.announcement, project: new Types.ObjectId(createAnnouncementDto.projectId), files: fileObjects })
+      const createdAnnouncement = await this.projectAnnouncementModel.create({ announcement: createAnnouncementDto.announcement, project: new Types.ObjectId(createAnnouncementDto.projectId), files: fileObjects, user: userId })
 
 
       return { createdAnnouncement, success: true, message: "announcement created successfully" };
@@ -56,7 +56,10 @@ export class AnnouncementService {
   async getAllAnnouncementsOfProject(userId: Types.ObjectId, projectId: Types.ObjectId) {
     try {
       //fetching all announcements of certain projects
-      const announcements = await this.projectAnnouncementModel.find({ project: new Types.ObjectId(projectId) })
+      const announcements = await this.projectAnnouncementModel.find({ project: new Types.ObjectId(projectId) }).populate({
+        path: 'user',
+        select: 'name email profilePicture'
+      })
 
       return { data: announcements, success: true, message: 'data fetched sucessfully' }
     } catch (error) {
