@@ -624,7 +624,8 @@ export class AdoptContributionService {
         {
           $match: {
             rootProject: forumId,
-            ...(forumType === 'club' ? { club: userId } : { node: userId }),
+
+            // ...(forumType === 'club' ? { club: userId } : { node: userId }),
             status: 'accepted' // Only count accepted contributions
           }
         },
