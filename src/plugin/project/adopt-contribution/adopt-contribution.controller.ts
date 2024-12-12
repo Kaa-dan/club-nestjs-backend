@@ -20,7 +20,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) {}
+  ) { }
 
   @Post()
   @ProjectFiles()
@@ -66,5 +66,10 @@ export class AdoptContributionController {
     @Param('projectId') projectId: Types.ObjectId,
   ) {
     return this.adoptContributionService.notAdoptedForum(user._id, projectId);
+  }
+
+  @Get('project-activities/:projectId')
+  projectActivities(@Param('projectId') projectId: Types.ObjectId) {
+    return this.adoptContributionService.getActivitiesOfProject(projectId)
   }
 }

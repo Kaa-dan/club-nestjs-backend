@@ -595,7 +595,8 @@ export class AdoptContributionService {
             contribution: '$contributionDetails',
             author: {
               _id: '$authorDetails._id',
-              name: '$authorDetails.name', // Adjust based on your User schema
+              name: '$authorDetails.userName', // Adjust based on your User schema
+              image: "$authorDetails.profileImage"
               // Add other author fields as needed
             }
           }
