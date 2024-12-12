@@ -462,6 +462,10 @@ export class AdoptContributionService {
    */
   async getActivitiesOfProject(projectID: Types.ObjectId) {
     try {
+      console.log({ projectID })
+      if (!projectID) {
+        throw new BadRequestException('project id not found')
+      }
       const activities = await this.projectActivitiesModel.aggregate([
         // Match activities related to contributions of the specific project
         {
@@ -481,8 +485,8 @@ export class AdoptContributionService {
             // 'contributionDetails.project': projectID,
             // Optionally include contributions from root project as well
             $or: [
-              { 'contributionDetails.project': projectID },
-              { 'contributionDetails.rootProject': projectID }
+              { 'contributionDetails.project': new Types.ObjectId(projectID) },
+              { 'contributionDetails.rootProject': new Types.ObjectId(projectID) }
             ]
           }
         },
@@ -517,6 +521,8 @@ export class AdoptContributionService {
           $sort: { date: -1 }
         }
       ]);
+      console.log({ activities });
+
 
       return activities;
     } catch (error) {

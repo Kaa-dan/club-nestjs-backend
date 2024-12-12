@@ -69,6 +69,7 @@ export class AdoptContributionController {
 
   @Get('project-activities/:projectId')
   getActivitiesOfProject(@Param('projectId') projectId: Types.ObjectId) {
+    console.log('debug............................')
     return this.adoptContributionService.getActivitiesOfProject(projectId)
   }
   @Get('leaderboard')
