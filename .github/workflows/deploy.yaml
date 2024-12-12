@@ -1,0 +1,93 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: Setup PNPM
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+        
+    - name: Install Dependencies
+      run: pnpm install
+
+    - name: Build
+      run: pnpm run build
+      env:
+        NODE_ENV: production
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+
+    - name: Setup PNPM
+      uses: pnpm/action-setup@v2
+      with:
+        version: latest
+        
+    - name: Install Dependencies
+      run: pnpm install
+
+    - name: Build
+      run: pnpm run build
+      env:
+        NODE_ENV: production
+
+    - name: Generate deployment package
+      run: |
+        zip -r deploy.zip . -x "node_modules/*" "test/*" ".git/*"
+
+    - name: Install SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        eval $(ssh-agent -s)
+        ssh-add ~/.ssh/deploy_key
+
+    - name: Copy files to server
+      env:
+        HOST: ${{ secrets.EC2_HOST }}
+        USERNAME: ubuntu
+      run: |
+        scp -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key deploy.zip $USERNAME@$HOST:/var/www/clubwize-backend/
+
+    - name: Deploy on server
+      env:
+        HOST: ${{ secrets.EC2_HOST }}
+        USERNAME: ubuntu
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ~/.ssh/deploy_key $USERNAME@$HOST "cd /var/www/clubwize-backend && \
+          sudo apt-get update && \
+          sudo apt-get install -y unzip && \
+          unzip -o deploy.zip && \
+          rm deploy.zip && \
+          pnpm install && \
+          pnpm run build && \
+          pm2 stop clubwize-backend || true && \
+          pm2 delete clubwize-backend || true && \
+          pm2 start dist/main.js --name \"clubwize-backend\" --env production && \
+          pm2 save"
