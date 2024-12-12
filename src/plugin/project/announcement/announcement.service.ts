@@ -80,8 +80,8 @@ export class AnnouncementService {
       //fetching all announcements of certain projects
       const announcements = await this.projectAnnouncementModel.find({ project: new Types.ObjectId(projectId) }).populate({
         path: 'user',
-        select: 'name email profilePicture'
-      })
+        select: 'name email profileImage userName'
+      }).sort({ createdAt: -1 })
 
       return { data: announcements, success: true, message: 'data fetched sucessfully' }
     } catch (error) {
