@@ -8,7 +8,6 @@ import {
   Delete,
   Req,
   UploadedFiles,
-  Query,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { AdoptContributionService } from './adopt-contribution.service';
@@ -21,7 +20,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) { }
+  ) {}
 
   @Post()
   @ProjectFiles()
@@ -47,6 +46,8 @@ export class AdoptContributionController {
     )
     files: { file: Express.Multer.File[] },
   ) {
+    console.log(files.file);
+
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
@@ -55,7 +56,7 @@ export class AdoptContributionController {
   }
 
   @Post('adopt-forum')
-  adoptForum(@Req() { user }, @Body() adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
+  adoptForum(@Req() { user }, @Body() adoptForumDto) {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 
@@ -66,16 +67,4 @@ export class AdoptContributionController {
   ) {
     return this.adoptContributionService.notAdoptedForum(user._id, projectId);
   }
-
-  @Get('project-activities/:projectId')
-  getActivitiesOfProject(@Param('projectId') projectId: Types.ObjectId) {
-    console.log('debug............................')
-    return this.adoptContributionService.getActivitiesOfProject(projectId)
-  }
-  @Get('leaderboard')
-  getLeaderBoard(@Req() { user }, @Query('forumId') forumId: Types.ObjectId, @Query('forumType') forumType: "club" | "node") {
-    return this.adoptContributionService.getLeaderBoard(user._id, forumId, forumType)
-  }
-
-
 }

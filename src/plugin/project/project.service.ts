@@ -37,10 +37,11 @@ export class ProjectService {
     @InjectModel(Faq.name) private readonly faqModel: Model<Faq>,
     @InjectModel(Parameter.name)
     private readonly parameterModel: Model<Parameter>,
-    @InjectModel(Contribution.name) private readonly contributionModel: Model<Contribution>,
+    @InjectModel(Contribution.name)
+    private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) { }
+  ) {}
 
   /**
    * Creates a new project with all associated data and files
@@ -105,11 +106,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Construct core project data
@@ -191,7 +192,6 @@ export class ProjectService {
           parametersToCreate,
           { session },
         );
-
       }
 
       // Handle FAQs if provided
@@ -288,11 +288,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: prevBannerImage.originalname,
-          mimetype: prevBannerImage.mimetype,
-          size: prevBannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: prevBannerImage.originalname,
+            mimetype: prevBannerImage.mimetype,
+            size: prevBannerImage.size,
+          }
         : null;
 
       // Construct base project data
@@ -522,11 +522,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Prepare update data
@@ -786,14 +786,12 @@ export class ProjectService {
         },
       ]);
 
-
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
       // Debug: Check parameters and contributions
       const project = result[0];
-
 
       return project;
     } catch (error) {
@@ -835,7 +833,7 @@ export class ProjectService {
     club?: Types.ObjectId,
   ) {
     try {
-      console.log("hey")
+      console.log('hey');
       const query: any = {
         status,
         // active: isActive,
@@ -864,7 +862,6 @@ export class ProjectService {
         .populate('node', 'name')
         .populate('club', 'name')
         .populate('createdBy', 'userName profileImage firstName lastName');
-
 
       const total = await this.projectModel.countDocuments(query);
 
@@ -958,29 +955,24 @@ export class ProjectService {
     }
   }
 
-
-
-  /** 
-  *Retrieves all contributions and parameter of Project
-  * @param user - id of the user
-  * @param projectId - id of the project
-  * @returns  single project with all parametes and contributions with total accepted contibution and pending contribution field 
+  /**
+   *Retrieves all contributions and parameter of Project
+   * @param user - id of the user
+   * @param projectId - id of the project
+   * @returns  single project with all parametes and contributions with total accepted contibution and pending contribution field
    */
 
   async getContributions(
     userId: Types.ObjectId,
     projectId: Types.ObjectId,
-    status: "accepted" | "pending" | "rejected"
+    status: 'accepted' | 'pending' | 'rejected',
   ) {
-
-
     try {
       const query = [
-
         {
           $match: {
-            _id: new Types.ObjectId(projectId)
-          }
+            _id: new Types.ObjectId(projectId),
+          },
         },
 
         {
@@ -988,11 +980,11 @@ export class ProjectService {
             from: 'parameters',
             localField: '_id',
             foreignField: 'project',
-            as: 'parameters'
-          }
+            as: 'parameters',
+          },
         },
         {
-          $unwind: '$parameters'
+          $unwind: '$parameters',
         },
 
         {
@@ -1000,7 +992,7 @@ export class ProjectService {
             from: 'contributions',
             let: {
               parameterId: '$parameters._id',
-              userId: new Types.ObjectId(userId)
+              userId: new Types.ObjectId(userId),
             },
             pipeline: [
               {
@@ -1009,30 +1001,30 @@ export class ProjectService {
                     $and: [
                       { $eq: ['$parameter', '$$parameterId'] },
                       { $eq: ['$user', '$$userId'] },
-                      { $eq: ['$status', status] }
-                    ]
-                  }
-                }
+                      { $eq: ['$status', status] },
+                    ],
+                  },
+                },
               },
               {
                 $group: {
                   _id: '$parameter',
                   contributions: { $push: '$$ROOT' },
                   totalValue: { $sum: '$value' },
-                  contributionCount: { $sum: 1 }
-                }
+                  contributionCount: { $sum: 1 },
+                },
               },
               {
                 $lookup: {
                   from: 'users',
                   localField: 'contributions.user',
                   foreignField: '_id',
-                  as: 'userDetails'
-                }
-              }
+                  as: 'userDetails',
+                },
+              },
             ],
-            as: 'contributions'
-          }
+            as: 'contributions',
+          },
         },
         {
           $project: {
@@ -1042,22 +1034,24 @@ export class ProjectService {
             contributions: {
               $ifNull: [
                 {
-                  $arrayElemAt: ['$contributions', 0]
+                  $arrayElemAt: ['$contributions', 0],
                 },
                 {
                   contributions: [],
                   totalValue: 0,
-                  contributionCount: 0
-                }
-              ]
-            }
-          }
-        }
+                  contributionCount: 0,
+                },
+              ],
+            },
+          },
+        },
       ];
 
       return await this.projectModel.aggregate(query);
     } catch (error) {
-      throw new BadRequestException(`Error while trying to fetch contributions: ${error?.message}`)
+      throw new BadRequestException(
+        `Error while trying to fetch contributions: ${error?.message}`,
+      );
     }
   }
 
@@ -1066,16 +1060,21 @@ export class ProjectService {
    * @param  userId- id of the user
    * @param contributionId  - id of the contribution
    * @returns  updated contributions
-   * 
+   *
    */
-  async acceptOrRejectContributions(userId: Types.ObjectId, contributionId: Types.ObjectId, type: boolean) {
+  async acceptOrRejectContributions(
+    userId: Types.ObjectId,
+    contributionId: Types.ObjectId,
+    type: boolean,
+  ) {
     try {
       // Properly typed population
-      const contributionDetails = await this.contributionModel.findById(contributionId)
+      const contributionDetails = await this.contributionModel
+        .findById(contributionId)
         .populate<{ project: PopulatedProject }>({
           path: 'project',
           select: 'createdBy',
-          model: this.projectModel
+          model: this.projectModel,
         })
         .lean();
       // Check if contribution exists
@@ -1084,9 +1083,13 @@ export class ProjectService {
       }
 
       // Check if the user is the project creator
-      if (!contributionDetails.project ||
-        contributionDetails.project.createdBy.toString() !== userId.toString()) {
-        throw new UnauthorizedException('You are not authorized to accept this contribution');
+      if (
+        !contributionDetails.project ||
+        contributionDetails.project.createdBy.toString() !== userId.toString()
+      ) {
+        throw new UnauthorizedException(
+          'You are not authorized to accept this contribution',
+        );
       }
 
       // Update contribution status in a single operation
@@ -1094,39 +1097,45 @@ export class ProjectService {
         contributionId,
         {
           status: type ? 'accepted' : 'rejected',
-          publishedBy: userId
+          publishedBy: userId,
         },
-        { new: true }
+        { new: true },
       );
 
       return {
         status: true,
         message: 'Contribution accepted',
-        data: result
+        data: result,
       };
     } catch (error) {
       throw new BadRequestException(
         'Error while accepting contributions',
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
     }
   }
 
-
   /**
-   * 
+   *
    */
-  async acceptOrRejectProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId, type: 'accept' | 'reject') {
+  async acceptOrRejectProposedProjectInForum(
+    userID: Types.ObjectId,
+    projectId: Types.ObjectId,
+    type: 'accept' | 'reject',
+  ) {
     try {
-
-      return this.projectModel.findByIdAndUpdate(new Types.ObjectId(projectId), { status: type === "accept" ? 'published' : 'rejected', publishedBy: userID })
-
+      console.log({ projectId });
+      return this.projectModel.findByIdAndUpdate(
+        new Types.ObjectId(projectId),
+        {
+          status: type === 'accept' ? 'published' : 'rejected',
+          publishedBy: userID,
+        },
+      );
     } catch (error) {
-      throw new BadRequestException('error while accepting project', error)
+      throw new BadRequestException('error while accepting project', error);
     }
   }
-
-
 
   /**
    * Handles file upload to S3 storage
