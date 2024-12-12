@@ -20,7 +20,7 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
-import { error } from 'console';
+import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 
 /**
  * Service responsible for managing all project-related operations
@@ -201,7 +201,7 @@ export class ProjectService {
           project: savedProject._id,
           askedBy: userId,
           answeredBy: userId,
-          status: 'proposed',
+          status: 'approved',
           Date: new Date(),
         }));
 
@@ -1127,6 +1127,49 @@ export class ProjectService {
   }
 
 
+
+  async askFaq(userId: Types.ObjectId, createFaqDto: CreateDtoFaq) {
+    try {
+
+      if (!userId && !createFaqDto.projectId) {
+        throw new BadRequestException('user and project id not found')
+      }
+
+      //creating faq
+      const createdFaq = await this.faqModel.create({ Date: new Date(), status: 'proposed', askedBy: new Types.ObjectId(userId), question: createFaqDto.question, project: createFaqDto.projectId });
+
+      return { status: 'success', data: createdFaq, message: 'faq created succesfully' }
+    } catch (error) {
+      throw new BadRequestException(error)
+    }
+  }
+
+  async getQuestionFaq(projectId: Types.ObjectId) {
+    try {
+      const getAllFaqQuestions = await this.faqModel.find({ project: new Types.ObjectId(projectId), status: 'proposed' }).populate({ path: 'askedBy', select: 'userName email profilePicture' })
+
+      return { message: 'data fetched successfully', data: getAllFaqQuestions, status: true }
+    } catch (error) {
+      throw new BadRequestException(error)
+    }
+  }
+
+  async answerFaq(userId: Types.ObjectId, answerFaqDto: AnswerFaqDto) {
+    try {
+      //checking if the user is the creator
+      const isCreater = await this.projectModel.find({ _id: new Types.ObjectId(answerFaqDto.project), createdBy: userId })
+      if (!isCreater) {
+        throw new UnauthorizedException('your are not authorized to answer this faq')
+      }
+      //answering faq
+      const answeredFaq = await this.faqModel.findByIdAndUpdate(new Types.ObjectId(answerFaqDto.faq), { answer: answerFaqDto.answer, status: answerFaqDto.status })
+
+
+      return { data: answeredFaq, status: false, message: 'faq answered' }
+    } catch (error) {
+      throw new BadRequestException(error)
+    }
+  }
 
   /**
    * Handles file upload to S3 storage
