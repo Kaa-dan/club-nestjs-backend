@@ -32,6 +32,8 @@ import {
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { Types } from 'mongoose';
+import { User } from 'src/shared/entities/user.entity';
+import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 
 /**
  * Controller handling all project-related operations
@@ -285,4 +287,18 @@ export class ProjectController {
     return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type)
   }
 
+  @Post('ask-faq')
+  async askFaq(@Req() { user }, @Body() createFaqDto: CreateDtoFaq) {
+    return this.projectService.askFaq(user._id, createFaqDto)
+  }
+
+  @Get('get-faq/:projectId')
+  async getQuestionFaq(@Param('projectId') projectID: Types.ObjectId) {
+    return this.getQuestionFaq(projectID)
+  }
+
+  @Put('answer-faq')
+  async answerFaq(@Req() { user }, @Body() answerFaqDto: AnswerFaqDto) {
+    return this.answerFaq(user._id, answerFaqDto)
+  }
 }
