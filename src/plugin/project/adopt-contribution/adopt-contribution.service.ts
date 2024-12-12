@@ -616,16 +616,15 @@ export class AdoptContributionService {
   }
 
 
-  async getLeaderBoard(userId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
+  async getLeaderBoard(userId: Types.ObjectId, projectId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
     try {
       // Aggregate contributions for the given project
       const leaderboard = await this.contributionModel.aggregate([
         // Match contributions for the specific project
         {
           $match: {
-            rootProject: forumId,
-
-            // ...(forumType === 'club' ? { club: userId } : { node: userId }),
+            rootProject: projectId,
+            ...(forumType ? forumType === 'club' ? { club: forumId } : { node: forumId } : {}),
             status: 'accepted' // Only count accepted contributions
           }
         },
