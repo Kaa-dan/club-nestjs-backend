@@ -21,6 +21,7 @@ import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
+import { type } from 'node:os';
 
 /**
  * Service responsible for managing all project-related operations
@@ -672,7 +673,11 @@ export class ProjectService {
               {
                 $match: {
                   $expr: {
-                    $and: [{ $eq: ['$rootProject', '$$projectId'] }],
+                    $and: [{ $eq: ['$rootProject', '$$projectId'] },
+                    { $eq: ['$status', 'accepted'] }
+
+                    ],
+
                   },
                 },
               },
@@ -832,6 +837,8 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
+    console.log({ status });
+
     try {
       console.log('hey');
       const query: any = {
@@ -864,6 +871,7 @@ export class ProjectService {
         .populate('createdBy', 'userName profileImage firstName lastName');
 
       const total = await this.projectModel.countDocuments(query);
+      console.log({ projects });
 
       return {
         projects,
@@ -904,7 +912,7 @@ export class ProjectService {
       }
 
       const projects = await this.projectModel
-        .find(query)
+        .find(query).sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
@@ -936,7 +944,7 @@ export class ProjectService {
   async getGlobalProjects(page: number, limit: number) {
     try {
       const projects = await this.projectModel
-        .find({ status: 'published' })
+        .find({ status: 'published' }).sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
@@ -973,6 +981,8 @@ export class ProjectService {
     projectId: Types.ObjectId,
     status: 'accepted' | 'pending' | 'rejected',
   ) {
+    console.log({ status });
+
     try {
       const query = [
         {
@@ -1006,7 +1016,7 @@ export class ProjectService {
                   $expr: {
                     $and: [
                       { $eq: ['$parameter', '$$parameterId'] },
-                      { $eq: ['$user', '$$userId'] },
+                      // { $eq: ['$user', '$$userId'] },
                       { $eq: ['$status', status] },
                     ],
                   },
@@ -1032,28 +1042,34 @@ export class ProjectService {
             as: 'contributions',
           },
         },
-        {
-          $project: {
-            projectTitle: '$title',
-            parameterId: '$parameters._id',
-            parameterTitle: '$parameters.title',
-            contributions: {
-              $ifNull: [
-                {
-                  $arrayElemAt: ['$contributions', 0],
-                },
-                {
-                  contributions: [],
-                  totalValue: 0,
-                  contributionCount: 0,
-                },
-              ],
-            },
-          },
-        },
+        // {
+        //   $project: {
+        //     projectTitle: '$title',
+        //     parameterId: '$parameters._id',
+        //     parameterTitle: '$parameters.title',
+        //     contributions: {
+        //       $ifNull: [
+        //         {
+        //           $arrayElemAt: ['$contributions', 0],
+        //         },
+        //         {
+        //           contributions: [],
+        //           totalValue: 0,
+        //           contributionCount: 0,
+        //         },
+        //       ],
+        //     },
+        //   },
+        // },
       ];
 
-      return await this.projectModel.aggregate(query);
+      console.log({ query })
+
+      const data = await this.projectModel.aggregate(query);
+      console.log(JSON.stringify(data));
+
+      return data
+
     } catch (error) {
       throw new BadRequestException(
         `Error while trying to fetch contributions: ${error?.message}`,
@@ -1114,6 +1130,8 @@ export class ProjectService {
         data: result,
       };
     } catch (error) {
+      console.log({ error });
+
       throw new BadRequestException(
         'Error while accepting contributions',
         error instanceof Error ? error.message : String(error),

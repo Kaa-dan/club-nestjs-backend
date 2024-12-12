@@ -81,6 +81,7 @@ export class AdoptContributionService {
         _id: new Types.ObjectId(rootProject),
         createdBy: new Types.ObjectId(userId),
       });
+      console.log({ isCreater });
 
       // Create the contribution document with processed data
       const newContribution = await this.contributionModel.create({
@@ -131,17 +132,35 @@ export class AdoptContributionService {
       club?: Types.ObjectId;
     },
   ) {
-    console.log({ adoptForumDto })
+    console.log({ adoptForumDto });
+
     try {
       if (adoptForumDto.club && adoptForumDto.node) {
-        throw new BadRequestException('forum be either club or node');
+        throw new BadRequestException('Forum must be either club or node, not both');
+      }
+      console.log({ userId });
+
+      let userDetails;
+      if (adoptForumDto.club) {
+        // Check role for club
+        userDetails = await this.clubMemberModel.findOne({
+          user: new Types.ObjectId(userId),
+          club: new Types.ObjectId(adoptForumDto.club),
+        });
+      } else if (adoptForumDto.node) {
+        // Check role for node
+        userDetails = await this.nodeMemberModel.findOne({
+          user: new Types.ObjectId(userId),
+          node: new Types.ObjectId(adoptForumDto.node),
+        });
       }
 
-      const userDetails = await this.clubMemberModel.findOne({
-        user: new Types.ObjectId(userId),
-        club: new Types.ObjectId(adoptForumDto?.club),
-      });
-      console.log({ userDetails })
+      if (!userDetails) {
+        throw new NotAcceptableException('User not found in the specified forum');
+      }
+
+      console.log({ userDetails });
+
       const adoptionData = {
         project: new Types.ObjectId(adoptForumDto.project),
         proposedBy: new Types.ObjectId(userId),
@@ -151,10 +170,8 @@ export class AdoptContributionService {
         club: adoptForumDto.club ? new Types.ObjectId(adoptForumDto.club) : null,
       };
 
-
       // Create adoption record
-      const adoptedProject =
-        await this.projectAdoptionModel.create(adoptionData);
+      const adoptedProject = await this.projectAdoptionModel.create(adoptionData);
 
       return {
         success: true,
@@ -162,9 +179,12 @@ export class AdoptContributionService {
         message: 'Project adopted successfully',
       };
     } catch (error) {
+      console.log({ error });
+
       throw new NotAcceptableException('Failed to adopt forum');
     }
   }
+
 
   /**
    * Get not adopted forum list of a user based on project
@@ -467,8 +487,10 @@ export class AdoptContributionService {
 
     // Get already adopted forums for this project
     const adoptedProjects = await this.projectAdoptionModel.find({
-      project: projectId
+      project: new Types.ObjectId(projectId)
     });
+
+    console.log({ adoptedProjects })
 
     // Extract adopted club and node IDs
     const adoptedClubIds = adoptedProjects
@@ -477,6 +499,8 @@ export class AdoptContributionService {
     const adoptedNodeIds = adoptedProjects
       .filter(ap => ap.node)
       .map(ap => ap.node.toString());
+
+    console.log({ adoptedClubIds, adoptedNodeIds })
 
     // Find all clubs where user is a member and exclude:
     // 1. The club that owns the project

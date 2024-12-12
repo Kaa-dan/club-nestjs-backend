@@ -75,7 +75,7 @@ export class AdoptContributionController {
   }
   @Get('leaderboard')
   getLeaderBoard(@Req() { user },
-    @Query('projectID') projectId?: Types.ObjectId | null,
+    @Query('projectID') projectId: Types.ObjectId | null,
     @Query('forumId') forumId?: Types.ObjectId | null,
     @Query('forumType') forumType?: "club" | "node" | null) {
     return this.adoptContributionService.getLeaderBoard(user._id, forumId, projectId, forumType)
