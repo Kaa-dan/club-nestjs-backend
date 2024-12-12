@@ -930,6 +930,12 @@ export class ProjectService {
     }
   }
 
+  /**
+   * 
+   * @param page 
+   * @param limit 
+   * @returns 
+   */
   async getGlobalProjects(page: number, limit: number) {
     try {
       const projects = await this.projectModel

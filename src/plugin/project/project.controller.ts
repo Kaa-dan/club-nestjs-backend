@@ -273,14 +273,15 @@ export class ProjectController {
   async getContributions(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('status') status: 'accepted' | 'pending' | 'rejected') {
     return await this.projectService.getContributions(user._id, projectId, status)
   }
-  /**
-   * 
-   */
+
   @Put('accept-contributions/:contributionId/:type')
   async acceptOrRejectContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId, @Param('type', ParseBoolPipe) type: boolean) {
     return this.projectService.acceptOrRejectContributions(user._id, contributionId, type)
   }
+  /**
+   * @get 
 
+   */
 
   @Put('accept-proposed-project/:projectId/:type')
   async acceptOrRejectProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('type') type: 'accept' | 'reject') {
