@@ -930,6 +930,12 @@ export class ProjectService {
     }
   }
 
+  /**
+   * 
+   * @param page 
+   * @param limit 
+   * @returns 
+   */
   async getGlobalProjects(page: number, limit: number) {
     try {
       const projects = await this.projectModel
@@ -1115,6 +1121,10 @@ export class ProjectService {
 
   /**
    * 
+   * @param userID     
+   * @param projectId 
+   * @param type 
+   * @returns 
    */
   async acceptOrRejectProposedProjectInForum(userID: Types.ObjectId, projectId: Types.ObjectId, type: 'accept' | 'reject') {
     try {
@@ -1127,7 +1137,12 @@ export class ProjectService {
   }
 
 
-
+  /**
+   * 
+   * @param userId 
+   * @param createFaqDto 
+   * @returns 
+   */
   async askFaq(userId: Types.ObjectId, createFaqDto: CreateDtoFaq) {
     try {
 
@@ -1144,6 +1159,12 @@ export class ProjectService {
     }
   }
 
+
+  /**
+   * 
+   * @param projectId 
+   * @returns 
+   */
   async getQuestionFaq(projectId: Types.ObjectId) {
     try {
       const getAllFaqQuestions = await this.faqModel.find({ project: new Types.ObjectId(projectId), status: 'proposed' }).populate({ path: 'askedBy', select: 'userName email profilePicture' })
@@ -1153,6 +1174,14 @@ export class ProjectService {
       throw new BadRequestException(error)
     }
   }
+
+  /**
+   * 
+   * @param userId 
+   * @param answerFaqDto 
+   * @returns 
+   */
+
 
   async answerFaq(userId: Types.ObjectId, answerFaqDto: AnswerFaqDto) {
     try {
