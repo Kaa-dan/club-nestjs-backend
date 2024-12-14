@@ -8,9 +8,21 @@ import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
+  // app.enableCors({
+  //   origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app'],
+  //   credentials: true,
+  // });
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app'],
+    origin: [
+      'http://localhost:3000',
+      'https://clubwize-client.vercel.app',
+      // Add your API domain if needed
+      'http://43.205.45.251'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     credentials: true,
+    exposedHeaders: ['set-cookie']
   });
   app.use(cookieParser());
   // app.useGlobalPipes(
