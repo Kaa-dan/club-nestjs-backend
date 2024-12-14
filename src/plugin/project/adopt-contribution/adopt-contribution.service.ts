@@ -39,7 +39,7 @@ export class AdoptContributionService {
     @InjectModel(Node_.name) private nodeModel: Model<Node_>,
     @InjectModel(ProjectActivities.name)
     private projectActivitiesModel: Model<ProjectActivities>,
-  ) { }
+  ) {}
 
   /**
    * Creates a new contribution for a project
@@ -55,8 +55,12 @@ export class AdoptContributionService {
     files: { file: Express.Multer.File[] },
   ) {
     try {
-      const { rootProject, project, parameter, club, node, value, status } =
+      let { rootProject, project, parameter, club, node, value, status } =
         createAdoptContributionDto;
+
+      console.log({ createAdoptContributionDto });
+      console.log({ project });
+      if (!project) project = rootProject;
 
       // Validate that either club or node is provided
       if (!club && !node) {
@@ -81,6 +85,7 @@ export class AdoptContributionService {
         _id: new Types.ObjectId(rootProject),
         createdBy: new Types.ObjectId(userId),
       });
+      console.log({ isCreater });
 
       // Create the contribution document with processed data
       const newContribution = await this.contributionModel.create({
@@ -131,26 +136,53 @@ export class AdoptContributionService {
       club?: Types.ObjectId;
     },
   ) {
-    console.log({ adoptForumDto })
+    console.log({ adoptForumDto });
+
     try {
       if (adoptForumDto.club && adoptForumDto.node) {
-        throw new BadRequestException('forum be either club or node');
+        throw new BadRequestException(
+          'Forum must be either club or node, not both',
+        );
+      }
+      console.log({ userId });
+
+      let userDetails;
+      if (adoptForumDto.club) {
+        // Check role for club
+        userDetails = await this.clubMemberModel.findOne({
+          user: new Types.ObjectId(userId),
+          club: new Types.ObjectId(adoptForumDto.club),
+        });
+      } else if (adoptForumDto.node) {
+        // Check role for node
+        userDetails = await this.nodeMemberModel.findOne({
+          user: new Types.ObjectId(userId),
+          node: new Types.ObjectId(adoptForumDto.node),
+        });
       }
 
-      const userDetails = await this.clubMemberModel.findOne({
-        user: new Types.ObjectId(userId),
-        club: new Types.ObjectId(adoptForumDto?.club),
-      });
-      console.log({ userDetails })
+      if (!userDetails) {
+        throw new NotAcceptableException(
+          'User not found in the specified forum',
+        );
+      }
+
+      console.log({ userDetails });
+
       const adoptionData = {
         project: new Types.ObjectId(adoptForumDto.project),
         proposedBy: new Types.ObjectId(userId),
-        ...(userDetails.role !== 'member' && { acceptedBy: new Types.ObjectId(userId) }),
+        ...(userDetails.role !== 'member' && {
+          acceptedBy: new Types.ObjectId(userId),
+        }),
         status: userDetails.role === 'member' ? 'proposed' : 'published',
-        node: adoptForumDto.node ? new Types.ObjectId(adoptForumDto.node) : null,
-        club: adoptForumDto.club ? new Types.ObjectId(adoptForumDto.club) : null,
+        node: adoptForumDto.node
+          ? new Types.ObjectId(adoptForumDto.node)
+          : null,
+        club: adoptForumDto.club
+          ? new Types.ObjectId(adoptForumDto.club)
+          : null,
       };
-
 
       // Create adoption record
       const adoptedProject =
@@ -162,6 +194,8 @@ export class AdoptContributionService {
         message: 'Project adopted successfully',
       };
     } catch (error) {
+      console.log({ error });
+
       throw new NotAcceptableException('Failed to adopt forum');
     }
   }
@@ -171,8 +205,6 @@ export class AdoptContributionService {
    * @param userId
    * @param projectId
    */
-
-
 
   // async notAdoptedForum(
   //   userId: Types.ObjectId,
@@ -467,85 +499,94 @@ export class AdoptContributionService {
 
     // Get already adopted forums for this project
     const adoptedProjects = await this.projectAdoptionModel.find({
-      project: projectId
+      project: new Types.ObjectId(projectId),
     });
+
+    console.log({ adoptedProjects });
 
     // Extract adopted club and node IDs
     const adoptedClubIds = adoptedProjects
-      .filter(ap => ap.club)
-      .map(ap => ap.club.toString());
+      .filter((ap) => ap.club)
+      .map((ap) => ap.club.toString());
     const adoptedNodeIds = adoptedProjects
-      .filter(ap => ap.node)
-      .map(ap => ap.node.toString());
+      .filter((ap) => ap.node)
+      .map((ap) => ap.node.toString());
+
+    console.log({ adoptedClubIds, adoptedNodeIds });
 
     // Find all clubs where user is a member and exclude:
     // 1. The club that owns the project
     // 2. Clubs that have already adopted the project
-    const eligibleClubs = await this.clubMemberModel.find({
-      user: userId,
-      status: 'MEMBER',
-    })
+    const eligibleClubs = await this.clubMemberModel
+      .find({
+        user: userId,
+        status: 'MEMBER',
+      })
       .populate('club', 'name profileImage isPublic createdBy')
-      .then(members => members
-        .filter(member => {
-          const clubId = member.club._id.toString();
-          const isProjectOwner = project.club?.toString() === clubId;
-          const hasAdopted = adoptedClubIds.includes(clubId);
-          // return !isProjectOwner && !hasAdopted;
-          return !hasAdopted;
-        })
-        .map((member: any) => ({
-          _id: member.club._id,
-          name: member.club['name'],
-          type: 'club',
-          role: member.role,
-          image: member?.club?.profileImage?.url
-        }))
+      .then((members) =>
+        members
+          .filter((member) => {
+            const clubId = member.club._id.toString();
+            const isProjectOwner = project.club?.toString() === clubId;
+            const hasAdopted = adoptedClubIds.includes(clubId);
+            // return !isProjectOwner && !hasAdopted;
+            return !hasAdopted;
+          })
+          .map((member: any) => ({
+            _id: member.club._id,
+            name: member.club['name'],
+            type: 'club',
+            role: member.role,
+            image: member?.club?.profileImage?.url,
+          })),
       );
-
 
     // Find all nodes where user is a member and exclude:
     // 1. The node that owns the project
     // 2. Nodes that have already adopted the project
-    const eligibleNodes = await this.nodeMemberModel.find({
-      user: userId,
-      status: 'MEMBER',
-    })
+    const eligibleNodes = await this.nodeMemberModel
+      .find({
+        user: userId,
+        status: 'MEMBER',
+      })
       .populate('node', 'name profileImage isPublic createdBy')
-      .then((members: any) => members
-        .filter(member => {
-          const nodeId = member.node._id.toString();
-          // const isProjectOwner = project.node?.toString() === nodeId;
-          const hasAdopted = adoptedNodeIds.includes(nodeId);
-          // return !isProjectOwner && !hasAdopted;
-          return !hasAdopted;
-        })
-        .map(member => ({
-          _id: member?.node._id,
-          name: member?.node['name'],
-          type: 'node',
-          role: member?.role,
-          image: member?.node?.profileImage?.url
-        }))
+      .then((members: any) =>
+        members
+          .filter((member) => {
+            const nodeId = member.node._id.toString();
+            // const isProjectOwner = project.node?.toString() === nodeId;
+            const hasAdopted = adoptedNodeIds.includes(nodeId);
+            // return !isProjectOwner && !hasAdopted;
+            return !hasAdopted;
+          })
+          .map((member) => ({
+            _id: member?.node._id,
+            name: member?.node['name'],
+            type: 'node',
+            role: member?.role,
+            image: member?.node?.profileImage?.url,
+          })),
       );
-
 
     // Combine and return results
     return {
-      forums: [...eligibleClubs, ...eligibleNodes]
+      forums: [...eligibleClubs, ...eligibleNodes],
     };
   }
 
-
-  /** 
-   * 
-  */
+  /**
+   *
+   */
 
   /**
-   * 
+   *
    */
   async getActivitiesOfProject(projectID: Types.ObjectId) {
     try {
+      console.log({ projectID });
+      if (!projectID) {
+        throw new BadRequestException('project id not found');
+      }
       const activities = await this.projectActivitiesModel.aggregate([
         // Match activities related to contributions of the specific project
         {
@@ -553,11 +594,11 @@ export class AdoptContributionService {
             from: 'contributions', // Ensure this matches the actual collection name
             localField: 'contribution',
             foreignField: '_id',
-            as: 'contributionDetails'
-          }
+            as: 'contributionDetails',
+          },
         },
         {
-          $unwind: '$contributionDetails'
+          $unwind: '$contributionDetails',
         },
         // Filter for contributions related to the project
         {
@@ -565,10 +606,14 @@ export class AdoptContributionService {
             // 'contributionDetails.project': projectID,
             // Optionally include contributions from root project as well
             $or: [
-              { 'contributionDetails.project': projectID },
-              { 'contributionDetails.rootProject': projectID }
-            ]
-          }
+              { 'contributionDetails.project': new Types.ObjectId(projectID) },
+              {
+                'contributionDetails.rootProject': new Types.ObjectId(
+                  projectID,
+                ),
+              },
+            ],
+          },
         },
         // Lookup author details
         {
@@ -576,11 +621,11 @@ export class AdoptContributionService {
             from: 'users', // Ensure this matches the actual collection name
             localField: 'author',
             foreignField: '_id',
-            as: 'authorDetails'
-          }
+            as: 'authorDetails',
+          },
         },
         {
-          $unwind: '$authorDetails'
+          $unwind: '$authorDetails',
         },
         // Project and shape the output
         {
@@ -591,86 +636,328 @@ export class AdoptContributionService {
             contribution: '$contributionDetails',
             author: {
               _id: '$authorDetails._id',
-              name: '$authorDetails.name', // Adjust based on your User schema
+              userName: '$authorDetails.userName', // Adjust based on your User schema
+              firstName: '$authorDetails.userName', // Adjust based on your User schema
+              lastName: '$authorDetails.userName', // Adjust based on your User schema
+              image: '$authorDetails.profileImage',
               // Add other author fields as needed
-            }
-          }
+            },
+          },
         },
         // Sort by most recent first
         {
-          $sort: { date: -1 }
-        }
+          $sort: { date: -1 },
+        },
       ]);
 
       return activities;
     } catch (error) {
-      throw new BadRequestException(error.message)
+      throw new BadRequestException(error.message);
     }
   }
 
-
-  async getLeaderBoard(userId: Types.ObjectId, projectId: Types.ObjectId, forumId: Types.ObjectId, forumType: "club" | "node") {
+  async getLeaderBoard(
+    userId: Types.ObjectId,
+    projectId: Types.ObjectId,
+    forumId: Types.ObjectId,
+    forumType: 'club' | 'node',
+  ) {
     try {
       // Aggregate contributions for the given project
-      const leaderboard = await this.contributionModel.aggregate([
-        // Match contributions for the specific project
+
+      console.log({ projectId });
+      // const leaderboard = await this.contributionModel.aggregate([
+      //   // Match contributions for the specific project
+      //   {
+      //     $match: {
+      //       rootProject: new Types.ObjectId(projectId),
+      //       // ...(forumType ? forumType === 'club' ? { club: forumId } : { node: forumId } : {}),
+      //       status: 'accepted', // Only count accepted contributions
+      //     },
+      //   },
+      //   // Group by user and calculate total contribution
+      //   {
+      //     $group: {
+      //       _id: '$user',
+      //       totalContribution: { $sum: '$value' },
+      //       contributionCount: { $sum: 1 },
+      //       contributions: {
+      //         $push: {
+      //           project: '$project',
+      //           parameter: '$parameter', // i want to populate the parameter here.
+      //           value: '$value',
+      //           files: '$files',
+      //         },
+      //       },
+      //     },
+      //   },
+      //   // Lookup user details
+      //   {
+      //     $lookup: {
+      //       from: 'users', // Assuming the collection name for users
+      //       localField: '_id',
+      //       foreignField: '_id',
+      //       as: 'userDetails',
+      //     },
+      //   },
+      //   // Unwind user details
+      //   {
+      //     $unwind: '$userDetails',
+      //   },
+      //   // Sort by total contribution in descending order
+      //   {
+      //     $sort: { totalContribution: -1 },
+      //   },
+      //   // Project to shape the output
+      //   {
+      //     $project: {
+      //       userId: '$_id',
+      //       firstName: '$userDetails.firstName',
+      //       lastName: '$userDetails.lastName',
+      //       userName: '$userDetails.userName',
+      //       email: '$userDetails.email',
+      //       profileImage: '$userDetails.profileImage',
+      //       totalContribution: 1,
+      //       contributionCount: 1,
+      //       contributions: 1,
+      //     },
+      //   },
+      // ]);
+      //
+      const memberWize = await this.contributionModel.aggregate([
+        // Match contributions for the specific root project
         {
           $match: {
-            rootProject: projectId,
-            ...(forumType ? forumType === 'club' ? { club: forumId } : { node: forumId } : {}),
-            status: 'accepted' // Only count accepted contributions
-          }
+            rootProject: new Types.ObjectId(projectId),
+          },
         },
-        // Group by user and calculate total contribution
-        {
-          $group: {
-            _id: '$user',
-            totalContribution: { $sum: '$value' },
-            contributionCount: { $sum: 1 },
-            contributions: {
-              $push: {
-                project: '$project',
-                parameter: '$parameter',
-                value: '$value',
-                files: '$files'
-              }
-            }
-          }
-        },
-        // Lookup user details
+
+        // Lookup to get parameter details
         {
           $lookup: {
-            from: 'users', // Assuming the collection name for users
-            localField: '_id',
+            from: 'parameters',
+            localField: 'parameter',
             foreignField: '_id',
-            as: 'userDetails'
-          }
+            as: 'parameterDetails',
+          },
         },
-        // Unwind user details
+
+        // Unwind the parameter details
         {
-          $unwind: '$userDetails'
+          $unwind: '$parameterDetails',
         },
-        // Sort by total contribution in descending order
+
+        // Lookup to get user details
         {
-          $sort: { totalContribution: -1 }
+          $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userDetails',
+          },
         },
-        // Project to shape the output
+
+        // Unwind the user details
+        {
+          $unwind: '$userDetails',
+        },
+
+        // Group by user and parameter
+        {
+          $group: {
+            _id: {
+              userId: '$user',
+              parameterId: '$parameter',
+            },
+            user: { $first: '$userDetails' },
+            parameter: { $first: '$parameterDetails' },
+            totalValue: { $sum: '$value' },
+            contributions: {
+              $push: {
+                _id: '$_id',
+                value: '$value',
+                files: '$files',
+                status: '$status',
+                createdAt: '$createdAt',
+              },
+            },
+          },
+        },
+
+        // Group by user to get all parameters for each user
+        {
+          $group: {
+            _id: '$_id.userId',
+            userData: { $first: '$user' },
+            totalContributions: {
+              $push: {
+                parameter: '$parameter',
+                totalValue: '$totalValue',
+                contributions: '$contributions',
+              },
+            },
+            overallTotal: { $sum: '$totalValue' },
+          },
+        },
+
+        // Project the final shape of the document
         {
           $project: {
-            userId: '$_id',
-            name: '$userDetails.name',
-            email: '$userDetails.email',
-            profilePicture: '$userDetails.profilePicture',
-            totalContribution: 1,
-            contributionCount: 1,
-            contributions: 1
-          }
-        }
+            _id: 1,
+            user: {
+              _id: '$userData._id',
+              userName: '$userData.userName',
+              firstName: '$userData.firstName',
+              lastName: '$userData.lastName',
+              profileImage: '$userData.profileImage',
+            },
+            totalContributions: 1,
+            overallTotal: 1,
+          },
+        },
+
+        // Sort by overall total in descending order
+        {
+          $sort: {
+            overallTotal: -1,
+          },
+        },
+      ]);
+
+      const forumWise = await this.contributionModel.aggregate([
+        // Match contributions for the specific root project
+        {
+          $match: {
+            rootProject: new Types.ObjectId(projectId),
+          },
+        },
+
+        // Add lookups for club and node details
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'clubDetails',
+          },
+        },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'nodeDetails',
+          },
+        },
+
+        // Add lookup for parameter details
+        {
+          $lookup: {
+            from: 'parameters',
+            localField: 'parameter',
+            foreignField: '_id',
+            as: 'parameterDetails',
+          },
+        },
+
+        // Unwind the parameter details
+        {
+          $unwind: '$parameterDetails',
+        },
+
+        // Determine forum type and details
+        {
+          $addFields: {
+            forumType: {
+              $cond: {
+                if: { $gt: [{ $size: '$clubDetails' }, 0] },
+                then: 'club',
+                else: 'node',
+              },
+            },
+            forumDetails: {
+              $cond: {
+                if: { $gt: [{ $size: '$clubDetails' }, 0] },
+                then: { $arrayElemAt: ['$clubDetails', 0] },
+                else: { $arrayElemAt: ['$nodeDetails', 0] },
+              },
+            },
+          },
+        },
+
+        // Group by forum and parameter
+        {
+          $group: {
+            _id: {
+              forumId: {
+                $cond: {
+                  if: { $eq: ['$forumType', 'club'] },
+                  then: '$club',
+                  else: '$node',
+                },
+              },
+              parameterId: '$parameter',
+            },
+            forumType: { $first: '$forumType' },
+            forumDetails: { $first: '$forumDetails' },
+            parameter: { $first: '$parameterDetails' },
+            totalValue: { $sum: '$value' },
+            contributions: {
+              $push: {
+                _id: '$_id',
+                value: '$value',
+                files: '$files',
+                status: '$status',
+                createdAt: '$createdAt',
+              },
+            },
+          },
+        },
+
+        // Group by forum to get all parameters
+        {
+          $group: {
+            _id: '$_id.forumId',
+            forumType: { $first: '$forumType' },
+            forumDetails: { $first: '$forumDetails' },
+            totalContributions: {
+              $push: {
+                parameter: '$parameter',
+                totalValue: '$totalValue',
+                contributions: '$contributions',
+              },
+            },
+            overallTotal: { $sum: '$totalValue' },
+          },
+        },
+
+        // Final project stage
+        {
+          $project: {
+            _id: 1,
+            forumType: 1,
+            forum: {
+              _id: '$_id',
+              name: '$forumDetails.name',
+              profileImage: '$forumDetails.profileImage',
+            },
+            totalContributions: 1,
+            overallTotal: 1,
+          },
+        },
+
+        // Sort by overall total
+        {
+          $sort: {
+            overallTotal: -1,
+          },
+        },
       ]);
 
       return {
-        totalContributors: leaderboard.length,
-        leaderboard
+        totalContributors: memberWize.length,
+        memberWize,
+        forumWise,
       };
     } catch (error) {
       // Handle any errors
@@ -678,7 +965,6 @@ export class AdoptContributionService {
       throw new Error('Failed to retrieve leaderboard');
     }
   }
-
 
   /**
    * Helper method to upload files to S3 storage
@@ -702,6 +988,4 @@ export class AdoptContributionService {
       );
     }
   }
-
-
 }
