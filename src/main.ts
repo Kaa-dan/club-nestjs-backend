@@ -9,7 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
   app.enableCors({
-    origin: ['http://localhost:3000'], // Your frontend URL exactly
+    origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app'],
     credentials: true,
   });
   app.use(cookieParser());
