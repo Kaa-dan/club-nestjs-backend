@@ -4,7 +4,6 @@ import { ENV } from './utils/config/env.config';
 import { printWithBorder } from './utils/text';
 import * as morgan from 'morgan';
 import { SpinUp } from 'spin-up-ping';
-import * as cookieParser from 'cookie-parser';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
@@ -13,18 +12,11 @@ async function bootstrap() {
   //   credentials: true,
   // });
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'https://clubwize-client.vercel.app',
-      // Add your API domain if needed
-      'http://43.205.45.251'
-    ],
+    origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app', 'http://43.205.45.251'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    credentials: true,
-    exposedHeaders: ['set-cookie']
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
-  app.use(cookieParser());
+  // app.use(cookieParser());
   // app.useGlobalPipes(
   //   new ValidationPipe({
   //     transform: true, // Enable transformation
