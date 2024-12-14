@@ -17,9 +17,9 @@ export class Faq {
     required: true,
     enum: ['proposed', 'approved', 'rejected'],
   })
-  status: boolean;
+  status: string;
 
-  @Prop({ type: String, required: true, trim: true })
+  @Prop({ type: String, required: false, trim: true })
   answer: string;
 
   @Prop({ type: String, required: true, trim: true })
@@ -28,7 +28,7 @@ export class Faq {
   @Prop({ type: Types.ObjectId, required: true, ref: User.name })
   askedBy: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: User.name })
+  @Prop({ type: Types.ObjectId, required: false, ref: User.name })
   answeredBy: Types.ObjectId;
 
   @Prop({ type: Date, required: true })
