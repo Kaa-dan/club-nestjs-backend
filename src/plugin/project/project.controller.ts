@@ -32,6 +32,8 @@ import {
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { Types } from 'mongoose';
+import { User } from 'src/shared/entities/user.entity';
+import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 
 /**
  * Controller handling all project-related operations
@@ -271,18 +273,33 @@ export class ProjectController {
   async getContributions(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('status') status: 'accepted' | 'pending' | 'rejected') {
     return await this.projectService.getContributions(user._id, projectId, status)
   }
-  /**
-   * 
-   */
-  @Put('accept-contributions/:contributionId')
-  async acceptContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId) {
-    return this.projectService.acceptContributions(user._id, contributionId)
-  }
 
+  @Put('accept-contributions/:contributionId/:type')
+  async acceptOrRejectContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId, @Param('type', ParseBoolPipe) type: boolean) {
+    return this.projectService.acceptOrRejectContributions(user._id, contributionId, type)
+  }
+  /**
+   * @get 
+
+   */
 
   @Put('accept-proposed-project/:projectId/:type')
   async acceptOrRejectProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('type') type: 'accept' | 'reject') {
     return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type)
   }
 
+  @Post('ask-faq')
+  async askFaq(@Req() { user }, @Body() createFaqDto: CreateDtoFaq) {
+    return this.projectService.askFaq(user._id, createFaqDto)
+  }
+
+  @Get('get-faq/:projectId')
+  async getQuestionFaq(@Param('projectId') projectID: Types.ObjectId) {
+    return this.getQuestionFaq(projectID)
+  }
+
+  @Put('answer-faq')
+  async answerFaq(@Req() { user }, @Body() answerFaqDto: AnswerFaqDto) {
+    return this.answerFaq(user._id, answerFaqDto)
+  }
 }

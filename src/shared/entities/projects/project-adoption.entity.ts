@@ -4,6 +4,7 @@ import { User } from '../user.entity';
 import { Project } from './project.entity';
 import { Club } from '../club.entity';
 import { Node_ } from '../node.entity';
+import { IsString } from 'class-validator';
 
 @Schema({
   timestamps: true,
@@ -23,6 +24,14 @@ export class ProjectAdoption {
 
   @Prop({ required: false, type: Types.ObjectId, ref: Node_.name })
   node: Types.ObjectId
+
+  @IsString()
+  @Prop({
+    type: String,
+    enum: ['draft', 'published', 'proposed', 'rejected', 'inactive'],
+    default: 'proposed',
+  })
+  status: string;
 }
 
 
