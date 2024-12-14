@@ -591,7 +591,7 @@ export class AdoptContributionService {
         // Match activities related to contributions of the specific project
         {
           $lookup: {
-            from: 'contributions', // Ensure this matches the actual collection name
+            from: 'contributions',
             localField: 'contribution',
             foreignField: '_id',
             as: 'contributionDetails',
@@ -603,8 +603,6 @@ export class AdoptContributionService {
         // Filter for contributions related to the project
         {
           $match: {
-            // 'contributionDetails.project': projectID,
-            // Optionally include contributions from root project as well
             $or: [
               { 'contributionDetails.project': new Types.ObjectId(projectID) },
               {
@@ -615,10 +613,22 @@ export class AdoptContributionService {
             ],
           },
         },
-        // Lookup author details
+        // Lookup parameters collection
         {
           $lookup: {
-            from: 'users', // Ensure this matches the actual collection name
+            from: 'parameters',
+            localField: 'contributionDetails.parameter',
+            foreignField: '_id',
+            as: 'parameterDetails',
+          },
+        },
+        {
+          $unwind: '$parameterDetails',
+        },
+        // Lookup users collection for author details
+        {
+          $lookup: {
+            from: 'users',
             localField: 'author',
             foreignField: '_id',
             as: 'authorDetails',
@@ -633,14 +643,34 @@ export class AdoptContributionService {
             _id: 1,
             date: 1,
             activityType: 1,
-            contribution: '$contributionDetails',
+            contribution: {
+              _id: '$contributionDetails._id',
+              rootProject: '$contributionDetails.rootProject',
+              project: '$contributionDetails.project',
+              parameter: {
+                _id: '$parameterDetails._id',
+                project: '$parameterDetails.project',
+                title: '$parameterDetails.title',
+                value: '$parameterDetails.value',
+                unit: '$parameterDetails.unit',
+                createdAt: '$parameterDetails.createdAt',
+                updatedAt: '$parameterDetails.updatedAt',
+              },
+              user: '$contributionDetails.user',
+              club: '$contributionDetails.club',
+              node: '$contributionDetails.node',
+              value: '$contributionDetails.value',
+              files: '$contributionDetails.files',
+              status: '$contributionDetails.status',
+              createdAt: '$contributionDetails.createdAt',
+              updatedAt: '$contributionDetails.updatedAt',
+            },
             author: {
               _id: '$authorDetails._id',
-              userName: '$authorDetails.userName', // Adjust based on your User schema
-              firstName: '$authorDetails.userName', // Adjust based on your User schema
-              lastName: '$authorDetails.userName', // Adjust based on your User schema
+              userName: '$authorDetails.userName',
+              firstName: '$authorDetails.firstName',
+              lastName: '$authorDetails.lastName',
               image: '$authorDetails.profileImage',
-              // Add other author fields as needed
             },
           },
         },
