@@ -18,7 +18,7 @@ export class AnnouncementService {
     private readonly projectAnnouncementModel: Model<ProjectAnnouncement>,
     @InjectModel(Project.name) private readonly projectModel: Model<Project>,
     private readonly s3FileUpload: UploadService,
-  ) { }
+  ) {}
 
   /**
    *
@@ -58,8 +58,12 @@ export class AnnouncementService {
         throw new UnauthorizedException('you are not the creator of this club');
       }
       //creating announcement
-      const createdAnnouncement = await this.projectAnnouncementModel.create({ announcement: createAnnouncementDto.announcement, project: new Types.ObjectId(createAnnouncementDto.projectId), files: fileObjects, user: userId })
-
+      const createdAnnouncement = await this.projectAnnouncementModel.create({
+        announcement: createAnnouncementDto.announcement,
+        project: new Types.ObjectId(createAnnouncementDto.projectId),
+        files: fileObjects,
+        user: userId,
+      });
 
       return {
         createdAnnouncement,
@@ -78,12 +82,19 @@ export class AnnouncementService {
     try {
       console.log({ projectId });
       //fetching all announcements of certain projects
-      const announcements = await this.projectAnnouncementModel.find({ project: new Types.ObjectId(projectId) }).populate({
-        path: 'user',
-        select: 'name email profileImage userName'
-      }).sort({ createdAt: -1 })
+      const announcements = await this.projectAnnouncementModel
+        .find({ project: new Types.ObjectId(projectId) })
+        .populate({
+          path: 'user',
+          select: 'firstName lastName email profileImage userName',
+        })
+        .sort({ createdAt: -1 });
 
-      return { data: announcements, success: true, message: 'data fetched sucessfully' }
+      return {
+        data: announcements,
+        success: true,
+        message: 'data fetched sucessfully',
+      };
     } catch (error) {
       throw new BadRequestException('server error');
     }

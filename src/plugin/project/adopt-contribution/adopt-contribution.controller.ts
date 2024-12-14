@@ -21,7 +21,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) { }
+  ) {}
 
   @Post()
   @ProjectFiles()
@@ -71,14 +71,20 @@ export class AdoptContributionController {
 
   @Get('project-activities/:projectId')
   projectActivities(@Param('projectId') projectId: Types.ObjectId) {
-    return this.adoptContributionService.getActivitiesOfProject(projectId)
+    return this.adoptContributionService.getActivitiesOfProject(projectId);
   }
   @Get('leaderboard')
-  getLeaderBoard(@Req() { user },
-    @Query('projectID') projectId: Types.ObjectId | null,
+  getLeaderBoard(
+    @Req() { user },
+    @Query('projectId') projectId: Types.ObjectId | null,
     @Query('forumId') forumId?: Types.ObjectId | null,
-    @Query('forumType') forumType?: "club" | "node" | null) {
-    return this.adoptContributionService.getLeaderBoard(user._id, forumId, projectId, forumType)
+    @Query('forumType') forumType?: 'club' | 'node' | null,
+  ) {
+    return this.adoptContributionService.getLeaderBoard(
+      user._id,
+      projectId,
+      forumId,
+      forumType,
+    );
   }
-
 }

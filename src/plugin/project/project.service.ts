@@ -21,7 +21,11 @@ import { Faq } from 'src/shared/entities/projects/faq.enitity';
 import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
-import { type } from 'node:os';
+import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
+import { query } from 'express';
+import { async, skip } from 'rxjs';
+import { type } from 'os';
+import { title } from 'process';
 
 /**
  * Service responsible for managing all project-related operations
@@ -31,6 +35,8 @@ import { type } from 'node:os';
 export class ProjectService {
   constructor(
     @InjectModel(Project.name) private readonly projectModel: Model<Project>,
+    @InjectModel(ProjectAdoption.name)
+    private readonly projectAdoptionModel: Model<ProjectAdoption>,
     @InjectModel(ClubMembers.name)
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
@@ -42,7 +48,7 @@ export class ProjectService {
     private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) { }
+  ) {}
 
   /**
    * Creates a new project with all associated data and files
@@ -107,11 +113,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Construct core project data
@@ -289,11 +295,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: prevBannerImage.originalname,
-          mimetype: prevBannerImage.mimetype,
-          size: prevBannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: prevBannerImage.originalname,
+            mimetype: prevBannerImage.mimetype,
+            size: prevBannerImage.size,
+          }
         : null;
 
       // Construct base project data
@@ -523,11 +529,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-          url: uploadedBannerImage.url,
-          originalname: bannerImage.originalname,
-          mimetype: bannerImage.mimetype,
-          size: bannerImage.size,
-        }
+            url: uploadedBannerImage.url,
+            originalname: bannerImage.originalname,
+            mimetype: bannerImage.mimetype,
+            size: bannerImage.size,
+          }
         : null;
 
       // Prepare update data
@@ -673,11 +679,10 @@ export class ProjectService {
               {
                 $match: {
                   $expr: {
-                    $and: [{ $eq: ['$rootProject', '$$projectId'] },
-                    { $eq: ['$status', 'accepted'] }
-
+                    $and: [
+                      { $eq: ['$rootProject', '$$projectId'] },
+                      { $eq: ['$status', 'accepted'] },
                     ],
-
                   },
                 },
               },
@@ -838,21 +843,16 @@ export class ProjectService {
     club?: Types.ObjectId,
   ) {
     console.log({ status });
+    console.log({ node, club });
 
     try {
-      console.log('hey');
       const query: any = {
         status,
         // active: isActive,
       };
 
-      if (node) {
-        query.node = node;
-      }
-
-      if (club) {
-        query.club = club;
-      }
+      if (node) query.node = node;
+      else if (club) query.club = club;
 
       if (search) {
         query.$or = [
@@ -862,19 +862,33 @@ export class ProjectService {
         ];
       }
 
+      const total = await this.projectModel.countDocuments(query);
+
       const projects = await this.projectModel
         .find(query)
+        .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .populate('node', 'name')
-        .populate('club', 'name')
+        .populate('node', 'name profileImage')
+        .populate('club', 'name profileImage')
         .populate('createdBy', 'userName profileImage firstName lastName');
 
-      const total = await this.projectModel.countDocuments(query);
-      console.log({ projects });
+      if (node) query.node = new Types.ObjectId(node);
+      else query.club = new Types.ObjectId(club);
+
+      const adoptedProjects = await this.projectAdoptionModel
+        .find(query)
+        .populate('node', 'name profileImage')
+        .populate('club', 'name profileImage')
+        .populate('proposedBy', 'userName profileImage firstName lastName')
+        .populate(
+          'project',
+          '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
+        );
 
       return {
         projects,
+        adoptedProjects,
         page,
         limit,
         total,
@@ -903,16 +917,12 @@ export class ProjectService {
         createdBy: userId,
       };
 
-      if (node) {
-        query.node = node;
-      }
-
-      if (club) {
-        query.club = club;
-      }
+      if (node) query.node = node;
+      else if (club) query.club = club;
 
       const projects = await this.projectModel
-        .find(query).sort({ createdAt: -1 })
+        .find(query)
+        .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
@@ -921,8 +931,24 @@ export class ProjectService {
 
       const total = await this.projectModel.countDocuments(query);
 
+      delete query.createdBy;
+      query.proposedBy = userId;
+      if (node) query.node = new Types.ObjectId(node);
+      else if (club) query.club = new Types.ObjectId(club);
+
+      const adoptedProjects = await this.projectAdoptionModel
+        .find(query)
+        .populate('node', 'name profileImage')
+        .populate('club', 'name profileImage')
+        .populate('proposedBy', 'userName profileImage firstName lastName')
+        .populate(
+          'project',
+          '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
+        );
+
       return {
         projects,
+        adoptedProjects,
         page,
         limit,
         total,
@@ -936,15 +962,16 @@ export class ProjectService {
   }
 
   /**
-   * 
-   * @param page 
-   * @param limit 
-   * @returns 
+   *
+   * @param page
+   * @param limit
+   * @returns
    */
   async getGlobalProjects(page: number, limit: number) {
     try {
       const projects = await this.projectModel
-        .find({ status: 'published' }).sort({ createdAt: -1 })
+        .find({ status: 'published' })
+        .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit)
         .populate('node', 'name')
@@ -1063,13 +1090,12 @@ export class ProjectService {
         // },
       ];
 
-      console.log({ query })
+      console.log({ query });
 
       const data = await this.projectModel.aggregate(query);
       console.log(JSON.stringify(data));
 
-      return data
-
+      return data;
     } catch (error) {
       throw new BadRequestException(
         `Error while trying to fetch contributions: ${error?.message}`,
@@ -1091,23 +1117,24 @@ export class ProjectService {
   ) {
     try {
       // Properly typed population
-      const contributionDetails = await this.contributionModel
+      console.log({ contributionId });
+      const contributionDetails: any = await this.contributionModel
         .findById(contributionId)
-        .populate<{ project: PopulatedProject }>({
-          path: 'project',
-          select: 'createdBy',
-          model: this.projectModel,
-        })
+        .populate('project', 'createdBy')
         .lean();
       // Check if contribution exists
       if (!contributionDetails) {
         throw new NotAcceptableException('CONTRIBUTION NOT FOUND');
       }
 
+      console.log('contri ', contributionDetails);
+      console.log('uiiiid ', userId.toString());
+
       // Check if the user is the project creator
       if (
         !contributionDetails.project ||
-        contributionDetails.project.createdBy.toString() !== userId.toString()
+        contributionDetails?.project?.createdBy.toString() !== userId.toString()
+        // 'abc' !== userId.toString()
       ) {
         throw new UnauthorizedException(
           'You are not authorized to accept this contribution',
@@ -1140,11 +1167,11 @@ export class ProjectService {
   }
 
   /**
-   * 
-   * @param userID     
-   * @param projectId 
-   * @param type 
-   * @returns 
+   *
+   * @param userID
+   * @param projectId
+   * @param type
+   * @returns
    */
   async acceptOrRejectProposedProjectInForum(
     userID: Types.ObjectId,
@@ -1165,67 +1192,86 @@ export class ProjectService {
     }
   }
 
-
   /**
-   * 
-   * @param userId 
-   * @param createFaqDto 
-   * @returns 
+   *
+   * @param userId
+   * @param createFaqDto
+   * @returns
    */
   async askFaq(userId: Types.ObjectId, createFaqDto: CreateDtoFaq) {
     try {
-
       if (!userId && !createFaqDto.projectId) {
-        throw new BadRequestException('user and project id not found')
+        throw new BadRequestException('user and project id not found');
       }
 
       //creating faq
-      const createdFaq = await this.faqModel.create({ Date: new Date(), status: 'proposed', askedBy: new Types.ObjectId(userId), question: createFaqDto.question, project: createFaqDto.projectId });
+      const createdFaq = await this.faqModel.create({
+        Date: new Date(),
+        status: 'proposed',
+        askedBy: new Types.ObjectId(userId),
+        question: createFaqDto.question,
+        project: createFaqDto.projectId,
+      });
 
-      return { status: 'success', data: createdFaq, message: 'faq created succesfully' }
+      return {
+        status: 'success',
+        data: createdFaq,
+        message: 'faq created succesfully',
+      };
     } catch (error) {
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
     }
   }
 
-
   /**
-   * 
-   * @param projectId 
-   * @returns 
+   *
+   * @param projectId
+   * @returns
    */
   async getQuestionFaq(projectId: Types.ObjectId) {
     try {
-      const getAllFaqQuestions = await this.faqModel.find({ project: new Types.ObjectId(projectId), status: 'proposed' }).populate({ path: 'askedBy', select: 'userName email profilePicture' })
+      const getAllFaqQuestions = await this.faqModel
+        .find({ project: new Types.ObjectId(projectId), status: 'proposed' })
+        .populate({ path: 'askedBy', select: 'userName email profilePicture' });
 
-      return { message: 'data fetched successfully', data: getAllFaqQuestions, status: true }
+      return {
+        message: 'data fetched successfully',
+        data: getAllFaqQuestions,
+        status: true,
+      };
     } catch (error) {
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
     }
   }
 
   /**
-   * 
-   * @param userId 
-   * @param answerFaqDto 
-   * @returns 
+   *
+   * @param userId
+   * @param answerFaqDto
+   * @returns
    */
-
 
   async answerFaq(userId: Types.ObjectId, answerFaqDto: AnswerFaqDto) {
     try {
       //checking if the user is the creator
-      const isCreater = await this.projectModel.find({ _id: new Types.ObjectId(answerFaqDto.project), createdBy: userId })
+      const isCreater = await this.projectModel.find({
+        _id: new Types.ObjectId(answerFaqDto.project),
+        createdBy: userId,
+      });
       if (!isCreater) {
-        throw new UnauthorizedException('your are not authorized to answer this faq')
+        throw new UnauthorizedException(
+          'your are not authorized to answer this faq',
+        );
       }
       //answering faq
-      const answeredFaq = await this.faqModel.findByIdAndUpdate(new Types.ObjectId(answerFaqDto.faq), { answer: answerFaqDto.answer, status: answerFaqDto.status })
+      const answeredFaq = await this.faqModel.findByIdAndUpdate(
+        new Types.ObjectId(answerFaqDto.faq),
+        { answer: answerFaqDto.answer, status: answerFaqDto.status },
+      );
 
-
-      return { data: answeredFaq, status: false, message: 'faq answered' }
+      return { data: answeredFaq, status: false, message: 'faq answered' };
     } catch (error) {
-      throw new BadRequestException(error)
+      throw new BadRequestException(error);
     }
   }
 
