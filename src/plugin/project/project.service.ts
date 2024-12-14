@@ -633,6 +633,20 @@ export class ProjectService {
             _id: new Types.ObjectId(id),
           },
         },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorDetails',
+          },
+        },
+        {
+          $unwind: {
+            path: '$creatorDetails',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
         // Lookup FAQs
         {
           $lookup: {
@@ -697,6 +711,18 @@ export class ProjectService {
               },
               {
                 $unwind: '$parameterDetails',
+              },
+
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'createdBy',
+                  foreignField: '_id',
+                  as: 'creatorDetails',
+                },
+              },
+              {
+                $unwind: '$creatorDetails',
               },
               {
                 $project: {
@@ -782,7 +808,14 @@ export class ProjectService {
             bannerImage: 1,
             files: 1,
             status: 1,
-            createdBy: 1,
+            createdBy: {
+              _id: '$creatorDetails._id',
+              userName: '$creatorDetails.userName',
+              firstName: '$creatorDetails.firstName',
+              lastName: '$creatorDetails.lastName',
+              profileImage: '$creatorDetails.profileImage',
+              email: '$creatorDetails.email',
+            },
             publishedBy: 1,
             totalFaqs: 1,
             totalParameters: 1,
@@ -802,7 +835,7 @@ export class ProjectService {
 
       // Debug: Check parameters and contributions
       const project = result[0];
-
+      console.log({ project });
       return project;
     } catch (error) {
       console.error('Error in getSingleProject:', error);
