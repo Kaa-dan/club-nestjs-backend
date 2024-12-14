@@ -50,7 +50,6 @@ export class AnnouncementService {
         url: file.url,
         originalname: documentFiles[index].originalname,
         mimetype: documentFiles[index].mimetype,
-        size: documentFiles[index].size,
       }));
 
       //throwing error if user is not the creator
