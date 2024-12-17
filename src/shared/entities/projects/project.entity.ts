@@ -176,6 +176,18 @@ export class Project extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, default: null })
   @IsOptional()
   publishedBy: Types.ObjectId | null;
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: User.name }],
+    default: []
+  })
+  relevant: Types.ObjectId[];
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: User.name }],
+    default: []
+  })
+  irrelevant: Types.ObjectId[];
 }
 
 //Mongoose schema
