@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
   Query,
   ParseBoolPipe,
+  Patch,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -301,5 +302,15 @@ export class ProjectController {
   @Put('answer-faq')
   async answerFaq(@Req() { user }, @Body() answerFaqDto: AnswerFaqDto) {
     return this.answerFaq(user._id, answerFaqDto)
+  }
+
+  @Patch('/react')
+  async reactToPost(
+    @Req() { user },
+    @Body('postId') postId: string,
+
+    @Body('action') action: 'like' | 'dislike'
+  ) {
+    return this.projectService.reactToPost(postId, user?._id, action);
   }
 }
