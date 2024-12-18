@@ -61,7 +61,7 @@ export class GoogleSignupService {
         const newUser = new this.userModel({
           email,
           signupThrough,
-          userName: userName.split(' ')[0],
+          firstName: userName.split(' ')[0],
           profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
