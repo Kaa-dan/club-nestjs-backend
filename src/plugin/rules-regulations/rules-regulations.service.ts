@@ -722,9 +722,13 @@ export class RulesRegulationsService {
       });
 
       if (rulesRegulation) {
-        throw new BadRequestException(
-          'User has already liked this rules regulation',
-        );
+        return await this.rulesregulationModel.updateOne({
+          _id: rulesRegulationId
+        }, {
+          $pull: {
+            relevant: userId
+          }
+        })
       }
 
       // Update the document: Add to relevant array and remove from irrelevant if exists
@@ -766,9 +770,15 @@ export class RulesRegulationsService {
         irrelevant: userId,
       });
       if (rulesRegulation) {
-        throw new BadRequestException(
-          'User has not liked this rules regulation',
-        );
+        return await this.rulesregulationModel.updateOne({
+          _id: rulesRegulationId
+        },
+          {
+            $pull: {
+              irrelevant: userId
+            }
+          }
+        )
       }
 
       // Update the document: Add to irrelevant array and remove from relevant if exists
