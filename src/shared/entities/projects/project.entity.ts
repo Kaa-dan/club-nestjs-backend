@@ -188,6 +188,9 @@ export class Project extends Document {
     default: []
   })
   irrelevant: Types.ObjectId[];
+
+  @Prop({ type: String, default: 'creation' })
+  type: string
 }
 
 //Mongoose schema

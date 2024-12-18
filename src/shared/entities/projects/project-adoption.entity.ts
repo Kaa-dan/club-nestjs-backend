@@ -32,6 +32,9 @@ export class ProjectAdoption {
     default: 'proposed',
   })
   status: string;
+
+  @Prop({ type: String, default: 'adopted' })
+  type: string
 }
 
 
