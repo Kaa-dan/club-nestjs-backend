@@ -1,155 +1,113 @@
+import { Model, PipelineStage, Types } from 'mongoose';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types, PipelineStage } from 'mongoose';
-
-import { Issues } from 'src/shared/entities/issues.entity';
-import { Debate } from 'src/shared/entities/debate.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
-
-interface FeedQueryParams {
-  entityId: string;
-  entityType: 'club' | 'node';
-  limit?: number;
-  lastId?: string;
-}
-
+import { Debate } from 'src/shared/entities/debate.entity';
+import { Issues } from 'src/shared/entities/issues.entity';
 @Injectable()
 export class AssetsService {
   constructor(
-    @InjectModel(Project.name) private projectModel: Model<Project>,
-    @InjectModel(Debate.name) private debateModel: Model<Debate>,
-    @InjectModel(Issues.name) private issuesModel: Model<Issues>,
+    @InjectModel(Project.name) private readonly projectModel: Model<Project>,
+    @InjectModel(Debate.name) private readonly debateModel: Model<Debate>,
+    @InjectModel(Issues.name) private readonly issueModel: Model<Issues>,
   ) {}
 
-  async getFeed({ entityId, entityType, limit = 10, lastId }: FeedQueryParams) {
-    const matchStage: PipelineStage.Match = {
-      $match: {
-        [entityType]: new Types.ObjectId(entityId),
-        status: 'published',
-        isDeleted: { $ne: true },
-        ...(lastId && { _id: { $lt: new Types.ObjectId(lastId) } }),
-      },
-    };
+  async getAssetsByEntity(
+    entity: 'club' | 'node',
+    entityId: string,
+    page: number = 1,
+    limit: number = 10
+  ) {
 
-    const pipeline: PipelineStage[] = [
-      {
-        $facet: {
-          projects: [
-            matchStage,
-            {
-              $project: {
-                _id: 1,
-                title: 1,
-                significance: 1,
-                solution: 1,
-                region: 1,
-                budget: 1,
-                deadline: 1,
-                bannerImage: 1,
-                committees: 1,
-                champions: 1,
-                files: 1,
-                createdAt: 1,
-                createdBy: 1,
-                publishedBy: 1,
-                club: 1,
-                node: 1,
-                type: { $literal: 'project' },
-                relevant: { $size: { $ifNull: ['$relevant', []] } },
-                irrelevant: { $size: { $ifNull: ['$irrelevant', []] } },
-              },
-            },
-          ],
-          debates: [
-            matchStage,
-            {
-              $project: {
-                _id: 1,
-                title: '$topic',
-                significance: 1,
-                targetAudience: 1,
-                tags: 1,
-                files: 1,
-                isPublic: 1,
-                startingComment: 1,
-                adoptedClubs: 1,
-                adoptedNodes: 1,
-                views: 1,
-                createdAt: 1,
-                createdBy: 1,
-                publishedBy: 1,
-                publishedStatus: 1,
-                club: 1,
-                node: 1,
-                type: { $literal: 'debate' },
-                relevant: '$pinnedSupportCount',
-                irrelevant: '$pinnedAgainstCount',
-              },
-            },
-          ],
-          issues: [
-            matchStage,
-            {
-              $project: {
-                _id: 1,
-                title: 1,
-                issueType: 1,
-                whereOrWho: 1,
-                deadline: 1,
-                significance: 1,
-                whoShouldAddress: 1,
-                description: 1,
-                files: 1,
-                isPublic: 1,
-                isAnonymous: 1,
-                views: 1,
-                adoptedClubs: 1,
-                adoptedNodes: 1,
-                createdAt: 1,
-                createdBy: 1,
-                publishedBy: 1,
-                publishedStatus: 1,
-                club: 1,
-                node: 1,
-                type: { $literal: 'issue' },
-                relevant: { $size: { $ifNull: ['$relevant', []] } },
-                irrelevant: { $size: { $ifNull: ['$irrelevant', []] } },
-              },
-            },
-          ],
+    try {
+      console.log({entity,entityId})
+      const skip = (page - 1) * limit;
+    
+      const matchCondition = {
+        [entity]: new Types.ObjectId(entityId),
+      };
+  
+      const createPipeline = (type: 'Project' | 'Debate' | 'Issue'): PipelineStage[] => [
+        {
+          $match: matchCondition,
         },
-      } as PipelineStage,
-      {
-        $project: {
-          combined: {
-            $concatArrays: ['$projects', '$debates', '$issues'],
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'author',
           },
         },
-      } as PipelineStage.Project,
-      {
-        $unwind: '$combined',
-      } as PipelineStage.Unwind,
-      {
-        $replaceRoot: { newRoot: '$combined' },
-      } as PipelineStage.ReplaceRoot,
-      {
-        $sort: { createdAt: -1 },
-      } as PipelineStage.Sort,
-      {
-        $limit: limit,
-      } as PipelineStage.Limit,
-    ];
+        {
+          $unwind: {
+            path: '$author',
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            [entity]: 1,
+            title: 1,
+            createdAt: 1,
+            content: 1,
+            author: {
+              name: { $concat: ['$author.firstName', ' ', '$author.lastName'] },
+              email: '$author.email',
+            },
+            type: { $literal: type },
+          },
+        },
+        {
+          $sort: { createdAt: -1 },
+        },
+      ];
+  
+      // Execute count queries first
+      const [projectCount, debateCount, issueCount] = await Promise.all([
+        this.projectModel.countDocuments(matchCondition),
+        this.debateModel.countDocuments(matchCondition),
+        this.issueModel.countDocuments(matchCondition),
+      ]);
+  
+      const total = projectCount + debateCount + issueCount;
+  
+      // Add pagination stages to pipeline
+      const paginatedPipeline = (type: 'Project' | 'Debate' | 'Issue'): PipelineStage[] => [
+        ...createPipeline(type),
+        {
+          $skip: skip,
+        },
+        {
+          $limit: limit,
+        },
+      ];
+  
+      // Execute aggregation on each collection with pagination
+      const [projects, debates, issues] = await Promise.all([
+        this.projectModel.aggregate(paginatedPipeline('Project')).exec(),
+        this.debateModel.aggregate(paginatedPipeline('Debate')).exec(),
+        this.issueModel.aggregate(paginatedPipeline('Issue')).exec(),
+      ]);
+  
+      // Combine and sort results
+      const allResults = [...projects, ...debates, ...issues]
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit);
+        console.log({allResults})
+      return {
+        items: allResults,
+        total,
+        page,
+        limit,
+        hasMore: skip + limit < total,
+      };
+    } catch (error) {
+      console.log({error})
+      throw error
+    }
 
-    const assets = await this.projectModel.aggregate(pipeline);
-
-    const lastItemId = assets.length > 0 ? assets[assets.length - 1]._id : null;
-    const hasMore = assets.length === limit;
-
-    return {
-      items: assets,
-      hasMore,
-      lastId: lastItemId,
-      total: assets.length,
-    };
+  
   }
 }
