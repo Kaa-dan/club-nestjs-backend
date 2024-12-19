@@ -24,7 +24,7 @@ import { Issues } from 'src/shared/entities/issues.entity';
 
 @Controller('issues')
 export class IssuesController {
-  constructor(private readonly issuesService: IssuesService) {}
+  constructor(private readonly issuesService: IssuesService) { }
 
   /**
    * POST / => Create Issue
@@ -88,7 +88,7 @@ export class IssuesController {
       return await this.issuesService.createIssue(dataToSave);
     }
 
-    if (memberRole !== 'admin') {
+    if (memberRole !== 'owner') {
       const dataToSave = {
         ...createIssuesData,
         createdBy: new Types.ObjectId(req.user._id),
