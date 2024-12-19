@@ -57,8 +57,9 @@ export class RulesRegulationsService {
         .find({
           isPublic: true,
           isActive: true,
+          publishedStatus: "true"
         })
-        .populate('createdBy');
+        .populate('createdBy').sort({ createdAt: -1 });
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while fetching rules-regulations',
@@ -270,6 +271,7 @@ export class RulesRegulationsService {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
           .populate('createdBy')
+          .sort({ createdAt: -1 })
           .exec();
         ({ response });
         return response;
@@ -316,6 +318,7 @@ export class RulesRegulationsService {
           path: 'createdBy',
           select: '-password',
         })
+        .sort({ createdAt: -1 })
         .exec();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -697,7 +700,7 @@ export class RulesRegulationsService {
   async getRules(ruleId: Types.ObjectId) {
     try {
       return await (
-        await this.rulesregulationModel.findById(ruleId)
+        await this.rulesregulationModel.findById(ruleId).sort({ createdAt: -1 })
       ).populate('createdBy');
     } catch (error) {
       throw new InternalServerErrorException(
@@ -887,7 +890,8 @@ export class RulesRegulationsService {
         })
         .populate('offender')
         .populate('reportedBy')
-        .populate('rulesId');
+        .populate('rulesId')
+        .sort({ createdAt: -1 })
     } catch (error) {
       (error);
       throw new InternalServerErrorException(
