@@ -22,10 +22,6 @@ import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
-import { query } from 'express';
-import { async, skip } from 'rxjs';
-import { type } from 'os';
-import { title } from 'process';
 
 /**
  * Service responsible for managing all project-related operations
@@ -879,8 +875,8 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
-    console.log({ status });
-    console.log({ node, club });
+    // console.log({ status });
+    // console.log({ node, club });
 
     try {
       const query: any = {
@@ -922,6 +918,7 @@ export class ProjectService {
           'project',
           '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
         );
+      console.log({ adoptedProjects });
 
       return {
         projects,
@@ -1212,17 +1209,37 @@ export class ProjectService {
     userID: Types.ObjectId,
     projectId: Types.ObjectId,
     type: 'accept' | 'reject',
+    creationType: 'proposed' | 'creation'
   ) {
+
+
     try {
-      console.log({ projectId });
-      return this.projectModel.findByIdAndUpdate(
-        new Types.ObjectId(projectId),
-        {
-          status: type === 'accept' ? 'published' : 'rejected',
-          publishedBy: userID,
-        },
-      );
+      if (creationType == 'creation') {
+        return await this.projectModel.findByIdAndUpdate(
+          new Types.ObjectId(projectId),
+          {
+            status: type === 'accept' ? 'published' : 'rejected',
+            publishedBy: userID,
+          },
+        );
+      } else {
+        // console.log({ creationType });
+
+        return await this.projectAdoptionModel.updateOne(
+          { project: new Types.ObjectId(projectId) }, // Query to find the document
+          {
+            $set: {
+              status: type === 'accept' ? 'published' : 'rejected', // Update the status field
+              publishedBy: userID, // Update the publishedBy field
+            },
+          }
+        );
+
+      }
+
     } catch (error) {
+      console.log({ error });
+
       throw new BadRequestException('error while accepting project', error);
     }
   }

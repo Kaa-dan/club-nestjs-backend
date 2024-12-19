@@ -285,8 +285,11 @@ export class ProjectController {
    */
 
   @Put('accept-proposed-project/:projectId/:type')
-  async acceptOrRejectProposedProjectInForum(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('type') type: 'accept' | 'reject') {
-    return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type)
+  async acceptOrRejectProposedProjectInForum(@Req() { user },
+    @Param('projectId') projectId: Types.ObjectId,
+    @Param('type') type: 'accept' | 'reject',
+    @Body() { creationType }: { creationType: 'proposed' | 'creation' }) {
+    return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type, creationType);
   }
 
   @Post('ask-faq')
