@@ -207,6 +207,7 @@ export class IssuesService {
       return await this.issuesModel
         .find(query)
         .populate('createdBy', '-password')
+        .sort({ createdAt: -1 })
         .exec();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -231,6 +232,7 @@ export class IssuesService {
       return await this.issuesModel
         .find(query)
         .populate('createdBy', '-password')
+        .sort({ createdAt: -1 })
         .exec();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -266,7 +268,7 @@ export class IssuesService {
           club: entityId,
         };
       }
-      return await this.issuesModel.find(query).exec();
+      return await this.issuesModel.find(query).sort({ createdAt: -1 }).exec();
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
@@ -286,6 +288,7 @@ export class IssuesService {
         .populate('createdBy', '-password')
         .populate('node')
         .populate('club')
+        .sort({ createdAt: -1 })
         .exec();
     } catch (error) {
       throw new InternalServerErrorException(
@@ -303,6 +306,7 @@ export class IssuesService {
         .populate('whoShouldAddress')
         .populate('node')
         .populate('club')
+        .sort({ createdAt: -1 })
         .exec();
 
       return response;
@@ -538,12 +542,12 @@ export class IssuesService {
       if (entity === 'node') {
         return await this.issuesModel
           .find({ node: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password')
+          .populate('createdBy', '-password').sort({ createdAt: -1 })
           .exec();
       } else {
         return await this.issuesModel
           .find({ club: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password')
+          .populate('createdBy', '-password').sort({ createdAt: -1 })
           .exec();
       }
     } catch (error) {
