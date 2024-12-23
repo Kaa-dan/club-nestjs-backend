@@ -22,10 +22,6 @@ import { Contribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
-import { query } from 'express';
-import { async, skip } from 'rxjs';
-import { type } from 'os';
-import { title } from 'process';
 
 /**
  * Service responsible for managing all project-related operations
@@ -48,7 +44,7 @@ export class ProjectService {
     private readonly contributionModel: Model<Contribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   /**
    * Creates a new project with all associated data and files
@@ -113,11 +109,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Construct core project data
@@ -167,16 +163,17 @@ export class ProjectService {
       // Set project status based on user's role
       const projectData = {
         ...baseProjectData,
-        ...(club ? { club } : { node }),
+        ...(club ? { club: new Types.ObjectId(club) } : {}),
+        ...(node ? { node: new Types.ObjectId(node) } : {}),
         status: membershipModel
           ? membership.role === 'member'
             ? 'proposed'
             : 'published'
           : 'draft',
         createdBy: new Types.ObjectId(userId),
-        publishedBy:
-          membership.role !== 'member' ? new Types.ObjectId(userId) : null,
+        publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
+      
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);
@@ -295,11 +292,11 @@ export class ProjectService {
       // Process banner image if provided
       const uploadedBannerImageObject = prevBannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: prevBannerImage.originalname,
-            mimetype: prevBannerImage.mimetype,
-            size: prevBannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: prevBannerImage.originalname,
+          mimetype: prevBannerImage.mimetype,
+          size: prevBannerImage.size,
+        }
         : null;
 
       // Construct base project data
@@ -529,11 +526,11 @@ export class ProjectService {
       // Process banner image
       const uploadedBannerImageObject = bannerImage
         ? {
-            url: uploadedBannerImage.url,
-            originalname: bannerImage.originalname,
-            mimetype: bannerImage.mimetype,
-            size: bannerImage.size,
-          }
+          url: uploadedBannerImage.url,
+          originalname: bannerImage.originalname,
+          mimetype: bannerImage.mimetype,
+          size: bannerImage.size,
+        }
         : null;
 
       // Prepare update data
@@ -808,6 +805,8 @@ export class ProjectService {
             bannerImage: 1,
             files: 1,
             status: 1,
+            relevant: 1,
+            irrelevant: 1,
             createdBy: {
               _id: '$creatorDetails._id',
               userName: '$creatorDetails.userName',
@@ -825,6 +824,8 @@ export class ProjectService {
             contributionsByParameter: 1,
             createdAt: 1,
             updatedAt: 1,
+
+
           },
         },
       ]);
@@ -875,8 +876,8 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
-    console.log({ status });
-    console.log({ node, club });
+    // console.log({ status });
+    // console.log({ node, club });
 
     try {
       const query: any = {
@@ -918,6 +919,7 @@ export class ProjectService {
           'project',
           '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
         );
+      console.log({ adoptedProjects });
 
       return {
         projects,
@@ -1041,8 +1043,6 @@ export class ProjectService {
     projectId: Types.ObjectId,
     status: 'accepted' | 'pending' | 'rejected',
   ) {
-    console.log({ status });
-
     try {
       const query = [
         {
@@ -1210,17 +1210,37 @@ export class ProjectService {
     userID: Types.ObjectId,
     projectId: Types.ObjectId,
     type: 'accept' | 'reject',
+    creationType: 'proposed' | 'creation'
   ) {
+
+
     try {
-      console.log({ projectId });
-      return this.projectModel.findByIdAndUpdate(
-        new Types.ObjectId(projectId),
-        {
-          status: type === 'accept' ? 'published' : 'rejected',
-          publishedBy: userID,
-        },
-      );
+      if (creationType == 'creation') {
+        return await this.projectModel.findByIdAndUpdate(
+          new Types.ObjectId(projectId),
+          {
+            status: type === 'accept' ? 'published' : 'rejected',
+            publishedBy: userID,
+          },
+        );
+      } else {
+        // console.log({ creationType });
+
+        return await this.projectAdoptionModel.updateOne(
+          { project: new Types.ObjectId(projectId) }, // Query to find the document
+          {
+            $set: {
+              status: type === 'accept' ? 'published' : 'rejected', // Update the status field
+              publishedBy: userID, // Update the publishedBy field
+            },
+          }
+        );
+
+      }
+
     } catch (error) {
+      console.log({ error });
+
       throw new BadRequestException('error while accepting project', error);
     }
   }
@@ -1329,4 +1349,54 @@ export class ProjectService {
       );
     }
   }
+
+
+
+  async reactToPost(postId: string, userId: string, action: 'like' | 'dislike') {
+    if (!['like', 'dislike'].includes(action)) {
+      throw new BadRequestException('Invalid action. Use "like" or "dislike".');
+    }
+
+    const doc = await this.projectModel.findById(postId);
+    const isLiked = doc.relevant.includes(new Types.ObjectId(userId));
+    const isDisliked = doc.irrelevant.includes(new Types.ObjectId(userId));
+
+    let updateQuery;
+
+    if (action === 'like') {
+      if (isLiked) {
+        // If already liked, remove the like
+        updateQuery = {
+          $pull: { relevant: userId }
+        };
+      } else {
+        // If not liked, add like and remove from irrelevant
+        updateQuery = {
+          $addToSet: { relevant: userId },
+          $pull: { irrelevant: userId }
+        };
+      }
+    } else {
+      if (isDisliked) {
+        // If already disliked, remove the dislike
+        updateQuery = {
+          $pull: { irrelevant: userId }
+        };
+      } else {
+        // If not disliked, add dislike and remove from relevant
+        updateQuery = {
+          $addToSet: { irrelevant: userId },
+          $pull: { relevant: userId }
+        };
+      }
+    }
+    const post = await this.projectModel.findByIdAndUpdate(postId, updateQuery);
+
+    if (!post) {
+      throw new BadRequestException('Post not found.');
+    }
+
+    return { message: `Post has been ${action}d successfully.` };
+  }
+
 }
