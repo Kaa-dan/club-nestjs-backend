@@ -11,11 +11,11 @@ async function bootstrap() {
   //   origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app'],
   //   credentials: true,
   // });
-  app.enableCors({
-    origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app', 'http://43.205.45.251'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  });
+  // app.enableCors({
+  //   origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app', 'http://43.205.45.251'],
+  //   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  //   allowedHeaders: ['Content-Type', 'Authorization'],
+  // });
   // app.use(cookieParser());
   // app.useGlobalPipes(
   //   new ValidationPipe({
@@ -40,10 +40,10 @@ async function bootstrap() {
 
   pinger.start();
 
-  // app.enableCors({
-  //   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-  //   credentials: true,
-  // });
+  app.enableCors({
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
   await app.listen(ENV.PORT ?? 4000).then(() => {
     printWithBorder('Server alive and running successfully on Port ' + ENV.PORT);
   });
