@@ -163,16 +163,17 @@ export class ProjectService {
       // Set project status based on user's role
       const projectData = {
         ...baseProjectData,
-        ...(club ? { club } : { node }),
+        ...(club ? { club: new Types.ObjectId(club) } : {}),
+        ...(node ? { node: new Types.ObjectId(node) } : {}),
         status: membershipModel
           ? membership.role === 'member'
             ? 'proposed'
             : 'published'
           : 'draft',
         createdBy: new Types.ObjectId(userId),
-        publishedBy:
-          membership.role !== 'member' ? new Types.ObjectId(userId) : null,
+        publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
+      
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);

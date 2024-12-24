@@ -88,7 +88,7 @@ export class IssuesController {
       return await this.issuesService.createIssue(dataToSave);
     }
 
-    if (memberRole !== 'owner') {
+    if (!['admin', 'owner'].includes(memberRole)) {
       const dataToSave = {
         ...createIssuesData,
         createdBy: new Types.ObjectId(req.user._id),
