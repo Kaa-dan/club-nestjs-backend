@@ -173,7 +173,7 @@ export class ProjectService {
         createdBy: new Types.ObjectId(userId),
         publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
-      
+
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);
@@ -623,6 +623,8 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
+    console.log({ id });
+
     try {
       const result = await this.projectModel.aggregate([
         {
@@ -836,7 +838,8 @@ export class ProjectService {
 
       // Debug: Check parameters and contributions
       const project = result[0];
-      console.log({ project });
+      console.log(JSON.stringify(project))
+
       return project;
     } catch (error) {
       console.error('Error in getSingleProject:', error);
@@ -1351,52 +1354,96 @@ export class ProjectService {
   }
 
 
-
   async reactToPost(postId: string, userId: string, action: 'like' | 'dislike') {
     if (!['like', 'dislike'].includes(action)) {
       throw new BadRequestException('Invalid action. Use "like" or "dislike".');
     }
 
-    const doc = await this.projectModel.findById(postId);
-    const isLiked = doc.relevant.includes(new Types.ObjectId(userId));
-    const isDisliked = doc.irrelevant.includes(new Types.ObjectId(userId));
+    const userObjectId = new Types.ObjectId(userId);
 
-    let updateQuery;
-
-    if (action === 'like') {
-      if (isLiked) {
-        // If already liked, remove the like
-        updateQuery = {
-          $pull: { relevant: userId }
-        };
-      } else {
-        // If not liked, add like and remove from irrelevant
-        updateQuery = {
-          $addToSet: { relevant: userId },
-          $pull: { irrelevant: userId }
-        };
+    // First, ensure the document exists and initialize arrays if needed
+    const existingPost = await this.projectModel.findByIdAndUpdate(
+      postId,
+      {
+        $setOnInsert: {
+          relevant: [],
+          irrelevant: []
+        }
+      },
+      {
+        new: true,
+        upsert: true
       }
-    } else {
-      if (isDisliked) {
-        // If already disliked, remove the dislike
-        updateQuery = {
-          $pull: { irrelevant: userId }
-        };
-      } else {
-        // If not disliked, add dislike and remove from relevant
-        updateQuery = {
-          $addToSet: { irrelevant: userId },
-          $pull: { relevant: userId }
-        };
-      }
-    }
-    const post = await this.projectModel.findByIdAndUpdate(postId, updateQuery);
+    );
 
-    if (!post) {
+    if (!existingPost) {
       throw new BadRequestException('Post not found.');
     }
 
-    return { message: `Post has been ${action}d successfully.` };
+    // Now perform the reaction update in a separate operation
+    let updateQuery;
+
+    if (action === 'like') {
+      const isLiked = existingPost.relevant?.some(entry => entry?.user?.equals(userObjectId));
+
+      if (isLiked) {
+        // Remove like
+        updateQuery = {
+          $pull: {
+            relevant: { user: userObjectId }
+          }
+        };
+      } else {
+        // Add like and remove from irrelevant
+        updateQuery = {
+          $addToSet: {
+            relevant: {
+              user: userObjectId,
+              date: new Date()
+            }
+          },
+          $pull: {
+            irrelevant: { user: userObjectId }
+          }
+        };
+      }
+    } else {
+      const isDisliked = existingPost.irrelevant?.some(entry => entry?.user?.equals(userObjectId));
+
+      if (isDisliked) {
+        // Remove dislike
+        updateQuery = {
+          $pull: {
+            irrelevant: { user: userObjectId }
+          }
+        };
+      } else {
+        // Add dislike and remove from relevant
+        updateQuery = {
+          $addToSet: {
+            irrelevant: {
+              user: userObjectId,
+              date: new Date()
+            }
+          },
+          $pull: {
+            relevant: { user: userObjectId }
+          }
+        };
+      }
+    }
+
+    // Execute the update
+    const updatedPost = await this.projectModel.findByIdAndUpdate(
+      postId,
+      updateQuery,
+      { new: true }
+    );
+
+    return {
+      message: `Post has been ${action}d successfully.`,
+      data: updatedPost
+    };
   }
 
 }

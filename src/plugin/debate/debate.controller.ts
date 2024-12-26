@@ -32,7 +32,7 @@ import { Debate } from 'src/shared/entities/debate.entity';
 
 @Controller('debate')
 export class DebateController {
-  constructor(private readonly debateService: DebateService) {}
+  constructor(private readonly debateService: DebateService) { }
 
   @UseInterceptors(
     FilesInterceptor('files', 5, {
