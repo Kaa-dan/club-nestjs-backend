@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ENV } from './utils/config/env.config';
 import { printWithBorder } from './utils/text';
 import * as morgan from 'morgan';
-import { SpinUp } from 'spin-up-ping';
+// import { SpinUp } from 'spin-up-ping';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(morgan('dev'));
@@ -27,22 +27,21 @@ async function bootstrap() {
   //     forbidNonWhitelisted: true,
   //   }),
   // );
-  const pinger = new SpinUp({
-    url: ENV.RENDER_URL,
-    intervalMinutes: 10,
-    onSuccess: () => {
-      console.log('Server is up and running!');
-    },
-    onError: (error) => {
-      console.error('Error pinging server:', error);
-    },
-  });
+  // const pinger = new SpinUp({
+  //   url: ENV.RENDER_URL,
+  //   intervalMinutes: 10,
+  //   onSuccess: () => {
+  //     console.log('Server is up and running!');
+  //   },
+  //   onError: (error) => {
+  //     console.error('Error pinging server:', error);
+  //   },
+  // });
 
-  pinger.start();
+  // pinger.start();
 
   app.enableCors({
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS', credentials: true,
   });
   await app.listen(ENV.PORT ?? 4000).then(() => {
     printWithBorder('Server alive and running successfully on Port ' + ENV.PORT);

@@ -10,7 +10,7 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 import {
   RulesRegulations,
   RulesRegulationsSchema,
-} from './entities/rules-requlations.entity';
+} from './entities/rules-regulations.entity';
 import { Comment, CommentSchema } from './entities/comment.entity';
 import { Reports, ReportsSchema } from './entities/reports.entity';
 import {

@@ -14,6 +14,7 @@ import { PluginModule } from './plugin/plugin.module';
 import { RecaptchaModule } from './recaptcha/recaptcha.module';
 import { SocketModule } from './socket/socket.module';
 import { AssetsModule } from './assets/assets.module';
+import { BookmarksModule } from './bookmarks/bookmarks.module';
 @Module({
   imports: [
     UserModule,
@@ -30,6 +31,7 @@ import { AssetsModule } from './assets/assets.module';
     RecaptchaModule,
     SocketModule,
     AssetsModule,
+    BookmarksModule,
   ],
   providers: [],
 })

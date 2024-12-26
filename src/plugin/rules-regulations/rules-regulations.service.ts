@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
 import { CreateRulesRegulationsDto } from './dto/rules-regulation.dto';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';

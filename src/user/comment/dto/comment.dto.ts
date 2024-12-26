@@ -13,7 +13,7 @@ import { Club } from 'src/shared/entities/club.entity';
 import { Issues } from 'src/shared/entities/issues.entity';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
 
 class EntityDto {
   @IsNotEmpty()

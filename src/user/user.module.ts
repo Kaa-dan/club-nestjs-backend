@@ -17,6 +17,7 @@ import { User, UserSchema } from 'src/shared/entities/user.entity';
 import { InvitationModule } from './invitation/invitation.module';
 import { ReportModule } from './report/report.module';
 import { CommentModule } from './comment/comment.module';
+import { BookmarksModule } from './bookmarks/bookmarks.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { CommentModule } from './comment/comment.module';
     InvitationModule,
     ReportModule,
     CommentModule,
+    BookmarksModule,
   ],
 
   providers: [
