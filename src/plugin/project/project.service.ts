@@ -173,7 +173,7 @@ export class ProjectService {
         createdBy: new Types.ObjectId(userId),
         publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
-      
+
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);
@@ -623,6 +623,8 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
+    console.log({ id });
+
     try {
       const result = await this.projectModel.aggregate([
         {
@@ -836,7 +838,8 @@ export class ProjectService {
 
       // Debug: Check parameters and contributions
       const project = result[0];
-      console.log({ project });
+      console.log(JSON.stringify(project))
+
       return project;
     } catch (error) {
       console.error('Error in getSingleProject:', error);
