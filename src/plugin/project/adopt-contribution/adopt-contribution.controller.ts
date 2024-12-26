@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Req,
   UploadedFiles,
   Query,
@@ -59,6 +57,13 @@ export class AdoptContributionController {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 
+  /**
+   * 
+   * @param param0 
+   * @param projectId 
+   * @returns   
+   * 
+   */
   @Get('not-adopted-forum/:projectId')
   notAdoptedForum(
     @Req() { user },
