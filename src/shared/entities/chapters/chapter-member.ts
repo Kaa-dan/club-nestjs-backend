@@ -11,8 +11,8 @@ export class ChapterMember extends Document {
     @Prop({ type: Types.ObjectId, ref: User.name, required: true })
     user: Types.ObjectId;
 
-    @Prop({ required: true, enum: ['admin', 'moderator', 'member'] })
-    role: 'admin' | 'moderator' | 'member'
+    @Prop({ required: true, enum: ['owner', 'admin', 'moderator', 'member'] })
+    role: 'owner' | 'admin' | 'moderator' | 'member'
 
     @Prop({ required: true })
     status: 'MEMBER' | 'BLOCKED';

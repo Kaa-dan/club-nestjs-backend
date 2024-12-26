@@ -173,7 +173,7 @@ export class ProjectService {
         createdBy: new Types.ObjectId(userId),
         publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
-      
+
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);
