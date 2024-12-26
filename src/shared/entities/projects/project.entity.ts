@@ -178,16 +178,22 @@ export class Project extends Document {
   publishedBy: Types.ObjectId | null;
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: User.name }],
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
     default: []
   })
-  relevant: Types.ObjectId[];
+  relevant: Array<{ user: Types.ObjectId; date: Date }>;
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: User.name }],
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
     default: []
   })
-  irrelevant: Types.ObjectId[];
+  irrelevant: Array<{ user: Types.ObjectId; date: Date }>;
 
   @Prop({ type: String, default: 'creation' })
   type: string

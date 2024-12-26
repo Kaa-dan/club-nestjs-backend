@@ -42,16 +42,24 @@ export class DebateArgument extends Document {
   };
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: User.name }],
+    type: [{
+      _id: false,
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
     default: [],
   })
-  relevant: Types.ObjectId[];
+  relevant: Array<{ user: Types.ObjectId; date: Date }>;
 
   @Prop({
-    type: [{ type: Types.ObjectId, ref: User.name }],
+    type: [{
+      _id: false,
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
     default: [],
   })
-  irrelevant: Types.ObjectId[];
+  irrelevant: Array<{ user: Types.ObjectId; date: Date }>;
 
   // New fields for pinning functionality
   @Prop({ type: Boolean, default: false })
