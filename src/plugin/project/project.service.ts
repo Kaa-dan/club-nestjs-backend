@@ -623,42 +623,83 @@ export class ProjectService {
    * @throws NotFoundException if project not found
    */
   async getSingleProject(id: Types.ObjectId) {
-    console.log({ id });
-
     try {
       const result = await this.projectModel.aggregate([
         {
           $match: {
-            _id: new Types.ObjectId(id),
-          },
+            _id: new Types.ObjectId(id)
+          }
         },
+        // Lookup creator details
         {
           $lookup: {
             from: 'users',
             localField: 'createdBy',
             foreignField: '_id',
             as: 'creatorDetails',
-          },
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  userName: 1,
+                  firstName: 1,
+                  lastName: 1,
+                  profileImage: 1,
+                  email: 1
+                }
+              }
+            ]
+          }
         },
         {
           $unwind: {
             path: '$creatorDetails',
-            preserveNullAndEmptyArrays: true,
-          },
+            preserveNullAndEmptyArrays: true
+          }
         },
-        // Lookup FAQs
+        // Lookup FAQs with asker and answerer details
         {
           $lookup: {
             from: 'faqs',
             localField: '_id',
             foreignField: 'project',
             pipeline: [
-              { $sort: { createdAt: -1 } }, // Sort FAQs by creation date
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'askedBy',
+                  foreignField: '_id',
+                  as: 'askedByUser',
+                  pipeline: [{ $project: { userName: 1, profileImage: 1 } }]
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'answeredBy',
+                  foreignField: '_id',
+                  as: 'answeredByUser',
+                  pipeline: [{ $project: { userName: 1, profileImage: 1 } }]
+                }
+              },
+              {
+                $unwind: {
+                  path: '$askedByUser',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $unwind: {
+                  path: '$answeredByUser',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              { $sort: { createdAt: -1 } }
             ],
-            as: 'faqs',
-          },
+            as: 'faqs'
+          }
         },
-        // Lookup parameters
+        // Lookup parameters with their contributions
         {
           $lookup: {
             from: 'parameters',
@@ -666,128 +707,83 @@ export class ProjectService {
             pipeline: [
               {
                 $match: {
-                  $expr: { $eq: ['$project', '$$projectId'] },
-                },
+                  $expr: { $eq: ['$project', '$$projectId'] }
+                }
+              },
+              // Get contributions for each parameter
+              {
+                $lookup: {
+                  from: 'contributions',
+                  let: { parameterId: '$_id' },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: ['$parameter', '$$parameterId'] },
+                            { $eq: ['$status', 'accepted'] }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      $lookup: {
+                        from: 'users',
+                        localField: 'user',
+                        foreignField: '_id',
+                        as: 'contributorDetails',
+                        pipeline: [
+                          {
+                            $project: {
+                              userName: 1,
+                              profileImage: 1
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      $unwind: {
+                        path: '$contributorDetails',
+                        preserveNullAndEmptyArrays: true
+                      }
+                    }
+                  ],
+                  as: 'contributions'
+                }
               },
               {
-                $project: {
-                  _id: 1,
-                  title: 1,
-                  value: 1,
-                  unit: 1,
-                  createdAt: 1,
-                  updatedAt: 1,
-                },
-              },
-            ],
-            as: 'parameters',
-          },
-        },
-        // Lookup contributions with parameter details
-        {
-          $lookup: {
-            from: 'contributions',
-            let: { projectId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$rootProject', '$$projectId'] },
-                      { $eq: ['$status', 'accepted'] },
-                    ],
+                $addFields: {
+                  totalContributions: {
+                    $reduce: {
+                      input: '$contributions',
+                      initialValue: 0,
+                      in: { $add: ['$$value', '$$this.value'] }
+                    }
                   },
-                },
-              },
-              // Lookup parameter details for each contribution
-              {
-                $lookup: {
-                  from: 'parameters',
-                  localField: 'parameter',
-                  foreignField: '_id',
-                  as: 'parameterDetails',
-                },
-              },
-              {
-                $unwind: '$parameterDetails',
-              },
-
-              {
-                $lookup: {
-                  from: 'users',
-                  localField: 'createdBy',
-                  foreignField: '_id',
-                  as: 'creatorDetails',
-                },
-              },
-              {
-                $unwind: '$creatorDetails',
-              },
-              {
-                $project: {
-                  value: 1,
-                  status: 1,
-                  files: 1,
-                  parameter: 1,
-                  parameterTitle: '$parameterDetails.title',
-                  user: 1,
-                  club: 1,
-                  node: 1,
-                  createdAt: 1,
-                },
-              },
+                  contributorsCount: { $size: '$contributions' }
+                }
+              }
             ],
-            as: 'contributions',
-          },
+            as: 'parameters'
+          }
         },
-        // Add metadata
+        // Add summary statistics
         {
           $addFields: {
             totalFaqs: { $size: '$faqs' },
-            totalContributions: { $size: '$contributions' },
             totalParameters: { $size: '$parameters' },
             hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
-            contributionsByParameter: {
+            totalContributors: {
               $reduce: {
-                input: '$contributions',
-                initialValue: {},
-                in: {
-                  $mergeObjects: [
-                    '$$value',
-                    {
-                      $arrayToObject: [
-                        [
-                          {
-                            k: { $toString: '$$this.parameter' },
-                            v: {
-                              $concatArrays: [
-                                {
-                                  $ifNull: [
-                                    {
-                                      $getField: {
-                                        input: '$$value',
-                                        field: {
-                                          $toString: '$$this.parameter',
-                                        },
-                                      },
-                                    },
-                                    [],
-                                  ],
-                                },
-                                ['$$this'],
-                              ],
-                            },
-                          },
-                        ],
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
+                input: '$parameters',
+                initialValue: 0,
+                in: { $add: ['$$value', '$$this.contributorsCount'] }
+              }
+            }
+          }
         },
-        // Project specific fields
+        // Final projection
         {
           $project: {
             title: 1,
@@ -798,8 +794,6 @@ export class ProjectService {
             solution: 1,
             committees: 1,
             champions: 1,
-            faqs: 1,
-            parameters: 1,
             aboutPromoters: 1,
             fundingDetails: 1,
             keyTakeaways: 1,
@@ -807,50 +801,31 @@ export class ProjectService {
             bannerImage: 1,
             files: 1,
             status: 1,
-            relevant: 1,
-            irrelevant: 1,
-            createdBy: {
-              _id: '$creatorDetails._id',
-              userName: '$creatorDetails.userName',
-              firstName: '$creatorDetails.firstName',
-              lastName: '$creatorDetails.lastName',
-              profileImage: '$creatorDetails.profileImage',
-              email: '$creatorDetails.email',
-            },
+            createdBy: '$creatorDetails',
             publishedBy: 1,
+            faqs: 1,
+            parameters: 1,
             totalFaqs: 1,
             totalParameters: 1,
             hasParameters: 1,
-            totalContributions: 1,
-            contributions: 1,
-            contributionsByParameter: 1,
+            totalContributors: 1,
             createdAt: 1,
-            updatedAt: 1,
-
-
-          },
-        },
+            updatedAt: 1
+          }
+        }
       ]);
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      // Debug: Check parameters and contributions
-      const project = result[0];
-      console.log(JSON.stringify(project))
-
-      return project;
+      return result[0];
     } catch (error) {
       console.error('Error in getSingleProject:', error);
-
       if (error instanceof NotFoundException) {
         throw error;
       }
-
-      throw new BadRequestException(
-        `Failed to get single project: ${error.message}`,
-      );
+      throw new BadRequestException(`Failed to get single project: ${error.message}`);
     }
   }
   /**
@@ -1047,13 +1022,13 @@ export class ProjectService {
     status: 'accepted' | 'pending' | 'rejected',
   ) {
     try {
+
       const query = [
         {
           $match: {
             _id: new Types.ObjectId(projectId),
           },
         },
-
         {
           $lookup: {
             from: 'parameters',
@@ -1065,7 +1040,6 @@ export class ProjectService {
         {
           $unwind: '$parameters',
         },
-
         {
           $lookup: {
             from: 'contributions',
@@ -1079,7 +1053,6 @@ export class ProjectService {
                   $expr: {
                     $and: [
                       { $eq: ['$parameter', '$$parameterId'] },
-                      // { $eq: ['$user', '$$userId'] },
                       { $eq: ['$status', status] },
                     ],
                   },
@@ -1105,37 +1078,22 @@ export class ProjectService {
             as: 'contributions',
           },
         },
-        // {
-        //   $project: {
-        //     projectTitle: '$title',
-        //     parameterId: '$parameters._id',
-        //     parameterTitle: '$parameters.title',
-        //     contributions: {
-        //       $ifNull: [
-        //         {
-        //           $arrayElemAt: ['$contributions', 0],
-        //         },
-        //         {
-        //           contributions: [],
-        //           totalValue: 0,
-        //           contributionCount: 0,
-        //         },
-        //       ],
-        //     },
-        //   },
-        // },
       ];
 
       console.log({ query });
 
       const data = await this.projectModel.aggregate(query);
+
       console.log(JSON.stringify(data));
 
       return data;
+
     } catch (error) {
+
       throw new BadRequestException(
         `Error while trying to fetch contributions: ${error?.message}`,
       );
+
     }
   }
 

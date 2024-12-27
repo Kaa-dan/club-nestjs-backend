@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Req,
   UploadedFiles,
   Query,
@@ -13,7 +11,6 @@ import {
 import { Types } from 'mongoose';
 import { AdoptContributionService } from './adopt-contribution.service';
 import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto';
-import { UpdateAdoptContributionDto } from './dto/update-adopt-contribution.dto';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 
@@ -21,7 +18,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) {}
+  ) { }
 
   @Post()
   @ProjectFiles()
@@ -61,6 +58,13 @@ export class AdoptContributionController {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 
+  /**
+   * 
+   * @param param0 
+   * @param projectId 
+   * @returns   
+   * 
+   */
   @Get('not-adopted-forum/:projectId')
   notAdoptedForum(
     @Req() { user },
