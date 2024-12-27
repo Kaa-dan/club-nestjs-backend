@@ -44,6 +44,8 @@ export class AdoptContributionController {
     )
     files: { file: Express.Multer.File[] },
   ) {
+    console.log(files.file);
+
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
@@ -52,7 +54,7 @@ export class AdoptContributionController {
   }
 
   @Post('adopt-forum')
-  adoptForum(@Req() { user }, @Body() adoptForumDto: { project: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId }) {
+  adoptForum(@Req() { user }, @Body() adoptForumDto) {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 
@@ -72,15 +74,21 @@ export class AdoptContributionController {
   }
 
   @Get('project-activities/:projectId')
-  getActivitiesOfProject(@Param('projectId') projectId: Types.ObjectId) {
-    return this.adoptContributionService.getActivitiesOfProject(projectId)
+  projectActivities(@Param('projectId') projectId: Types.ObjectId) {
+    return this.adoptContributionService.getActivitiesOfProject(projectId);
   }
   @Get('leaderboard')
-  getLeaderBoard(@Req() { user },
-    @Query('projectID') projectId?: Types.ObjectId | null,
+  getLeaderBoard(
+    @Req() { user },
+    @Query('projectId') projectId: Types.ObjectId | null,
     @Query('forumId') forumId?: Types.ObjectId | null,
-    @Query('forumType') forumType?: "club" | "node" | null) {
-    return this.adoptContributionService.getLeaderBoard(user._id, forumId, projectId, forumType)
+    @Query('forumType') forumType?: 'club' | 'node' | null,
+  ) {
+    return this.adoptContributionService.getLeaderBoard(
+      user._id,
+      projectId,
+      forumId,
+      forumType,
+    );
   }
-
 }

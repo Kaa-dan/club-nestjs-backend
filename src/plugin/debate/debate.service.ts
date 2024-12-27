@@ -138,6 +138,7 @@ export class DebateService {
         message: statusMessages[publishedStatus],
       };
     } catch (error) {
+
       console.error('Debate creation error:', error);
       throw error;
     }
@@ -937,28 +938,72 @@ export class DebateService {
     userId: string,
     voteType: 'relevant' | 'irrelevant',
   ) {
-    // Define the opposite field
+    const userObjectId = new Types.ObjectId(userId);
     const opposite = voteType === 'relevant' ? 'irrelevant' : 'relevant';
 
-    // Remove the user from the opposite array first
-    await this.debateArgumentModel.findByIdAndUpdate(argumentId, {
-      $pull: { [opposite]: userId },
-    });
+    // First, ensure document exists and arrays are initialized
+    const existingArgument = await this.debateArgumentModel.findByIdAndUpdate(
+      argumentId,
+      {
+        $setOnInsert: {
+          relevant: [],
+          irrelevant: []
+        }
+      },
+      {
+        new: true,
+        upsert: true
+      }
+    );
 
-    // Check if the user is already in the target array
+    if (!existingArgument) {
+      throw new NotFoundException('Argument not found');
+    }
+
+    // Remove from opposite array in a separate operation
+    await this.debateArgumentModel.findByIdAndUpdate(
+      argumentId,
+      {
+        $pull: {
+          [opposite]: { user: userObjectId }
+        }
+      }
+    );
+
+    // Check current state
     const argument = await this.debateArgumentModel.findById(argumentId);
-    const isInTarget = argument[voteType].includes(new Types.ObjectId(userId));
+    if (!argument) {
+      throw new NotFoundException('Argument not found');
+    }
 
-    // Toggle the user in the target array
-    const updateOperation = isInTarget
-      ? { $pull: { [voteType]: userId } } // Remove user if already in the array
-      : { $addToSet: { [voteType]: userId } }; // Add user if not in the array
+    const isInTarget = argument[voteType]?.some(entry =>
+      entry.user.equals(userObjectId)
+    ) || false;
 
-    // Perform the update
+    // Toggle the vote in a separate operation
+    let updateOperation;
+    if (isInTarget) {
+      updateOperation = {
+        $pull: {
+          [voteType]: { user: userObjectId }
+        }
+      };
+    } else {
+      updateOperation = {
+        $addToSet: {
+          [voteType]: {
+            user: userObjectId,
+            date: new Date()
+          }
+        }
+      };
+    }
+
+    // Perform the final update
     const updatedArgument = await this.debateArgumentModel.findByIdAndUpdate(
       argumentId,
       updateOperation,
-      { new: true }, // Return the updated document
+      { new: true }
     );
 
     return updatedArgument;

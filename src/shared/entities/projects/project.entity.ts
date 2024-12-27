@@ -176,6 +176,27 @@ export class Project extends Document {
   @Prop({ type: Types.ObjectId, ref: User.name, default: null })
   @IsOptional()
   publishedBy: Types.ObjectId | null;
+
+  @Prop({
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
+    default: []
+  })
+  relevant: Array<{ user: Types.ObjectId; date: Date }>;
+
+  @Prop({
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
+    default: []
+  })
+  irrelevant: Array<{ user: Types.ObjectId; date: Date }>;
+
+  @Prop({ type: String, default: 'creation' })
+  type: string
 }
 
 //Mongoose schema

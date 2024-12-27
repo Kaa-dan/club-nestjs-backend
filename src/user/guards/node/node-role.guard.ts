@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Model, Types } from "mongoose";
 import { NodeMembers } from "src/shared/entities/node-members.entity";
 
 @Injectable()
@@ -10,17 +10,20 @@ export class NodeRoleGuard implements CanActivate {
     async canActivate(context: ExecutionContext) {
         const request = context.switchToHttp().getRequest();
         const userId = request.user._id;
-        const nodeId = request.params.id;
+        const nodeId = request.params.id || request.body.node;
 
-        const nodeMember = await this.nodeMembersModel.findOne({ user: userId, node: nodeId });
+        console.log({ userId, nodeId });
+
+        const nodeMember = await this.nodeMembersModel.findOne({ user: userId, node: new Types.ObjectId(nodeId) });
 
         if (!nodeMember) {
-            throw new NotFoundException('Node account not found')
+            throw new NotFoundException('You are not a member of this node');
         }
 
         const requiredRoles = this.getRequiredRoles(context);
 
         if (requiredRoles.includes(nodeMember.role)) {
+            request['role'] = nodeMember.role;
             return true; // User's role is in the allowed roles for this route
         }
 
