@@ -33,7 +33,6 @@ export class ChapterController {
         return await this.chapterService.createChapter(createChapterDto, chapterUserData);
     }
 
-    @Roles('owner', 'admin', 'moderator', 'member')
     @Get()
     async getPublicClubsOfUser(@Req() req: Request, @Query('nodeId') node: string) {
         const userId = new Types.ObjectId(req.user._id);
