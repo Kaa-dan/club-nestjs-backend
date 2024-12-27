@@ -4,6 +4,7 @@ import { User } from "./user.entity";
 import { RulesRegulations } from "./rules-regulations.entity";
 import { Issues } from "./issues.entity";
 import { Project } from "./projects/project.entity";
+import Module from "module";
 
 interface IEntity {
     entityId: Types.ObjectId;
@@ -14,16 +15,7 @@ interface IEntity {
 }
 
 @Schema({ timestamps: true })
-export class Module extends Document {
-    // title,
-    // user,
-    // posts: [
-    //     {g
-    //         createdAt,
-    //         postId,
-    //         plugin,
-    //     }
-    // ]    
+export class Bookmarks extends Document {
     @Prop({ required: true })
     title: string;
 
@@ -59,4 +51,4 @@ export class Module extends Document {
     }[];
 }
 
-export const ModuleSchema = SchemaFactory.createForClass(Module);
+export const BookmarksSchema = SchemaFactory.createForClass(Module);
