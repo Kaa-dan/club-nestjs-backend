@@ -11,7 +11,6 @@ import {
 import { Types } from 'mongoose';
 import { AdoptContributionService } from './adopt-contribution.service';
 import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto';
-import { UpdateAdoptContributionDto } from './dto/update-adopt-contribution.dto';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 
