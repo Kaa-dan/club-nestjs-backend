@@ -622,12 +622,14 @@ export class ProjectService {
    * @returns Project with paginated FAQs and parameters
    * @throws NotFoundException if project not found
    */
-  async getSingleProject(id: Types.ObjectId) {
+  async getSingleProject(id: string | Types.ObjectId) {
     try {
+      const projectId = typeof id === 'string' ? new Types.ObjectId(id) : id;
+
       const result = await this.projectModel.aggregate([
         {
           $match: {
-            _id: new Types.ObjectId(id)
+            _id: projectId
           }
         },
         // Lookup creator details
@@ -640,7 +642,6 @@ export class ProjectService {
             pipeline: [
               {
                 $project: {
-                  _id: 1,
                   userName: 1,
                   firstName: 1,
                   lastName: 1,
@@ -657,128 +658,123 @@ export class ProjectService {
             preserveNullAndEmptyArrays: true
           }
         },
-        // Lookup FAQs with asker and answerer details
-        {
-          $lookup: {
-            from: 'faqs',
-            localField: '_id',
-            foreignField: 'project',
-            pipeline: [
-              {
-                $lookup: {
-                  from: 'users',
-                  localField: 'askedBy',
-                  foreignField: '_id',
-                  as: 'askedByUser',
-                  pipeline: [{ $project: { userName: 1, profileImage: 1 } }]
-                }
-              },
-              {
-                $lookup: {
-                  from: 'users',
-                  localField: 'answeredBy',
-                  foreignField: '_id',
-                  as: 'answeredByUser',
-                  pipeline: [{ $project: { userName: 1, profileImage: 1 } }]
-                }
-              },
-              {
-                $unwind: {
-                  path: '$askedByUser',
-                  preserveNullAndEmptyArrays: true
-                }
-              },
-              {
-                $unwind: {
-                  path: '$answeredByUser',
-                  preserveNullAndEmptyArrays: true
-                }
-              },
-              { $sort: { createdAt: -1 } }
-            ],
-            as: 'faqs'
-          }
-        },
-        // Lookup parameters with their contributions
+        // Lookup parameters
         {
           $lookup: {
             from: 'parameters',
-            let: { projectId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: ['$project', '$$projectId'] }
-                }
-              },
-              // Get contributions for each parameter
-              {
-                $lookup: {
-                  from: 'contributions',
-                  let: { parameterId: '$_id' },
-                  pipeline: [
-                    {
-                      $match: {
-                        $expr: {
-                          $and: [
-                            { $eq: ['$parameter', '$$parameterId'] },
-                            { $eq: ['$status', 'accepted'] }
-                          ]
-                        }
-                      }
-                    },
-                    {
-                      $lookup: {
-                        from: 'users',
-                        localField: 'user',
-                        foreignField: '_id',
-                        as: 'contributorDetails',
-                        pipeline: [
-                          {
-                            $project: {
-                              userName: 1,
-                              profileImage: 1
-                            }
-                          }
-                        ]
-                      }
-                    },
-                    {
-                      $unwind: {
-                        path: '$contributorDetails',
-                        preserveNullAndEmptyArrays: true
-                      }
-                    }
-                  ],
-                  as: 'contributions'
-                }
-              },
-              {
-                $addFields: {
-                  totalContributions: {
-                    $reduce: {
-                      input: '$contributions',
-                      initialValue: 0,
-                      in: { $add: ['$$value', '$$this.value'] }
-                    }
-                  },
-                  contributorsCount: { $size: '$contributions' }
-                }
-              }
-            ],
+            localField: '_id',
+            foreignField: 'project',
             as: 'parameters'
           }
         },
-        // Add summary statistics
+        // Get only accepted contributions
+        {
+          $lookup: {
+            from: 'contributions',
+            let: { paramIds: '$parameters._id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $in: ['$parameter', '$$paramIds'] },
+                      { $eq: ['$status', 'accepted'] }  // Only get accepted contributions
+                    ]
+                  }
+                }
+              },
+              // Join with parameters
+              {
+                $lookup: {
+                  from: 'parameters',
+                  localField: 'parameter',
+                  foreignField: '_id',
+                  as: 'parameterDetails'
+                }
+              },
+              // Join with users
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'user',
+                  foreignField: '_id',
+                  as: 'contributorDetails'
+                }
+              },
+              // Join with clubs
+              {
+                $lookup: {
+                  from: 'clubs',
+                  localField: 'club',
+                  foreignField: '_id',
+                  as: 'clubDetails'
+                }
+              },
+              // Unwind arrays
+              {
+                $unwind: {
+                  path: '$parameterDetails',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $unwind: {
+                  path: '$contributorDetails',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $unwind: {
+                  path: '$clubDetails',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              // Project needed fields
+              {
+                $project: {
+                  _id: 1,
+                  parameter: 1,
+                  value: 1,
+                  files: 1,
+                  createdAt: 1,
+                  parameterDetails: {
+                    _id: 1,
+                    title: 1,
+                    value: 1
+                  },
+                  contributorDetails: {
+                    _id: 1,
+                    userName: 1,
+                    profileImage: 1
+                  },
+                  clubDetails: {
+                    _id: 1,
+                    name: 1,
+                    logo: 1
+                  },
+                  node: 1,
+                  rootProject: 1
+                }
+              }
+            ],
+            as: 'contributions'
+          }
+        },
+        // Calculate totals
         {
           $addFields: {
-            totalFaqs: { $size: '$faqs' },
             totalParameters: { $size: '$parameters' },
             hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
             totalContributors: {
+              $size: {
+                $setUnion: '$contributions.contributorDetails._id'
+              }
+            },
+            totalAcceptedValue: {
               $reduce: {
-                input: '$parameters',
+                input: '$contributions',
                 initialValue: 0,
-                in: { $add: ['$$value', '$$this.contributorsCount'] }
+                in: { $add: ['$$value', '$$this.value'] }
               }
             }
           }
@@ -803,12 +799,12 @@ export class ProjectService {
             status: 1,
             createdBy: '$creatorDetails',
             publishedBy: 1,
-            faqs: 1,
             parameters: 1,
-            totalFaqs: 1,
+            contributions: 1,
             totalParameters: 1,
             hasParameters: 1,
             totalContributors: 1,
+            totalAcceptedValue: 1,
             createdAt: 1,
             updatedAt: 1
           }
@@ -825,7 +821,7 @@ export class ProjectService {
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new BadRequestException(`Failed to get single project: ${error.message}`);
+      throw new BadRequestException(`Failed to get project: ${error.message}`);
     }
   }
   /**
@@ -1200,7 +1196,6 @@ export class ProjectService {
       }
 
     } catch (error) {
-      console.log({ error });
 
       throw new BadRequestException('error while accepting project', error);
     }
