@@ -18,6 +18,9 @@ import { InvitationModule } from './invitation/invitation.module';
 import { ReportModule } from './report/report.module';
 import { CommentModule } from './comment/comment.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
+import { ChapterService } from './chapter/chapter.service';
+import { ChapterController } from './chapter/chapter.controller';
+import { ChapterModule } from './chapter/chapter.module';
 
 @Module({
   imports: [
@@ -31,6 +34,7 @@ import { BookmarksModule } from './bookmarks/bookmarks.module';
     ReportModule,
     CommentModule,
     BookmarksModule,
+    ChapterModule,
   ],
 
   providers: [
@@ -39,7 +43,8 @@ import { BookmarksModule } from './bookmarks/bookmarks.module';
       useClass: UserAuthGuard,
     },
     UserService,
+    ChapterService,
   ],
-  controllers: [UserController],
+  controllers: [UserController, ChapterController],
 })
-export class UserModule {}
+export class UserModule { }
