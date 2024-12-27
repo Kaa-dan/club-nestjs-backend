@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Bookmarks } from 'src/shared/entities/bookmarks.enntity';
+import { Bookmarks } from 'src/shared/entities/bookmarks.entity';
 
 @Injectable()
 export class BookmarksService {

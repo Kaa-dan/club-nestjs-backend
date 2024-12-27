@@ -4,7 +4,6 @@ import { User } from "./user.entity";
 import { RulesRegulations } from "./rules-regulations.entity";
 import { Issues } from "./issues.entity";
 import { Project } from "./projects/project.entity";
-import Module from "module";
 
 interface IEntity {
     entityId: Types.ObjectId;
@@ -51,4 +50,4 @@ export class Bookmarks extends Document {
     }[];
 }
 
-export const BookmarksSchema = SchemaFactory.createForClass(Module);
+export const BookmarksSchema = SchemaFactory.createForClass(Bookmarks);
