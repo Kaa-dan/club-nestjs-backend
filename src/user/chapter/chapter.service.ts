@@ -1,14 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { profile } from 'console';
 import { Connection, Model, Types } from 'mongoose';
 import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
+import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 
 @Injectable()
 export class ChapterService {
     constructor(
         @InjectModel(Club.name) private readonly clubModel: Model<Club>,
+        @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
         @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
         @InjectModel(ChapterMember.name) private readonly chapterMemberModel: Model<ChapterMember>,
         @InjectConnection() private connection: Connection,
@@ -67,8 +70,48 @@ export class ChapterService {
         }
     }
 
-    async getAllClubsOfUser(userId: Types.ObjectId) {
+    async getPublicClubsOfUser(userId: Types.ObjectId, nodeId: Types.ObjectId) {
         try {
+
+            const userClubs = await this.clubMembersModel.aggregate([
+                {
+                    $match: { user: userId }
+                },
+                {
+                    $lookup: {
+                        from: 'clubs',
+                        localField: 'club',
+                        foreignField: '_id',
+                        as: 'clubDetails'
+                    }
+                },
+                {
+                    $match: {
+                        'clubDetails.isPublic': true
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'chapters',
+                        localField: nodeId.toString(),
+                        foreignField: 'node',
+                        as: 'userChapters'
+                    }
+                },
+                {
+                    $match: { club: { $ne: '$userChapters.club' } }
+
+                },
+                {
+                    $project: {
+                        _id: { $arrayElemAt: ["$clubDetails._id", 0] },
+                        profileImage: { $arrayElemAt: ["$clubDetails.profileImage", 0] },
+                        name: { $arrayElemAt: ["$clubDetails.name", 0] },
+                    }
+                }
+            ])
+
+            return userClubs
 
         } catch (error) {
             console.log('error getting all clubs of user', error);
