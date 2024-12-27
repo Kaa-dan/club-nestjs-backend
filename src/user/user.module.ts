@@ -17,6 +17,9 @@ import { User, UserSchema } from 'src/shared/entities/user.entity';
 import { InvitationModule } from './invitation/invitation.module';
 import { ReportModule } from './report/report.module';
 import { CommentModule } from './comment/comment.module';
+import { ChapterService } from './chapter/chapter.service';
+import { ChapterController } from './chapter/chapter.controller';
+import { ChapterModule } from './chapter/chapter.module';
 
 @Module({
   imports: [
@@ -29,6 +32,7 @@ import { CommentModule } from './comment/comment.module';
     InvitationModule,
     ReportModule,
     CommentModule,
+    ChapterModule,
   ],
 
   providers: [
@@ -37,7 +41,8 @@ import { CommentModule } from './comment/comment.module';
       useClass: UserAuthGuard,
     },
     UserService,
+    ChapterService,
   ],
-  controllers: [UserController],
+  controllers: [UserController, ChapterController],
 })
 export class UserModule {}
