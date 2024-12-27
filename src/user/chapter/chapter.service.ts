@@ -6,6 +6,7 @@ import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
+import { UpdateChapterStatusDto } from './dto/chapter.dto';
 
 @Injectable()
 export class ChapterService {
@@ -70,8 +71,32 @@ export class ChapterService {
         }
     }
 
+    async getPublishedChaptersOfNode(nodeId: Types.ObjectId) {
+        try {
+            if (!nodeId) {
+                throw new NotFoundException('Please provide node id');
+            }
+
+            const chapters = await this.chapterModel.find({
+                node: nodeId,
+                status: 'published'
+            })
+
+            return chapters;
+
+        } catch (error) {
+            console.log('error getting all published chapters of user', error);
+            if (error instanceof NotFoundException) throw error;
+            throw new Error('Error getting all published chapters of user');
+        }
+    }
+
     async getPublicClubsOfUser(userId: Types.ObjectId, nodeId: Types.ObjectId) {
         try {
+
+            if (!nodeId) {
+                throw new NotFoundException('Please provide node id');
+            }
 
             const userClubs = await this.clubMembersModel.aggregate([
                 {
@@ -115,7 +140,96 @@ export class ChapterService {
 
         } catch (error) {
             console.log('error getting all clubs of user', error);
+            if (error instanceof NotFoundException) throw error;
             throw new Error('Error getting all clubs of user');
+        }
+    }
+
+    async getProposedChaptersOfNode(nodeId: Types.ObjectId) {
+        try {
+
+            if (!nodeId) {
+                throw new NotFoundException('Please provide node id');
+            }
+
+            const nodeProposedChapters = await this.chapterModel.find({
+                node: nodeId,
+                status: 'proposed'
+            })
+
+            return nodeProposedChapters;
+
+        } catch (error) {
+            console.log('error getting proposed chapters of node', error);
+            if (error instanceof NotFoundException) throw new NotFoundException('No proposed chapters found for the given node');
+            throw new Error('Error getting proposed chapters of node');
+        }
+    }
+
+    async publishOrRejectChapter(
+        chapterUserData: {
+            userRole: string,
+            userId: Types.ObjectId,
+        },
+        updateChapterStatusDto: UpdateChapterStatusDto
+    ) {
+        const session = await this.connection.startSession();
+        session.startTransaction()
+        try {
+
+            if (updateChapterStatusDto.status === 'reject') {
+                await this.chapterModel.findByIdAndDelete(updateChapterStatusDto.chapterId, { session });
+                return {
+                    message: 'Chapter rejected',
+                    status: true
+                }
+            }
+
+            const existedChapter = await this.chapterModel.findByIdAndUpdate(
+                updateChapterStatusDto.chapterId,
+                {
+                    status: 'published',
+                    publishedBy: chapterUserData.userId
+                },
+                { session, new: true }
+            );
+
+            if (!existedChapter) {
+                throw new NotFoundException('Chapter not found');
+            }
+
+            const chapterPublishedMemberData = new this.chapterMemberModel({
+                chapter: updateChapterStatusDto.chapterId,
+                user: chapterUserData.userId,
+                role: chapterUserData.userRole,
+                status: 'MEMBER',
+            })
+
+            await chapterPublishedMemberData.save({ session });
+
+            const chapterProposedMemberData = new this.chapterMemberModel({
+                chapter: updateChapterStatusDto.chapterId,
+                user: existedChapter.proposedBy,
+                role: 'member',
+                status: 'MEMBER',
+            })
+
+            await chapterProposedMemberData.save({ session });
+
+            await session.commitTransaction();
+
+            return {
+                message: 'Chapter published',
+                status: true
+            }
+
+        } catch (error) {
+            console.log('error publishing/rejecting chapter', error);
+            await session.abortTransaction();
+            if (error instanceof NotFoundException) throw error;
+            throw new Error('Error publishing/rejecting chapter');
+        } finally {
+            session.endSession();
         }
     }
 }
