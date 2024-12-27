@@ -18,6 +18,8 @@ export class ChapterService {
         @InjectConnection() private connection: Connection,
     ) { }
 
+    //----------------CREATE CHAPTER------------------
+
     async createChapter(createChapterDto: any, userData: any) {
         const session = await this.connection.startSession();
         session.startTransaction();
@@ -71,6 +73,8 @@ export class ChapterService {
         }
     }
 
+    //----------------GET PUBLISHED CHAPTERS OF NODE------------------
+
     async getPublishedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
             if (!nodeId) {
@@ -90,6 +94,8 @@ export class ChapterService {
             throw new Error('Error getting all published chapters of user');
         }
     }
+
+    //----------------GET PUBLIC CLUBS OF USER------------------
 
     async getPublicClubsOfUser(userId: Types.ObjectId, nodeId: Types.ObjectId) {
         try {
@@ -145,6 +151,8 @@ export class ChapterService {
         }
     }
 
+    //----------------GET PROPOSED CHAPTERS OF NODE------------------
+
     async getProposedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
 
@@ -165,6 +173,8 @@ export class ChapterService {
             throw new Error('Error getting proposed chapters of node');
         }
     }
+
+    //----------------PUBLISH OR REJECT CHAPTER------------------
 
     async publishOrRejectChapter(
         chapterUserData: {
