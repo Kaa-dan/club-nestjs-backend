@@ -18,13 +18,13 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
-import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
 import { Issues } from 'src/shared/entities/issues.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
 
 @Controller('comments')
 export class CommentController {
-  constructor(private readonly commentService: CommentService) {}
+  constructor(private readonly commentService: CommentService) { }
 
   @Get()
   async getAllComments() {

@@ -10,7 +10,7 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 import {
   RulesRegulations,
   RulesRegulationsSchema,
-} from './entities/rules-requlations.entity';
+} from './entities/rules-regulations.entity';
 import { Comment, CommentSchema } from './entities/comment.entity';
 import { Reports, ReportsSchema } from './entities/reports.entity';
 import {
@@ -51,6 +51,7 @@ import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/
 import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
+import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-
       { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema },
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
+      { name: Bookmarks.name, schema: BookmarksSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

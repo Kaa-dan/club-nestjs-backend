@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 import { User } from './user.entity';
-import { RulesRegulations } from './rules-requlations.entity';
+import { RulesRegulations } from './rules-regulations.entity';
 import { Comment } from './comment.entity';
 
 // Create a mapping for model references
