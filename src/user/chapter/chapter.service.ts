@@ -109,24 +109,12 @@ export class ChapterService {
                 query = { isPublic: true, name: { $regex: term, $options: 'i' } }
             }
 
-            // const clubs = await this.clubModel.find(query);
-
-            // const userClubs = [];
-            // for (const club of clubs) {
-            //     const chapter = await this.chapterModel.findOne({ club: club._id, node: nodeId });
-            //     if (!chapter) {
-            //         userClubs.push(club);
-            //     }
-            // }
-
             const clubs = await this.clubModel.aggregate([
-                // Your initial query conditions go in this match stage
                 { $match: query },
 
-                // Perform left outer join with chapters
                 {
                     $lookup: {
-                        from: 'chapters',  // Replace with your actual chapters collection name
+                        from: 'chapters',
                         let: { clubId: '$_id' },
                         pipeline: [
                             {
@@ -143,15 +131,11 @@ export class ChapterService {
                         as: 'chapters'
                     }
                 },
-
-                // Filter to only include clubs with no matching chapters
                 {
                     $match: {
                         chapters: { $size: 0 }
                     }
                 },
-
-                // Remove the chapters array from the results
                 {
                     $project: {
                         chapters: 0
