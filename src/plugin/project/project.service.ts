@@ -173,7 +173,7 @@ export class ProjectService {
         createdBy: new Types.ObjectId(userId),
         publishedBy: membership.role !== 'member' ? new Types.ObjectId(userId) : null,
       };
-      
+
 
       // Create and save the project
       const newProject = new this.projectModel(projectData);
@@ -622,170 +622,164 @@ export class ProjectService {
    * @returns Project with paginated FAQs and parameters
    * @throws NotFoundException if project not found
    */
-  async getSingleProject(id: Types.ObjectId) {
+  async getSingleProject(id: string | Types.ObjectId) {
     try {
+      const projectId = typeof id === 'string' ? new Types.ObjectId(id) : id;
+
       const result = await this.projectModel.aggregate([
         {
           $match: {
-            _id: new Types.ObjectId(id),
-          },
+            _id: projectId
+          }
         },
+        // Lookup creator details
         {
           $lookup: {
             from: 'users',
             localField: 'createdBy',
             foreignField: '_id',
             as: 'creatorDetails',
-          },
+            pipeline: [
+              {
+                $project: {
+                  userName: 1,
+                  firstName: 1,
+                  lastName: 1,
+                  profileImage: 1,
+                  email: 1
+                }
+              }
+            ]
+          }
         },
         {
           $unwind: {
             path: '$creatorDetails',
-            preserveNullAndEmptyArrays: true,
-          },
-        },
-        // Lookup FAQs
-        {
-          $lookup: {
-            from: 'faqs',
-            localField: '_id',
-            foreignField: 'project',
-            pipeline: [
-              { $sort: { createdAt: -1 } }, // Sort FAQs by creation date
-            ],
-            as: 'faqs',
-          },
+            preserveNullAndEmptyArrays: true
+          }
         },
         // Lookup parameters
         {
           $lookup: {
             from: 'parameters',
-            let: { projectId: '$_id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: ['$project', '$$projectId'] },
-                },
-              },
-              {
-                $project: {
-                  _id: 1,
-                  title: 1,
-                  value: 1,
-                  unit: 1,
-                  createdAt: 1,
-                  updatedAt: 1,
-                },
-              },
-            ],
-            as: 'parameters',
-          },
+            localField: '_id',
+            foreignField: 'project',
+            as: 'parameters'
+          }
         },
-        // Lookup contributions with parameter details
+        // Get only accepted contributions
         {
           $lookup: {
             from: 'contributions',
-            let: { projectId: '$_id' },
+            let: { paramIds: '$parameters._id' },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
-                      { $eq: ['$rootProject', '$$projectId'] },
-                      { $eq: ['$status', 'accepted'] },
-                    ],
-                  },
-                },
+                      { $in: ['$parameter', '$$paramIds'] },
+                      { $eq: ['$status', 'accepted'] }  // Only get accepted contributions
+                    ]
+                  }
+                }
               },
-              // Lookup parameter details for each contribution
+              // Join with parameters
               {
                 $lookup: {
                   from: 'parameters',
                   localField: 'parameter',
                   foreignField: '_id',
-                  as: 'parameterDetails',
-                },
+                  as: 'parameterDetails'
+                }
               },
-              {
-                $unwind: '$parameterDetails',
-              },
-
+              // Join with users
               {
                 $lookup: {
                   from: 'users',
-                  localField: 'createdBy',
+                  localField: 'user',
                   foreignField: '_id',
-                  as: 'creatorDetails',
-                },
+                  as: 'contributorDetails'
+                }
+              },
+              // Join with clubs
+              {
+                $lookup: {
+                  from: 'clubs',
+                  localField: 'club',
+                  foreignField: '_id',
+                  as: 'clubDetails'
+                }
+              },
+              // Unwind arrays
+              {
+                $unwind: {
+                  path: '$parameterDetails',
+                  preserveNullAndEmptyArrays: true
+                }
               },
               {
-                $unwind: '$creatorDetails',
+                $unwind: {
+                  path: '$contributorDetails',
+                  preserveNullAndEmptyArrays: true
+                }
               },
+              {
+                $unwind: {
+                  path: '$clubDetails',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              // Project needed fields
               {
                 $project: {
-                  value: 1,
-                  status: 1,
-                  files: 1,
+                  _id: 1,
                   parameter: 1,
-                  parameterTitle: '$parameterDetails.title',
-                  user: 1,
-                  club: 1,
-                  node: 1,
+                  value: 1,
+                  files: 1,
                   createdAt: 1,
-                },
-              },
+                  parameterDetails: {
+                    _id: 1,
+                    title: 1,
+                    value: 1
+                  },
+                  contributorDetails: {
+                    _id: 1,
+                    userName: 1,
+                    profileImage: 1
+                  },
+                  clubDetails: {
+                    _id: 1,
+                    name: 1,
+                    logo: 1
+                  },
+                  node: 1,
+                  rootProject: 1
+                }
+              }
             ],
-            as: 'contributions',
-          },
+            as: 'contributions'
+          }
         },
-        // Add metadata
+        // Calculate totals
         {
           $addFields: {
-            totalFaqs: { $size: '$faqs' },
-            totalContributions: { $size: '$contributions' },
             totalParameters: { $size: '$parameters' },
             hasParameters: { $gt: [{ $size: '$parameters' }, 0] },
-            contributionsByParameter: {
+            totalContributors: {
+              $size: {
+                $setUnion: '$contributions.contributorDetails._id'
+              }
+            },
+            totalAcceptedValue: {
               $reduce: {
                 input: '$contributions',
-                initialValue: {},
-                in: {
-                  $mergeObjects: [
-                    '$$value',
-                    {
-                      $arrayToObject: [
-                        [
-                          {
-                            k: { $toString: '$$this.parameter' },
-                            v: {
-                              $concatArrays: [
-                                {
-                                  $ifNull: [
-                                    {
-                                      $getField: {
-                                        input: '$$value',
-                                        field: {
-                                          $toString: '$$this.parameter',
-                                        },
-                                      },
-                                    },
-                                    [],
-                                  ],
-                                },
-                                ['$$this'],
-                              ],
-                            },
-                          },
-                        ],
-                      ],
-                    },
-                  ],
-                },
-              },
-            },
-          },
+                initialValue: 0,
+                in: { $add: ['$$value', '$$this.value'] }
+              }
+            }
+          }
         },
-        // Project specific fields
+        // Final projection
         {
           $project: {
             title: 1,
@@ -796,8 +790,6 @@ export class ProjectService {
             solution: 1,
             committees: 1,
             champions: 1,
-            faqs: 1,
-            parameters: 1,
             aboutPromoters: 1,
             fundingDetails: 1,
             keyTakeaways: 1,
@@ -805,49 +797,31 @@ export class ProjectService {
             bannerImage: 1,
             files: 1,
             status: 1,
-            relevant: 1,
-            irrelevant: 1,
-            createdBy: {
-              _id: '$creatorDetails._id',
-              userName: '$creatorDetails.userName',
-              firstName: '$creatorDetails.firstName',
-              lastName: '$creatorDetails.lastName',
-              profileImage: '$creatorDetails.profileImage',
-              email: '$creatorDetails.email',
-            },
+            createdBy: '$creatorDetails',
             publishedBy: 1,
-            totalFaqs: 1,
+            parameters: 1,
+            contributions: 1,
             totalParameters: 1,
             hasParameters: 1,
-            totalContributions: 1,
-            contributions: 1,
-            contributionsByParameter: 1,
+            totalContributors: 1,
+            totalAcceptedValue: 1,
             createdAt: 1,
-            updatedAt: 1,
-
-
-          },
-        },
+            updatedAt: 1
+          }
+        }
       ]);
 
       if (!result || result.length === 0) {
         throw new NotFoundException('Project not found');
       }
 
-      // Debug: Check parameters and contributions
-      const project = result[0];
-      console.log({ project });
-      return project;
+      return result[0];
     } catch (error) {
       console.error('Error in getSingleProject:', error);
-
       if (error instanceof NotFoundException) {
         throw error;
       }
-
-      throw new BadRequestException(
-        `Failed to get single project: ${error.message}`,
-      );
+      throw new BadRequestException(`Failed to get project: ${error.message}`);
     }
   }
   /**
@@ -1044,13 +1018,13 @@ export class ProjectService {
     status: 'accepted' | 'pending' | 'rejected',
   ) {
     try {
+
       const query = [
         {
           $match: {
             _id: new Types.ObjectId(projectId),
           },
         },
-
         {
           $lookup: {
             from: 'parameters',
@@ -1062,7 +1036,6 @@ export class ProjectService {
         {
           $unwind: '$parameters',
         },
-
         {
           $lookup: {
             from: 'contributions',
@@ -1076,7 +1049,6 @@ export class ProjectService {
                   $expr: {
                     $and: [
                       { $eq: ['$parameter', '$$parameterId'] },
-                      // { $eq: ['$user', '$$userId'] },
                       { $eq: ['$status', status] },
                     ],
                   },
@@ -1102,37 +1074,22 @@ export class ProjectService {
             as: 'contributions',
           },
         },
-        // {
-        //   $project: {
-        //     projectTitle: '$title',
-        //     parameterId: '$parameters._id',
-        //     parameterTitle: '$parameters.title',
-        //     contributions: {
-        //       $ifNull: [
-        //         {
-        //           $arrayElemAt: ['$contributions', 0],
-        //         },
-        //         {
-        //           contributions: [],
-        //           totalValue: 0,
-        //           contributionCount: 0,
-        //         },
-        //       ],
-        //     },
-        //   },
-        // },
       ];
 
       console.log({ query });
 
       const data = await this.projectModel.aggregate(query);
+
       console.log(JSON.stringify(data));
 
       return data;
+
     } catch (error) {
+
       throw new BadRequestException(
         `Error while trying to fetch contributions: ${error?.message}`,
       );
+
     }
   }
 
@@ -1239,7 +1196,6 @@ export class ProjectService {
       }
 
     } catch (error) {
-      console.log({ error });
 
       throw new BadRequestException('error while accepting project', error);
     }
@@ -1351,52 +1307,96 @@ export class ProjectService {
   }
 
 
-
   async reactToPost(postId: string, userId: string, action: 'like' | 'dislike') {
     if (!['like', 'dislike'].includes(action)) {
       throw new BadRequestException('Invalid action. Use "like" or "dislike".');
     }
 
-    const doc = await this.projectModel.findById(postId);
-    const isLiked = doc.relevant.includes(new Types.ObjectId(userId));
-    const isDisliked = doc.irrelevant.includes(new Types.ObjectId(userId));
+    const userObjectId = new Types.ObjectId(userId);
 
-    let updateQuery;
-
-    if (action === 'like') {
-      if (isLiked) {
-        // If already liked, remove the like
-        updateQuery = {
-          $pull: { relevant: userId }
-        };
-      } else {
-        // If not liked, add like and remove from irrelevant
-        updateQuery = {
-          $addToSet: { relevant: userId },
-          $pull: { irrelevant: userId }
-        };
+    // First, ensure the document exists and initialize arrays if needed
+    const existingPost = await this.projectModel.findByIdAndUpdate(
+      postId,
+      {
+        $setOnInsert: {
+          relevant: [],
+          irrelevant: []
+        }
+      },
+      {
+        new: true,
+        upsert: true
       }
-    } else {
-      if (isDisliked) {
-        // If already disliked, remove the dislike
-        updateQuery = {
-          $pull: { irrelevant: userId }
-        };
-      } else {
-        // If not disliked, add dislike and remove from relevant
-        updateQuery = {
-          $addToSet: { irrelevant: userId },
-          $pull: { relevant: userId }
-        };
-      }
-    }
-    const post = await this.projectModel.findByIdAndUpdate(postId, updateQuery);
+    );
 
-    if (!post) {
+    if (!existingPost) {
       throw new BadRequestException('Post not found.');
     }
 
-    return { message: `Post has been ${action}d successfully.` };
+    // Now perform the reaction update in a separate operation
+    let updateQuery;
+
+    if (action === 'like') {
+      const isLiked = existingPost.relevant?.some(entry => entry?.user?.equals(userObjectId));
+
+      if (isLiked) {
+        // Remove like
+        updateQuery = {
+          $pull: {
+            relevant: { user: userObjectId }
+          }
+        };
+      } else {
+        // Add like and remove from irrelevant
+        updateQuery = {
+          $addToSet: {
+            relevant: {
+              user: userObjectId,
+              date: new Date()
+            }
+          },
+          $pull: {
+            irrelevant: { user: userObjectId }
+          }
+        };
+      }
+    } else {
+      const isDisliked = existingPost.irrelevant?.some(entry => entry?.user?.equals(userObjectId));
+
+      if (isDisliked) {
+        // Remove dislike
+        updateQuery = {
+          $pull: {
+            irrelevant: { user: userObjectId }
+          }
+        };
+      } else {
+        // Add dislike and remove from relevant
+        updateQuery = {
+          $addToSet: {
+            irrelevant: {
+              user: userObjectId,
+              date: new Date()
+            }
+          },
+          $pull: {
+            relevant: { user: userObjectId }
+          }
+        };
+      }
+    }
+
+    // Execute the update
+    const updatedPost = await this.projectModel.findByIdAndUpdate(
+      postId,
+      updateQuery,
+      { new: true }
+    );
+
+    return {
+      message: `Post has been ${action}d successfully.`,
+      data: updatedPost
+    };
   }
 
 }

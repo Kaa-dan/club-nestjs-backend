@@ -9,14 +9,13 @@ import { ClubModule } from './club/club.module';
 import { SearchModule } from 'src/shared/search/search.module';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-
-import { MongooseModule } from '@nestjs/mongoose';
-
-import { User, UserSchema } from 'src/shared/entities/user.entity';
-
 import { InvitationModule } from './invitation/invitation.module';
 import { ReportModule } from './report/report.module';
 import { CommentModule } from './comment/comment.module';
+import { ChapterService } from './chapter/chapter.service';
+import { ChapterController } from './chapter/chapter.controller';
+import { ChapterModule } from './chapter/chapter.module';
+import { BookmarksModule } from './bookmarks/bookmarks.module';
 
 @Module({
   imports: [
@@ -29,6 +28,8 @@ import { CommentModule } from './comment/comment.module';
     InvitationModule,
     ReportModule,
     CommentModule,
+    BookmarksModule,
+    ChapterModule,
   ],
 
   providers: [
@@ -37,7 +38,8 @@ import { CommentModule } from './comment/comment.module';
       useClass: UserAuthGuard,
     },
     UserService,
+    ChapterService,
   ],
-  controllers: [UserController],
+  controllers: [UserController, ChapterController],
 })
-export class UserModule {}
+export class UserModule { }
