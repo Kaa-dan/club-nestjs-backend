@@ -19,6 +19,16 @@ export class ChapterService {
 
     //----------------CREATE CHAPTER------------------
 
+    /**
+     * Creates a new chapter. The chapter is automatically published if the user is an
+     * owner, admin, or moderator of the club. Otherwise, the chapter is proposed and
+     * requires approval from a privileged user.
+     * @param createChapterDto - The request body containing the club id and node id.
+     * @param userData - The user data containing the user id and role.
+     * @returns A promise that resolves to the created chapter, or an error object if there was an error.
+     * @throws `NotFoundException` if the club is not found.
+     * @throws `Error` if there was an error while trying to create the chapter.
+     */
     async createChapter(createChapterDto: any, userData: any) {
         const session = await this.connection.startSession();
         session.startTransaction();
@@ -96,6 +106,13 @@ export class ChapterService {
 
     //----------------GET PUBLISHED CHAPTERS OF NODE------------------
 
+    /**
+     * Retrieves all published chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of published chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving chapters
+     */
     async getPublishedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
             if (!nodeId) {
@@ -118,6 +135,14 @@ export class ChapterService {
 
     //----------------GET PUBLIC CLUBS------------------
 
+    /**
+     * Retrieves all public clubs in a given node that match a given term (case-insensitive).
+     * @param nodeId The ID of the node to retrieve clubs from
+     * @param term The search term to filter clubs by
+     * @returns An array of public clubs in the node that match the given term
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving clubs
+     */
     async getPublicClubs(nodeId: Types.ObjectId, term: string) {
         try {
 
@@ -176,6 +201,13 @@ export class ChapterService {
 
     //----------------GET PROPOSED CHAPTERS OF NODE------------------
 
+    /**
+     * Retrieves all proposed chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of proposed chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided or if there are no proposed chapters for the given node
+     * @throws {Error} If there is an error while retrieving chapters
+     */
     async getProposedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
 
@@ -199,6 +231,14 @@ export class ChapterService {
 
     //----------------PUBLISH OR REJECT CHAPTER------------------
 
+    /**
+     * Publishes or rejects a chapter.
+     * @param chapterUserData - An object containing the user's role and ID.
+     * @param updateChapterStatusDto - An object containing the chapter ID and status to set.
+     * @returns A promise that resolves to an object containing a message and status.
+     * @throws {NotFoundException} If the chapter is not found.
+     * @throws {Error} If there is an error while publishing or rejecting the chapter.
+     */
     async publishOrRejectChapter(
         chapterUserData: {
             userRole: string,
