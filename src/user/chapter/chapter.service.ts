@@ -27,16 +27,16 @@ export class ChapterService {
             const { userRole, userId } = userData;
             const { club, node } = createChapterDto;
 
-            const existdedClub = await this.clubModel.findById(new Types.ObjectId(club)).session(session);
+            const existedClub = await this.clubModel.findById(new Types.ObjectId(club)).session(session);
 
-            if (!existdedClub) {
+            if (!existedClub) {
                 throw new NotFoundException('Club not found');
             }
 
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
 
             const chapterData = new this.chapterModel({
-                name: existdedClub.name,
+                name: existedClub.name,
                 club: new Types.ObjectId(club),
                 node: new Types.ObjectId(node),
                 status: isPrivilegedUser ? 'published' : 'proposed',
