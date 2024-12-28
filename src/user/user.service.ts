@@ -581,7 +581,6 @@ export class UserService {
         userId,
         memberId,
         nodeId,
-        designation
       })
       // Check if the requesting user is an owner or admin of the specific node
       const userMembership = await this.nodeMembersModel.findOne({
@@ -630,4 +629,69 @@ export class UserService {
       throw error
     }
   }
+
+  async updatePosition(
+    userId: string,
+    memberId: string,
+    nodeId: string,
+    position: string
+  ) {
+    try {
+      // Validate input parameters
+      if (!userId || !memberId || !nodeId || !position) {
+        throw new Error('Missing required parameters');
+      }
+
+      // Check if the requesting user is an owner or admin of the specific node
+      const userMembership = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(userId),
+        role: { $in: ['owner', 'admin'] },
+        status: 'MEMBER'
+      });
+
+      // If user is not an owner or admin of the node, throw unauthorized exception
+      if (!userMembership) {
+        throw new UnauthorizedException('Only owners and admins can update positions');
+      }
+
+      // Check if the member being updated exists in the same node
+      const memberToUpdate = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(memberId),
+        status: 'MEMBER'
+      });
+
+      if (!memberToUpdate) {
+        throw new NotFoundException('Member not found in the node');
+      }
+
+      // Perform the position update
+      const result = await this.nodeMembersModel.updateOne(
+        {
+          _id: memberToUpdate._id
+        },
+        {
+          $set: {
+            position: position
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new InternalServerErrorException('Failed to update position');
+      }
+
+      return {
+        success: true,
+        message: 'Position updated successfully',
+        result
+      };
+
+    } catch (error) {
+      console.error('Error updating position:', error);
+      throw error;
+    }
+  }
+
 }
