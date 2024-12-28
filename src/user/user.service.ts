@@ -3,6 +3,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
@@ -570,6 +571,63 @@ export class UserService {
       throw new InternalServerErrorException('Error updating admin access');
     } finally {
       await session.endSession();
+    }
+  }
+
+
+  async updateDesignation(userId: string, memberId: string, nodeId: string, designation: string) {
+    try {
+      console.log({
+        userId,
+        memberId,
+        nodeId,
+        designation
+      })
+      // Check if the requesting user is an owner or admin of the specific node
+      const userMembership = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(userId),
+        role: { $in: ['owner', 'admin'] },
+        status: 'MEMBER'
+      });
+
+      // If user is not an owner or admin of the node, throw unauthorized exception
+      // if (!userMembership) {
+      //   throw new UnauthorizedException('Only owners and admins can update designations');
+      // }
+
+      // Check if the member being updated exists in the same node
+      const memberToUpdate = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(memberId),
+        status: 'MEMBER'
+      });
+
+      if (!memberToUpdate) {
+        throw new NotFoundException('Member not found in the node');
+      }
+
+      // Perform the update
+      const result = await this.nodeMembersModel.updateOne(
+        {
+          _id: memberToUpdate._id
+        },
+        {
+          $set: {
+            designation
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new InternalServerErrorException('Failed to update designation');
+      }
+
+      return result;
+
+    } catch (error) {
+      console.log({ error })
+      throw error
     }
   }
 }
