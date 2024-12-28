@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { profile } from 'console';
 import { Connection, Model, Types } from 'mongoose';
 import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
@@ -97,52 +96,54 @@ export class ChapterService {
 
     //----------------GET PUBLIC CLUBS OF USER------------------
 
-    async getPublicClubsOfUser(userId: Types.ObjectId, nodeId: Types.ObjectId) {
+    async getPublicClubs(nodeId: Types.ObjectId, term: string) {
         try {
 
             if (!nodeId) {
                 throw new NotFoundException('Please provide node id');
             }
 
-            const userClubs = await this.clubMembersModel.aggregate([
-                {
-                    $match: { user: userId }
-                },
+            console.log({ nodeId, term })
+            let query = { isPublic: true } as { isPublic: boolean; name?: { $regex: string; $options: string } };
+            if (term) {
+                query = { isPublic: true, name: { $regex: term, $options: 'i' } }
+            }
+
+            const clubs = await this.clubModel.aggregate([
+                { $match: query },
+
                 {
                     $lookup: {
-                        from: 'clubs',
-                        localField: 'club',
-                        foreignField: '_id',
-                        as: 'clubDetails'
+                        from: 'chapters',
+                        let: { clubId: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$club', '$$clubId'] },
+                                            { $eq: ['$node', nodeId] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'chapters'
                     }
                 },
                 {
                     $match: {
-                        'clubDetails.isPublic': true
+                        chapters: { $size: 0 }
                     }
-                },
-                {
-                    $lookup: {
-                        from: 'chapters',
-                        localField: nodeId.toString(),
-                        foreignField: 'node',
-                        as: 'userChapters'
-                    }
-                },
-                {
-                    $match: { club: { $ne: '$userChapters.club' } }
-
                 },
                 {
                     $project: {
-                        _id: { $arrayElemAt: ["$clubDetails._id", 0] },
-                        profileImage: { $arrayElemAt: ["$clubDetails.profileImage", 0] },
-                        name: { $arrayElemAt: ["$clubDetails.name", 0] },
+                        chapters: 0
                     }
                 }
-            ])
+            ]);
 
-            return userClubs
+            return clubs;
 
         } catch (error) {
             console.log('error getting all clubs of user', error);
