@@ -27,24 +27,26 @@ export class ChapterService {
             const { userRole, userId } = userData;
             const { club, node } = createChapterDto;
 
-            const existdedClub = await this.clubModel.findById(new Types.ObjectId(club));
+            const existdedClub = await this.clubModel.findById(new Types.ObjectId(club)).session(session);
 
             if (!existdedClub) {
                 throw new NotFoundException('Club not found');
             }
 
+            const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
+
             const chapterData = new this.chapterModel({
                 name: existdedClub.name,
                 club: new Types.ObjectId(club),
                 node: new Types.ObjectId(node),
-                status: ['owner', 'admin', 'moderator'].includes(userRole) ? 'published' : 'proposed',
+                status: isPrivilegedUser ? 'published' : 'proposed',
                 proposedBy: new Types.ObjectId(userId),
-                publishedBy: ['owner', 'admin', 'moderator'].includes(userRole) ? new Types.ObjectId(userId) : null,
+                publishedBy: isPrivilegedUser ? new Types.ObjectId(userId) : null,
             })
 
             const chapter = await chapterData.save({ session });
 
-            if (['owner', 'admin', 'moderator'].includes(userRole)) {
+            if (isPrivilegedUser) {
                 const chapterMemberData = new this.chapterMemberModel({
                     chapter: chapter._id,
                     user: new Types.ObjectId(userId),
@@ -53,6 +55,26 @@ export class ChapterService {
                 })
 
                 await chapterMemberData.save({ session });
+
+                await this.clubMembersModel.findOneAndUpdate(
+                    {
+                        club: new Types.ObjectId(club),
+                        user: new Types.ObjectId(userId)
+                    },
+                    {
+                        $setOnInsert: {
+                            club: new Types.ObjectId(club),
+                            user: new Types.ObjectId(userId),
+                            status: 'member',
+                            role: 'MEMBER'
+                        }
+                    },
+                    {
+                        upsert: true,
+                        session,
+                        runValidators: true
+                    }
+                );
             }
 
             await session.commitTransaction();
@@ -66,7 +88,7 @@ export class ChapterService {
                 throw error;
             }
 
-            throw new Error('Error creating chapter');
+            throw new Error(`Failed to create chapter: ${error.message}`);
         } finally {
             session.endSession();
         }
@@ -94,7 +116,7 @@ export class ChapterService {
         }
     }
 
-    //----------------GET PUBLIC CLUBS OF USER------------------
+    //----------------GET PUBLIC CLUBS------------------
 
     async getPublicClubs(nodeId: Types.ObjectId, term: string) {
         try {
@@ -209,6 +231,7 @@ export class ChapterService {
                 throw new NotFoundException('Chapter not found');
             }
 
+            // add members to chapter
             const chapterPublishedMemberData = new this.chapterMemberModel({
                 chapter: updateChapterStatusDto.chapterId,
                 user: chapterUserData.userId,
@@ -226,6 +249,47 @@ export class ChapterService {
             })
 
             await chapterProposedMemberData.save({ session });
+
+            // add members to club
+            await this.clubMembersModel.findOneAndUpdate(
+                {
+                    club: new Types.ObjectId(existedChapter.club),
+                    user: new Types.ObjectId(chapterUserData.userId)
+                },
+                {
+                    $setOnInsert: {
+                        club: new Types.ObjectId(existedChapter.club),
+                        user: new Types.ObjectId(chapterUserData.userId),
+                        status: 'member',
+                        role: 'MEMBER'
+                    }
+                },
+                {
+                    upsert: true,
+                    session,
+                    runValidators: true
+                }
+            );
+
+            await this.clubMembersModel.findOneAndUpdate(
+                {
+                    club: new Types.ObjectId(existedChapter.club),
+                    user: new Types.ObjectId(existedChapter.proposedBy)
+                },
+                {
+                    $setOnInsert: {
+                        club: new Types.ObjectId(existedChapter.club),
+                        user: new Types.ObjectId(existedChapter.proposedBy),
+                        status: 'member',
+                        role: 'MEMBER'
+                    }
+                },
+                {
+                    upsert: true,
+                    session,
+                    runValidators: true
+                }
+            );
 
             await session.commitTransaction();
 
