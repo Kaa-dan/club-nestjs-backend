@@ -58,17 +58,16 @@ export class LoginService {
       const sanitizedUser = JSON.parse(JSON.stringify(user));
       delete sanitizedUser.password;
 
-      ('setting COKKIE');
+      // ('setting COKKIE');
 
-      response.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
+      // response.cookie('auth_token', token, {
+      //   httpOnly: true,
+      //   secure: true,
+      //   sameSite: 'none',
+      //   maxAge: 7 * 24 * 60 * 60 * 1000,
+      //   path: '/',
+      // });
 
-      ('SETTED COKKIE');
       return {
         status: true,
         message: 'Login successful',

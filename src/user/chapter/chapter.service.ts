@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { profile } from 'console';
 import { Connection, Model, Types } from 'mongoose';
 import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
@@ -20,6 +19,16 @@ export class ChapterService {
 
     //----------------CREATE CHAPTER------------------
 
+    /**
+     * Creates a new chapter. The chapter is automatically published if the user is an
+     * owner, admin, or moderator of the club. Otherwise, the chapter is proposed and
+     * requires approval from a privileged user.
+     * @param createChapterDto - The request body containing the club id and node id.
+     * @param userData - The user data containing the user id and role.
+     * @returns A promise that resolves to the created chapter, or an error object if there was an error.
+     * @throws `NotFoundException` if the club is not found.
+     * @throws `Error` if there was an error while trying to create the chapter.
+     */
     async createChapter(createChapterDto: any, userData: any) {
         const session = await this.connection.startSession();
         session.startTransaction();
@@ -28,24 +37,26 @@ export class ChapterService {
             const { userRole, userId } = userData;
             const { club, node } = createChapterDto;
 
-            const existdedClub = await this.clubModel.findById(new Types.ObjectId(club));
+            const existedClub = await this.clubModel.findById(new Types.ObjectId(club)).session(session);
 
-            if (!existdedClub) {
+            if (!existedClub) {
                 throw new NotFoundException('Club not found');
             }
 
+            const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
+
             const chapterData = new this.chapterModel({
-                name: existdedClub.name,
+                name: existedClub.name,
                 club: new Types.ObjectId(club),
                 node: new Types.ObjectId(node),
-                status: ['owner', 'admin', 'moderator'].includes(userRole) ? 'published' : 'proposed',
+                status: isPrivilegedUser ? 'published' : 'proposed',
                 proposedBy: new Types.ObjectId(userId),
-                publishedBy: ['owner', 'admin', 'moderator'].includes(userRole) ? new Types.ObjectId(userId) : null,
+                publishedBy: isPrivilegedUser ? new Types.ObjectId(userId) : null,
             })
 
             const chapter = await chapterData.save({ session });
 
-            if (['owner', 'admin', 'moderator'].includes(userRole)) {
+            if (isPrivilegedUser) {
                 const chapterMemberData = new this.chapterMemberModel({
                     chapter: chapter._id,
                     user: new Types.ObjectId(userId),
@@ -54,6 +65,26 @@ export class ChapterService {
                 })
 
                 await chapterMemberData.save({ session });
+
+                await this.clubMembersModel.findOneAndUpdate(
+                    {
+                        club: new Types.ObjectId(club),
+                        user: new Types.ObjectId(userId)
+                    },
+                    {
+                        $setOnInsert: {
+                            club: new Types.ObjectId(club),
+                            user: new Types.ObjectId(userId),
+                            status: 'member',
+                            role: 'MEMBER'
+                        }
+                    },
+                    {
+                        upsert: true,
+                        session,
+                        runValidators: true
+                    }
+                );
             }
 
             await session.commitTransaction();
@@ -67,7 +98,7 @@ export class ChapterService {
                 throw error;
             }
 
-            throw new Error('Error creating chapter');
+            throw new Error(`Failed to create chapter: ${error.message}`);
         } finally {
             session.endSession();
         }
@@ -75,6 +106,13 @@ export class ChapterService {
 
     //----------------GET PUBLISHED CHAPTERS OF NODE------------------
 
+    /**
+     * Retrieves all published chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of published chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving chapters
+     */
     async getPublishedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
             if (!nodeId) {
@@ -95,54 +133,64 @@ export class ChapterService {
         }
     }
 
-    //----------------GET PUBLIC CLUBS OF USER------------------
+    //----------------GET PUBLIC CLUBS------------------
 
-    async getPublicClubsOfUser(userId: Types.ObjectId, nodeId: Types.ObjectId) {
+    /**
+     * Retrieves all public clubs in a given node that match a given term (case-insensitive).
+     * @param nodeId The ID of the node to retrieve clubs from
+     * @param term The search term to filter clubs by
+     * @returns An array of public clubs in the node that match the given term
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving clubs
+     */
+    async getPublicClubs(nodeId: Types.ObjectId, term: string) {
         try {
 
             if (!nodeId) {
                 throw new NotFoundException('Please provide node id');
             }
 
-            const userClubs = await this.clubMembersModel.aggregate([
-                {
-                    $match: { user: userId }
-                },
+            console.log({ nodeId, term })
+            let query = { isPublic: true } as { isPublic: boolean; name?: { $regex: string; $options: string } };
+            if (term) {
+                query = { isPublic: true, name: { $regex: term, $options: 'i' } }
+            }
+
+            const clubs = await this.clubModel.aggregate([
+                { $match: query },
+
                 {
                     $lookup: {
-                        from: 'clubs',
-                        localField: 'club',
-                        foreignField: '_id',
-                        as: 'clubDetails'
+                        from: 'chapters',
+                        let: { clubId: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$club', '$$clubId'] },
+                                            { $eq: ['$node', nodeId] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'chapters'
                     }
                 },
                 {
                     $match: {
-                        'clubDetails.isPublic': true
+                        chapters: { $size: 0 }
                     }
-                },
-                {
-                    $lookup: {
-                        from: 'chapters',
-                        localField: nodeId.toString(),
-                        foreignField: 'node',
-                        as: 'userChapters'
-                    }
-                },
-                {
-                    $match: { club: { $ne: '$userChapters.club' } }
-
                 },
                 {
                     $project: {
-                        _id: { $arrayElemAt: ["$clubDetails._id", 0] },
-                        profileImage: { $arrayElemAt: ["$clubDetails.profileImage", 0] },
-                        name: { $arrayElemAt: ["$clubDetails.name", 0] },
+                        chapters: 0
                     }
                 }
-            ])
+            ]);
 
-            return userClubs
+            return clubs;
 
         } catch (error) {
             console.log('error getting all clubs of user', error);
@@ -153,6 +201,13 @@ export class ChapterService {
 
     //----------------GET PROPOSED CHAPTERS OF NODE------------------
 
+    /**
+     * Retrieves all proposed chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of proposed chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided or if there are no proposed chapters for the given node
+     * @throws {Error} If there is an error while retrieving chapters
+     */
     async getProposedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
 
@@ -176,6 +231,14 @@ export class ChapterService {
 
     //----------------PUBLISH OR REJECT CHAPTER------------------
 
+    /**
+     * Publishes or rejects a chapter.
+     * @param chapterUserData - An object containing the user's role and ID.
+     * @param updateChapterStatusDto - An object containing the chapter ID and status to set.
+     * @returns A promise that resolves to an object containing a message and status.
+     * @throws {NotFoundException} If the chapter is not found.
+     * @throws {Error} If there is an error while publishing or rejecting the chapter.
+     */
     async publishOrRejectChapter(
         chapterUserData: {
             userRole: string,
@@ -208,6 +271,7 @@ export class ChapterService {
                 throw new NotFoundException('Chapter not found');
             }
 
+            // add members to chapter
             const chapterPublishedMemberData = new this.chapterMemberModel({
                 chapter: updateChapterStatusDto.chapterId,
                 user: chapterUserData.userId,
@@ -225,6 +289,47 @@ export class ChapterService {
             })
 
             await chapterProposedMemberData.save({ session });
+
+            // add members to club
+            await this.clubMembersModel.findOneAndUpdate(
+                {
+                    club: new Types.ObjectId(existedChapter.club),
+                    user: new Types.ObjectId(chapterUserData.userId)
+                },
+                {
+                    $setOnInsert: {
+                        club: new Types.ObjectId(existedChapter.club),
+                        user: new Types.ObjectId(chapterUserData.userId),
+                        status: 'member',
+                        role: 'MEMBER'
+                    }
+                },
+                {
+                    upsert: true,
+                    session,
+                    runValidators: true
+                }
+            );
+
+            await this.clubMembersModel.findOneAndUpdate(
+                {
+                    club: new Types.ObjectId(existedChapter.club),
+                    user: new Types.ObjectId(existedChapter.proposedBy)
+                },
+                {
+                    $setOnInsert: {
+                        club: new Types.ObjectId(existedChapter.club),
+                        user: new Types.ObjectId(existedChapter.proposedBy),
+                        status: 'member',
+                        role: 'MEMBER'
+                    }
+                },
+                {
+                    upsert: true,
+                    session,
+                    runValidators: true
+                }
+            );
 
             await session.commitTransaction();
 

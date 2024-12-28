@@ -39,11 +39,10 @@ export class ChapterController {
         return await this.chapterService.getPublishedChaptersOfNode(nodeId);
     }
 
-    @Get('get-user-public-clubs')
-    async getPublicClubsOfUser(@Req() req: Request, @Query('nodeId') node: string) {
-        const userId = new Types.ObjectId(req.user._id);
+    @Get('get-public-clubs')
+    async getPublicClubs(@Req() req: Request, @Query('nodeId') node: string, @Query('term') term: string) {
         const nodeId = new Types.ObjectId(node);
-        return await this.chapterService.getPublicClubsOfUser(userId, nodeId);
+        return await this.chapterService.getPublicClubs(nodeId, term);
     }
 
     @Get('get-proposed')

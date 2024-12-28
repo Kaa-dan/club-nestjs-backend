@@ -21,7 +21,7 @@ import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
 
-import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
 
 export interface IFileObject {
   buffer: Buffer;
