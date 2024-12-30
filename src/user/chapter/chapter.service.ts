@@ -56,6 +56,8 @@ export class ChapterService {
 
             const chapterData = new this.chapterModel({
                 name: existedClub.name,
+                profileImage: existedClub.profileImage,
+                coverImage: existedClub.coverImage,
                 club: new Types.ObjectId(club),
                 node: new Types.ObjectId(node),
                 status: isPrivilegedUser ? 'published' : 'proposed',
