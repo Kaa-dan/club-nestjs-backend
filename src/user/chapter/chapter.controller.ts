@@ -100,8 +100,6 @@ export class ChapterController {
     }
 
 
-    @Roles('owner', 'admin', 'moderator')
-    @UseGuards(NodeRoleGuard)
     @Post('remove-user')
     async removeUserFromChapter(
         @Req() req: Request,

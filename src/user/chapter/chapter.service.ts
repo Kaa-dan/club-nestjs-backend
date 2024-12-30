@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
@@ -441,16 +441,51 @@ export class ChapterService {
         }
     }
 
+    //----------------REMOVE USER FROM CHAPTER------------------
+
+    /**
+     * Remove a user from a chapter.
+     * @param userId - The id of the user removing the user from the chapter.
+     * @param removeUserChapterDto - The request body containing the chapter id and the user id of the user to remove from the chapter.
+     * @returns A promise that resolves to an object with a message and status,
+     * or an error object if there was an error.
+     * @throws `NotFoundException` if the chapter is not found or if the user is not found.
+     * @throws `ForbiddenException` if the user is a member of the chapter, or if the user is trying to remove a user with a higher role or with the same role.
+     * @throws `Error` if there was an error while trying to remove the user from the chapter.
+     */
     async removeUserFromChapter(userId: Types.ObjectId, removeUserChapterDto: RemoveUserChapterDto) {
         try {
-            const existedMember = await this.chapterMemberModel.findOne({
+            // check if user who is removing the user exists
+            const userExists = await this.chapterMemberModel.findOne({
+                chapter: removeUserChapterDto.chapter,
+                user: userId
+            });
+
+            if (!userExists) {
+                throw new NotFoundException('you are not the member of this chapter');
+            }
+
+            // check if user to remove exists
+            const userToRemoveExists = await this.chapterMemberModel.findOne({
                 chapter: removeUserChapterDto.chapter,
                 user: removeUserChapterDto.userToRemove
             });
 
-            if (!existedMember) {
-                throw new NotFoundException('User not found in chapter');
+            if (!userToRemoveExists) {
+                throw new NotFoundException('User to remove not the member of this chapter');
             }
+
+            if (userExists.role === 'member') {
+                throw new ForbiddenException('User can not remove an user with member role');
+            }
+
+            if ((userExists.role === 'admin' && userToRemoveExists.role === 'admin') ||
+                (userExists.role === 'moderator' && userToRemoveExists.role === 'moderator') ||
+                (userExists.role === 'moderator' && userToRemoveExists.role === 'admin')
+            ) {
+                throw new ForbiddenException('User can not remove an user with higher role or with same role');
+            }
+
 
             await this.chapterMemberModel.deleteOne({
                 chapter: removeUserChapterDto.chapter,
