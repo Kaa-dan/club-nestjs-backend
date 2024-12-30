@@ -60,7 +60,7 @@ export class ChapterService {
                 const chapterMemberData = new this.chapterMemberModel({
                     chapter: chapter._id,
                     user: new Types.ObjectId(userId),
-                    role: userRole,
+                    role: userRole === 'owner' ? 'admin' : userRole,
                     status: 'MEMBER',
                 })
 
@@ -275,7 +275,7 @@ export class ChapterService {
             const chapterPublishedMemberData = new this.chapterMemberModel({
                 chapter: updateChapterStatusDto.chapterId,
                 user: chapterUserData.userId,
-                role: chapterUserData.userRole,
+                role: chapterUserData.userRole === 'owner' ? 'admin' : chapterUserData.userRole,
                 status: 'MEMBER',
             })
 
