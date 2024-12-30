@@ -43,6 +43,15 @@ export class ChapterService {
                 throw new NotFoundException('Club not found');
             }
 
+            const existedChapter = await this.chapterModel.findOne({
+                node: new Types.ObjectId(node),
+                club: new Types.ObjectId(club)
+            }).session(session);
+
+            if (existedChapter) {
+                throw new Error('Chapter already exists');
+            }
+
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
 
             const chapterData = new this.chapterModel({
