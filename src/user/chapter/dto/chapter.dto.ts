@@ -25,10 +25,32 @@ export class UpdateChapterStatusDto {
     })
     @IsNotEmpty()
     status: ChapterStatus;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    node: Types.ObjectId;
 }
 
-export class JoinChapterDto {
+export class JoinUserChapterDto {
     @IsMongoId()
     @IsNotEmpty()
     chapter: Types.ObjectId;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    node: Types.ObjectId;
+}
+
+export class RemoveUserChapterDto {
+    @IsMongoId()
+    @IsNotEmpty()
+    chapter: Types.ObjectId;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    userToRemove: Types.ObjectId;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    node: Types.ObjectId;
 }

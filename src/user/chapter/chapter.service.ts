@@ -5,7 +5,7 @@ import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
-import { JoinChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 
 @Injectable()
@@ -375,18 +375,32 @@ export class ChapterService {
         }
     }
 
-    async joinChapter(userData: any, joinChapterDto: JoinChapterDto) {
+    //----------------JOIN CHAPTER------------------
+
+    /**
+     * Join a chapter. If the user is an owner, admin, or moderator of the club,
+     * they are automatically assigned the same role in the chapter. Otherwise,
+     * they are assigned the member role.
+     * @param userData - The user data containing the user id and role.
+     * @param joinUserChapterDto - The request body containing the chapter id.
+     * @returns A promise that resolves to an object with a message and status,
+     * or an error object if there was an error.
+     * @throws `NotFoundException` if the chapter is not found.
+     * @throws `ConflictException` if the user is already a member of the chapter.
+     * @throws `Error` if there was an error while trying to join the chapter.
+         */
+    async joinChapter(userData: any, joinUserChapterDto: JoinUserChapterDto) {
         const session = await this.connection.startSession();
         session.startTransaction();
         try {
-            const chapter = await this.chapterModel.findById(joinChapterDto.chapter).session(session);
+            const chapter = await this.chapterModel.findById(joinUserChapterDto.chapter).session(session);
 
             if (!chapter) {
                 throw new NotFoundException('Chapter not found');
             }
 
             const existedMember = await this.chapterMemberModel.findOne({
-                chapter: joinChapterDto.chapter,
+                chapter: joinUserChapterDto.chapter,
                 user: userData.userId
             }).session(session);
 
@@ -402,7 +416,7 @@ export class ChapterService {
             }
 
             const chapterMemberData = new this.chapterMemberModel({
-                chapter: joinChapterDto.chapter,
+                chapter: joinUserChapterDto.chapter,
                 user: userData.userId,
                 role: assignedRole,
                 status: 'MEMBER',
@@ -424,6 +438,34 @@ export class ChapterService {
             throw new Error('Error joining chapter');
         } finally {
             session.endSession();
+        }
+    }
+
+    async removeUserFromChapter(userId: Types.ObjectId, removeUserChapterDto: RemoveUserChapterDto) {
+        try {
+            const existedMember = await this.chapterMemberModel.findOne({
+                chapter: removeUserChapterDto.chapter,
+                user: removeUserChapterDto.userToRemove
+            });
+
+            if (!existedMember) {
+                throw new NotFoundException('User not found in chapter');
+            }
+
+            await this.chapterMemberModel.deleteOne({
+                chapter: removeUserChapterDto.chapter,
+                user: removeUserChapterDto.userToRemove
+            });
+
+            return {
+                message: 'User removed from chapter',
+                status: true
+            }
+
+        } catch (error) {
+            console.log('error removing user from chapter', error);
+            if (error instanceof NotFoundException) throw error;
+            throw new Error('Error removing user from chapter');
         }
     }
 }
