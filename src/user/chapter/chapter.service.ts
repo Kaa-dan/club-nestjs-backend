@@ -75,8 +75,8 @@ export class ChapterService {
                         $setOnInsert: {
                             club: new Types.ObjectId(club),
                             user: new Types.ObjectId(userId),
-                            status: 'member',
-                            role: 'MEMBER'
+                            role: 'member',
+                            status: 'MEMBER',
                         }
                     },
                     {
@@ -300,8 +300,8 @@ export class ChapterService {
                     $setOnInsert: {
                         club: new Types.ObjectId(existedChapter.club),
                         user: new Types.ObjectId(chapterUserData.userId),
-                        status: 'member',
-                        role: 'MEMBER'
+                        status: 'MEMBER',
+                        role: 'member',
                     }
                 },
                 {
@@ -320,8 +320,8 @@ export class ChapterService {
                     $setOnInsert: {
                         club: new Types.ObjectId(existedChapter.club),
                         user: new Types.ObjectId(existedChapter.proposedBy),
-                        status: 'member',
-                        role: 'MEMBER'
+                        status: 'MEMBER',
+                        role: 'member',
                     }
                 },
                 {
