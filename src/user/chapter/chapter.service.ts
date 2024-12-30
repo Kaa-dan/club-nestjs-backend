@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
-import { UpdateChapterStatusDto } from './dto/chapter.dto';
+import { JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { NodeMembers } from 'src/shared/entities/node-members.entity';
 
 @Injectable()
 export class ChapterService {
@@ -14,6 +15,7 @@ export class ChapterService {
         @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
         @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
         @InjectModel(ChapterMember.name) private readonly chapterMemberModel: Model<ChapterMember>,
+        @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
         @InjectConnection() private connection: Connection,
     ) { }
 
@@ -56,6 +58,8 @@ export class ChapterService {
 
             const chapterData = new this.chapterModel({
                 name: existedClub.name,
+                profileImage: existedClub.profileImage,
+                coverImage: existedClub.coverImage,
                 club: new Types.ObjectId(club),
                 node: new Types.ObjectId(node),
                 status: isPrivilegedUser ? 'published' : 'proposed',
@@ -66,10 +70,17 @@ export class ChapterService {
             const chapter = await chapterData.save({ session });
 
             if (isPrivilegedUser) {
+                const validRoles = ['admin', 'moderator', 'member'];
+                const assignedRole = userRole === 'owner' ? 'admin' : userRole;
+
+                if (!validRoles.includes(assignedRole)) {
+                    throw new Error('Invalid user role');
+                }
+
                 const chapterMemberData = new this.chapterMemberModel({
                     chapter: chapter._id,
                     user: new Types.ObjectId(userId),
-                    role: userRole === 'owner' ? 'admin' : userRole,
+                    role: assignedRole,
                     status: 'MEMBER',
                 })
 
@@ -281,10 +292,17 @@ export class ChapterService {
             }
 
             // add members to chapter
+            const validRoles = ['admin', 'moderator', 'member'];
+            const assignedRole = chapterUserData.userRole === 'owner' ? 'admin' : chapterUserData.userRole;
+
+            if (!validRoles.includes(assignedRole)) {
+                throw new Error('Invalid user role');
+            }
+
             const chapterPublishedMemberData = new this.chapterMemberModel({
                 chapter: updateChapterStatusDto.chapterId,
                 user: chapterUserData.userId,
-                role: chapterUserData.userRole === 'owner' ? 'admin' : chapterUserData.userRole,
+                role: assignedRole,
                 status: 'MEMBER',
             })
 
@@ -354,6 +372,100 @@ export class ChapterService {
             throw new Error('Error publishing/rejecting chapter');
         } finally {
             session.endSession();
+        }
+    }
+
+    //----------------JOIN CHAPTER------------------
+
+    /**
+     * Join a chapter. If the user is an owner, admin, or moderator of the club,
+     * they are automatically assigned the same role in the chapter. Otherwise,
+     * they are assigned the member role.
+     * @param userData - The user data containing the user id and role.
+     * @param joinUserChapterDto - The request body containing the chapter id.
+     * @returns A promise that resolves to an object with a message and status,
+     * or an error object if there was an error.
+     * @throws `NotFoundException` if the chapter is not found.
+     * @throws `ConflictException` if the user is already a member of the chapter.
+     * @throws `Error` if there was an error while trying to join the chapter.
+         */
+    async joinChapter(userData: any, joinUserChapterDto: JoinUserChapterDto) {
+        const session = await this.connection.startSession();
+        session.startTransaction();
+        try {
+            const chapter = await this.chapterModel.findById(joinUserChapterDto.chapter).session(session);
+
+            if (!chapter) {
+                throw new NotFoundException('Chapter not found');
+            }
+
+            const existedMember = await this.chapterMemberModel.findOne({
+                chapter: joinUserChapterDto.chapter,
+                user: userData.userId
+            }).session(session);
+
+            if (existedMember) {
+                throw new ConflictException('You are already a member of this chapter');
+            }
+
+            const validRoles = ['admin', 'moderator', 'member'];
+            const assignedRole = userData.userRole === 'owner' ? 'admin' : userData.userRole;
+
+            if (!validRoles.includes(assignedRole)) {
+                throw new Error('Invalid user role');
+            }
+
+            const chapterMemberData = new this.chapterMemberModel({
+                chapter: joinUserChapterDto.chapter,
+                user: userData.userId,
+                role: assignedRole,
+                status: 'MEMBER',
+            })
+
+            await chapterMemberData.save({ session });
+            await session.commitTransaction();
+
+            return {
+                message: 'Chapter joined',
+                status: true
+            }
+
+        } catch (error) {
+            await session.abortTransaction();
+            console.log('error joining chapter', error);
+            if (error instanceof NotFoundException) throw error;
+            if (error instanceof ConflictException) throw error;
+            throw new Error('Error joining chapter');
+        } finally {
+            session.endSession();
+        }
+    }
+
+    async removeUserFromChapter(userId: Types.ObjectId, removeUserChapterDto: RemoveUserChapterDto) {
+        try {
+            const existedMember = await this.chapterMemberModel.findOne({
+                chapter: removeUserChapterDto.chapter,
+                user: removeUserChapterDto.userToRemove
+            });
+
+            if (!existedMember) {
+                throw new NotFoundException('User not found in chapter');
+            }
+
+            await this.chapterMemberModel.deleteOne({
+                chapter: removeUserChapterDto.chapter,
+                user: removeUserChapterDto.userToRemove
+            });
+
+            return {
+                message: 'User removed from chapter',
+                status: true
+            }
+
+        } catch (error) {
+            console.log('error removing user from chapter', error);
+            if (error instanceof NotFoundException) throw error;
+            throw new Error('Error removing user from chapter');
         }
     }
 }

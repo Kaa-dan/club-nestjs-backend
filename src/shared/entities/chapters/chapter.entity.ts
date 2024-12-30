@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Types } from "mongoose";
+import { Document, SchemaTypes, Types } from "mongoose";
 import { Club } from "../club.entity";
 import { Node_ } from "../node.entity";
 import { User } from "../user.entity";
@@ -8,6 +8,33 @@ import { User } from "../user.entity";
 export class Chapter extends Document {
     @Prop({ required: true })
     name: string
+
+    @Prop({
+        type: {
+            filename: { type: SchemaTypes.String, required: true },
+            url: { type: SchemaTypes.String, required: true },
+        },
+        _id: false,
+        required: true,
+    })
+    profileImage: {
+        filename: string;
+        url: string;
+    };
+
+    @Prop({
+        type: {
+            filename: { type: SchemaTypes.String, required: true },
+            url: { type: SchemaTypes.String, required: true },
+        },
+        _id: false,
+        required: true,
+    })
+    coverImage: {
+        filename: string;
+        url: string;
+    };
+
 
     @Prop({ type: Types.ObjectId, ref: Club.name, required: true })
     club: Types.ObjectId
