@@ -39,7 +39,7 @@ export class AdoptContributionService {
     @InjectModel(Node_.name) private nodeModel: Model<Node_>,
     @InjectModel(ProjectActivities.name)
     private projectActivitiesModel: Model<ProjectActivities>,
-  ) {}
+  ) { }
 
   /**
    * Creates a new contribution for a project
@@ -134,6 +134,7 @@ export class AdoptContributionService {
       project: Types.ObjectId;
       node?: Types.ObjectId;
       club?: Types.ObjectId;
+      proposalMessage: string
     },
   ) {
     console.log({ adoptForumDto });
@@ -174,6 +175,9 @@ export class AdoptContributionService {
         proposedBy: new Types.ObjectId(userId),
         ...(userDetails.role !== 'member' && {
           acceptedBy: new Types.ObjectId(userId),
+        }),
+        ...(userDetails.role === 'member' && {
+          message: adoptForumDto.proposalMessage,  // Add message for members
         }),
         status: userDetails.role === 'member' ? 'proposed' : 'published',
         node: adoptForumDto.node
