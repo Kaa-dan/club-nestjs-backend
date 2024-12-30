@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
-import { CreateChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { CreateChapterDto, JoinChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { ChapterService } from './chapter.service';
 import { Types } from 'mongoose';
 import { Roles } from 'src/decorators/role.decorator';
@@ -73,5 +73,28 @@ export class ChapterController {
         }
 
         return await this.chapterService.publishOrRejectChapter(chapterUserData, updateChapterStatusDto);
+    }
+
+    @Roles('owner', 'admin', 'moderator', 'member')
+    @UseGuards(NodeRoleGuard)
+    @Post('join')
+    async joinChapter(
+        @Req() req: Request,
+        @Body(
+            new ValidationPipe({
+                transform: true, // Enable transformation
+                transformOptions: {
+                    enableImplicitConversion: true, // Enable implicit conversions
+                },
+                whitelist: true,
+                forbidNonWhitelisted: true,
+            }),
+        ) joinChapterDto: JoinChapterDto
+    ) {
+        const userData = {
+            userId: new Types.ObjectId(req.user._id),
+            userRole: req.role,
+        }
+        return await this.chapterService.joinChapter(userData, joinChapterDto);
     }
 }

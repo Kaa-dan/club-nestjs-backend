@@ -26,3 +26,9 @@ export class UpdateChapterStatusDto {
     @IsNotEmpty()
     status: ChapterStatus;
 }
+
+export class JoinChapterDto {
+    @IsMongoId()
+    @IsNotEmpty()
+    chapter: Types.ObjectId;
+}
