@@ -10,6 +10,7 @@ import {
   Req,
   Put,
   Body,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -117,5 +118,27 @@ export class UserController {
   @Put('remove-member')
   async removeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
     return await this.userService.removeMember(accessDto);
+  }
+
+  @Patch('designation')
+  async updateDesignation(@Req() req: Request, @Body() { designation, nodeId, memberId }: { designation: string, memberId: string, nodeId: string }) {
+    return await this.userService.updateDesignation(req.user._id, memberId, nodeId, designation)
+  }
+
+
+  @Patch(':nodeId/members/:memberId/position')
+  async updatePosition(
+    @Param('nodeId') nodeId: string,
+    @Param('memberId') memberId: string,
+    @Body('position') position: string,
+    @Req() req
+  ) {
+    const userId = req.user.id; // Assuming user ID is available in the request
+    return await this.userService.updatePosition(
+      userId,
+      memberId,
+      nodeId,
+      position
+    );
   }
 }

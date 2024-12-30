@@ -25,6 +25,9 @@ export class ProjectAdoption {
   @Prop({ required: false, type: Types.ObjectId, ref: Node_.name })
   node: Types.ObjectId
 
+  @Prop({ type: String })
+  message: string
+
   @IsString()
   @Prop({
     type: String,
