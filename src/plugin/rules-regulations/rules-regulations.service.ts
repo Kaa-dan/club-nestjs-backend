@@ -51,18 +51,31 @@ export class RulesRegulationsService {
   /*
   @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations() {
+  async getAllRulesRegulations(page: number = 1, limit: number = 10) {
     try {
-      return await this.rulesregulationModel
-        .find({
-          isPublic: true,
-          isActive: true,
-          publishedStatus: "true"
-        })
-        .populate('createdBy').sort({ createdAt: -1 });
+      const skip = (page - 1) * limit;
+
+      const data = await this.rulesregulationModel
+        .find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec();
+
+      const total = await this.rulesregulationModel.countDocuments();
+
+      return {
+        data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        'Error while fetching rules-regulations',
+      throw new BadRequestException(
+        'Error while fetching rules and regulations',
         error,
       );
     }
@@ -264,21 +277,81 @@ export class RulesRegulationsService {
 
   /*-------------------------GET ALL RULES AND REGULATION OF SINGLE CLUB OR NODE */
 
-  async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
+  // async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
+  //   try {
+  //     ({ hehe: forId, type });
+  //     if (type === 'club') {
+  //       const response = await this.rulesregulationModel
+  //         .find({ isActive: true, club: forId })
+  //         .populate('createdBy')
+  //         .sort({ createdAt: -1 })
+  //         .exec();
+  //       ({ response });
+  //       return response;
+  //     } else if (type === 'node') {
+  //       return await this.rulesregulationModel
+  //         .find({ isActive: true, node: forId })
+  //         .exec();
+  //     }
+  //   } catch (error) {
+  //     throw new InternalServerErrorException(
+  //       'Error while getting active rules-regulations',
+  //       error,
+  //     );
+  //   }
+  // }
+
+  async getAllActiveRulesRegulations(
+    type: string,
+    forId: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10
+  ) {
     try {
       ({ hehe: forId, type });
+      const skip = (page - 1) * limit;
+
       if (type === 'club') {
         const response = await this.rulesregulationModel
           .find({ isActive: true, club: forId })
           .populate('createdBy')
           .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
           .exec();
+
+        const total = await this.rulesregulationModel
+          .countDocuments({ isActive: true, club: forId });
+
         ({ response });
-        return response;
+        return {
+          data: response,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+          }
+        };
       } else if (type === 'node') {
-        return await this.rulesregulationModel
+        const response = await this.rulesregulationModel
           .find({ isActive: true, node: forId })
+          .skip(skip)
+          .limit(limit)
           .exec();
+
+        const total = await this.rulesregulationModel
+          .countDocuments({ isActive: true, node: forId });
+
+        return {
+          data: response,
+          pagination: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit)
+          }
+        };
       }
     } catch (error) {
       throw new InternalServerErrorException(
@@ -288,6 +361,7 @@ export class RulesRegulationsService {
     }
   }
 
+
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
@@ -295,9 +369,12 @@ export class RulesRegulationsService {
     userId: Types.ObjectId,
     type: 'node' | 'club',
     entity: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10
   ) {
     try {
       ({ userId, type, entity });
+      const skip = (page - 1) * limit;
       let query = {};
 
       if (type === 'club') {
@@ -312,14 +389,30 @@ export class RulesRegulationsService {
         };
       }
 
-      return await this.rulesregulationModel
+      const data = await this.rulesregulationModel
         .find(query)
         .populate({
           path: 'createdBy',
           select: '-password',
         })
         .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
         .exec();
+
+      const total = await this.rulesregulationModel
+        .countDocuments(query);
+
+      return {
+        data,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',

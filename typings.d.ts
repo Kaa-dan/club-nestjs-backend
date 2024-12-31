@@ -12,6 +12,11 @@ interface DebateWithArguments extends Omit<Debate, 'arguments'> {
 interface DebatesResponse {
   message: string;
   data: DebateWithArguments[];
+  pagination?: {
+    currentPage: number
+    totalPages: number,
+    totalItems: number,
+  }
 }
 
 type TPublishedStatus =

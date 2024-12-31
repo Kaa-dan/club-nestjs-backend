@@ -310,19 +310,26 @@ export class RulesRegulationsController {
   @Query : from = club|node id
   @Req   : req.user 
   */
+
   @Get('get-all-active-rules')
   async getAllActiveRulesRegulations(
     @Query('from') forId: Types.ObjectId,
     @Query('type') type: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
     @Req() req: Request,
   ) {
     try {
-
-
       const ID = new Types.ObjectId(forId);
+      // Convert string to number since query params come as strings
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
+
       return await this.rulesRegulationsService.getAllActiveRulesRegulations(
         type,
         ID,
+        pageNumber,
+        limitNumber
       );
     } catch (error) {
       throw new InternalServerErrorException(
@@ -334,19 +341,26 @@ export class RulesRegulationsController {
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
+
+
   @Get('get-my-rules')
   async getMyRules(
     @Req() req: Request,
     @Query('entity') entity: Types.ObjectId,
     @Query('type') type: 'node' | 'club',
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     try {
-
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
 
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
         entity,
+        pageNumber,
+        limitNumber
       );
     } catch (error) {
       throw new InternalServerErrorException(
