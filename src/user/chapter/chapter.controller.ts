@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
-import { CreateChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { CreateChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { ChapterService } from './chapter.service';
 import { Types } from 'mongoose';
 import { Roles } from 'src/decorators/role.decorator';
@@ -41,6 +41,7 @@ export class ChapterController {
 
     @Get('get-public-clubs')
     async getPublicClubs(@Req() req: Request, @Query('nodeId') node: string, @Query('term') term: string) {
+        console.log({ node, term });
         const nodeId = new Types.ObjectId(node);
         return await this.chapterService.getPublicClubs(nodeId, term);
     }
@@ -73,5 +74,47 @@ export class ChapterController {
         }
 
         return await this.chapterService.publishOrRejectChapter(chapterUserData, updateChapterStatusDto);
+    }
+
+    @Roles('owner', 'admin', 'moderator', 'member')
+    @UseGuards(NodeRoleGuard)
+    @Post('join-user')
+    async joinChapter(
+        @Req() req: Request,
+        @Body(
+            new ValidationPipe({
+                transform: true, // Enable transformation
+                transformOptions: {
+                    enableImplicitConversion: true, // Enable implicit conversions
+                },
+                whitelist: true,
+                forbidNonWhitelisted: true,
+            }),
+        ) joinUserChapterDto: JoinUserChapterDto
+    ) {
+        const userData = {
+            userId: new Types.ObjectId(req.user._id),
+            userRole: req.role,
+        }
+        return await this.chapterService.joinChapter(userData, joinUserChapterDto);
+    }
+
+
+    @Post('remove-user')
+    async removeUserFromChapter(
+        @Req() req: Request,
+        @Body(
+            new ValidationPipe({
+                transform: true, // Enable transformation
+                transformOptions: {
+                    enableImplicitConversion: true, // Enable implicit conversions
+                },
+                whitelist: true,
+                forbidNonWhitelisted: true,
+            }),
+        ) removeUserChapterDto: RemoveUserChapterDto
+    ) {
+        const userId = new Types.ObjectId(req.user._id);
+        return await this.chapterService.removeUserFromChapter(userId, removeUserChapterDto);
     }
 }
