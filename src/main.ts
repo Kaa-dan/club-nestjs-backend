@@ -9,7 +9,7 @@ async function bootstrap() {
   app.use(morgan('dev'));
   app.enableCors({
     // origin: ['http://localhost:3000', 'https://clubwize-client.vercel.app', 'http://43.205.45.251'],
-    origin: '*',
+    origin: true,
     credentials: true
   });
   const pinger = new SpinUp({
