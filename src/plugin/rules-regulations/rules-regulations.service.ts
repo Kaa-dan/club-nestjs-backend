@@ -52,18 +52,20 @@ export class RulesRegulationsService {
   @Param type :strgin  "node"|"club"
   */
   async getAllRulesRegulations(page: number = 1, limit: number = 10) {
+    console.log({ page })
     try {
       const skip = (page - 1) * limit;
-
+      console.log({ skip })
       const data = await this.rulesregulationModel
         .find()
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
+      console.log({ data })
 
       const total = await this.rulesregulationModel.countDocuments();
-
+      console.log({ total: Math.ceil(total / limit) })
       return {
         data,
         pagination: {
@@ -402,7 +404,7 @@ export class RulesRegulationsService {
 
       const total = await this.rulesregulationModel
         .countDocuments(query);
-
+      console.log({ hello: Math.ceil(total / limit) })
       return {
         data,
         pagination: {
@@ -974,19 +976,46 @@ export class RulesRegulationsService {
   }
 
   //---------------GET ALL REPORTS
-  async getAllReportOffence(clubId: Types.ObjectId, type: 'node' | 'club') {
+  async getAllReportOffence(
+    clubId: Types.ObjectId,
+    type: 'node' | 'club',
+    page: number = 1,
+    limit: number = 10
+  ) {
     try {
-      return await this.reportOffenceModel
-        .find({
+      const skip = (page - 1) * limit;
+
+      const [results, total] = await Promise.all([
+        this.reportOffenceModel
+          .find({
+            clubOrNode: type === 'club' ? Club.name : Node_.name,
+            clubOrNodeId: new Types.ObjectId(clubId),
+          })
+          .populate('offender')
+          .populate('reportedBy')
+          .populate('rulesId')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+
+        this.reportOffenceModel.countDocuments({
           clubOrNode: type === 'club' ? Club.name : Node_.name,
           clubOrNodeId: new Types.ObjectId(clubId),
         })
-        .populate('offender')
-        .populate('reportedBy')
-        .populate('rulesId')
-        .sort({ createdAt: -1 })
+      ]);
+
+      return {
+        results,
+        pagination: {
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          // itemsPerPage: limit,
+          // hasNextPage: page < Math.ceil(total / limit),
+          // hasPreviousPage: page > 1
+        }
+      };
     } catch (error) {
-      (error);
       throw new InternalServerErrorException(
         'Error while getting all reports',
         error,

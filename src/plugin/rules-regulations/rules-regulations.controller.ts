@@ -41,9 +41,18 @@ export class RulesRegulationsController {
   @Query type:node|club
   @return :RulesRegulations*/
   @Get()
-  getAllRulesRegulations() {
+  async getAllRulesRegulations(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
     try {
-      return this.rulesRegulationsService.getAllRulesRegulations();
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
+
+      return await this.rulesRegulationsService.getAllRulesRegulations(
+        pageNumber,
+        limitNumber
+      );
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -561,12 +570,19 @@ export class RulesRegulationsController {
   async getAllOffence(
     @Query('type') type: 'node' | 'club',
     @Query('clubId') clubId: Types.ObjectId,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     try {
-      return this.rulesRegulationsService.getAllReportOffence(clubId, type);
+      return await this.rulesRegulationsService.getAllReportOffence(
+        clubId,
+        type,
+        Number(page),
+        Number(limit)
+      );
     } catch (error) {
       throw new InternalServerErrorException(
-        'Error while liking rules-regulations',
+        'Error while getting rules-regulations',
         error,
       );
     }
