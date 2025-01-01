@@ -13,7 +13,7 @@ async function bootstrap() {
     credentials: true
   });
   const pinger = new SpinUp({
-    url: "https://your-server.com", // Your server URL
+    url: "https://clubwize-backend.onrender.com", // Your server URL
     intervalMinutes: 5, // Minimum 5 minutes
     onSuccess: (response) => {
       console.log("Ping successful:", response);
