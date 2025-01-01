@@ -133,75 +133,57 @@ export class DebateController {
       throw error;
     }
   }
-
   @Get('my-debates')
   async getMyDebates(
-    @Query('entityId') entityId: string, // Optional Club ID to filter by (if provided)
+    @Query('entityId') entityId: string,
     @Query('entity') entity: 'node' | 'club',
+    @Query('page') page: number,
+    @Query('limit') limit: number,
     @Req() req: Request,
   ) {
     const userId = req.user._id;
-    // Validate that userId is provided
-    if (!userId) {
-      throw new BadRequestException('User ID is required.');
-    }
 
-    try {
-      // Call the myDebates method from the service
-      const result = await this.debateService.myDebates({
-        entity,
+    const result = await this.debateService.myDebates({
+      entity,
+      userId,
+      entityId,
+      page,
+      limit
+    });
 
-        userId,
-        entityId,
-      });
-
-      // Return the result to the client
-      return result;
-    } catch (error) {
-      // Handle and rethrow error appropriately (it's already handled in the service)
-      throw error;
-    }
+    return result;
   }
 
   @Get('all-debates')
   async allDebates(
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
     @Req() req: Request,
   ) {
-    try {
-      return await this.debateService.myDebatesByStatus({
-        entity,
-
-        entityId,
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await this.debateService.myDebatesByStatus({
+      entity,
+      entityId,
+      page,
+      limit
+    });
   }
   @Get('ongoing')
   async getOngoingDebates(
     @Query('entityId') entityId: string,
     @Query('entity') entityType: 'club' | 'node',
+    @Query('page') page: number,
+    @Query('limit') limit: number,
   ) {
-    try {
-      if (!entityId || !entityType) {
-        throw new BadRequestException(
-          'Both entityId and entityType are required.',
-        );
-      }
+    const result = await this.debateService.getOngoingDebatesForEntity({
+      entityId,
+      entityType,
+      page,
+      limit,
+    });
 
-      // Call the service to get ongoing debates for the given entity (club or node)
-      const result = await this.debateService.getOngoingDebatesForEntity({
-        entityId,
-        entityType,
-      });
-
-      // Return the result from the service
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   @Get('global')
