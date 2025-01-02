@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards, ValidationPipe } from '@nestjs/common';
 import { Request } from 'express';
-import { CreateChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { CreateChapterDto, DeleteChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { ChapterService } from './chapter.service';
 import { Types } from 'mongoose';
 import { Roles } from 'src/decorators/role.decorator';
@@ -31,6 +31,25 @@ export class ChapterController {
             userId: new Types.ObjectId(req.user._id)
         }
         return await this.chapterService.createChapter(createChapterDto, chapterUserData);
+    }
+
+    @Roles('owner', 'admin')
+    @UseGuards(NodeRoleGuard)
+    @Put()
+    async deleteChapter(
+        @Req() req: Request,
+        @Body(
+            new ValidationPipe({
+                transform: true,
+                transformOptions: {
+                    enableImplicitConversion: true,
+                },
+                whitelist: true,
+                forbidNonWhitelisted: true,
+            }),
+        ) deleteChapterDto: DeleteChapterDto
+    ) {
+        return await this.chapterService.deleteChapter(deleteChapterDto);
     }
 
     @Get('get-published')
@@ -116,5 +135,11 @@ export class ChapterController {
     ) {
         const userId = new Types.ObjectId(req.user._id);
         return await this.chapterService.removeUserFromChapter(userId, removeUserChapterDto);
+    }
+
+    @Get(':id')
+    async getChapter(@Param('id') id: string) {
+        const chapterId = new Types.ObjectId(id);
+        return await this.chapterService.getChapter(chapterId);
     }
 }

@@ -232,6 +232,7 @@ export class ProjectController {
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
   ) {
+    console.log({ search })
 
     return await this.projectService.getAllProjects(
       status,
