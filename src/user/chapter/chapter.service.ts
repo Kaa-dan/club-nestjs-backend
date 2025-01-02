@@ -5,7 +5,7 @@ import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
-import { JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { DeleteChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 
 @Injectable()
@@ -55,9 +55,14 @@ export class ChapterService {
             }
 
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
+            console.log({ isPrivilegedUser });
+            console.log({ userRole });
+
 
             const chapterData = new this.chapterModel({
                 name: existedClub.name,
+                about: existedClub.about,
+                description: existedClub.description,
                 profileImage: existedClub.profileImage,
                 coverImage: existedClub.coverImage,
                 club: new Types.ObjectId(club),
@@ -141,7 +146,8 @@ export class ChapterService {
 
             const chapters = await this.chapterModel.find({
                 node: nodeId,
-                status: 'published'
+                status: 'published',
+                isDeleted: false,
             })
 
             return chapters;
@@ -237,7 +243,8 @@ export class ChapterService {
 
             const nodeProposedChapters = await this.chapterModel.find({
                 node: nodeId,
-                status: 'proposed'
+                status: 'proposed',
+                isDeleted: false,
             })
 
             return nodeProposedChapters;
@@ -501,6 +508,49 @@ export class ChapterService {
             console.log('error removing user from chapter', error);
             if (error instanceof NotFoundException) throw error;
             throw new Error('Error removing user from chapter');
+        }
+    }
+
+    //----------------DELETE CHAPTER------------------
+
+    /**
+     * Deletes a chapter.
+     * @param deleteChapterDto The request body containing the chapter id.
+     * @returns A promise that resolves to an object containing a message and status.
+     * @throws {NotFoundException} If the chapter is not found.
+     * @throws {ConflictException} If the chapter is already deleted.
+     * @throws {Error} If there is an error while deleting the chapter.
+     */
+    async deleteChapter(deleteChapterDto: DeleteChapterDto) {
+        try {
+            const chapter = await this.chapterModel.findById(deleteChapterDto.chapter);
+
+            if (!chapter) {
+                throw new NotFoundException('Chapter not found');
+            }
+
+            if (chapter.isDeleted) {
+                throw new ConflictException('Chapter is already deleted');
+            }
+
+            await this.chapterModel.findByIdAndUpdate(
+                deleteChapterDto.chapter,
+                { isDeleted: true },
+                { new: true }
+            );
+
+            return {
+                message: 'Chapter deleted',
+                status: true
+            };
+
+        } catch (error) {
+            if (error instanceof NotFoundException || error instanceof ConflictException) {
+                throw error;
+            }
+
+            console.error('Error deleting chapter:', error);
+            throw new Error('Error deleting chapter');
         }
     }
 }

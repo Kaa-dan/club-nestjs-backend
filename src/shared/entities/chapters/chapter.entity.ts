@@ -9,6 +9,12 @@ export class Chapter extends Document {
     @Prop({ required: true })
     name: string
 
+    @Prop({ required: true })
+    about: string
+
+    @Prop({ required: true })
+    description: string
+
     @Prop({
         type: {
             filename: { type: SchemaTypes.String, required: true },
@@ -50,6 +56,9 @@ export class Chapter extends Document {
 
     @Prop({ type: Types.ObjectId, ref: User.name })
     publishedBy: Types.ObjectId
+
+    @Prop({ type: Boolean, default: false })
+    isDeleted: boolean
 }
 
 export const ChapterSchema = SchemaFactory.createForClass(Chapter);

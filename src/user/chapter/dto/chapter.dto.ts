@@ -54,3 +54,13 @@ export class RemoveUserChapterDto {
     @IsNotEmpty()
     node: Types.ObjectId;
 }
+
+export class DeleteChapterDto {
+    @IsMongoId()
+    @IsNotEmpty()
+    chapter: Types.ObjectId;
+
+    @IsMongoId()
+    @IsNotEmpty()
+    node: Types.ObjectId;
+}
