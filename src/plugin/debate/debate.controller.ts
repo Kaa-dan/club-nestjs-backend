@@ -18,6 +18,8 @@ import {
   UploadedFile,
   NotFoundException,
   Delete,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -187,14 +189,17 @@ export class DebateController {
   }
 
   @Get('global')
-  async getOngoingPublicGlobalDebates() {
+  async getOngoingPublicGlobalDebates(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
     try {
-      const ongoingDebates =
-        await this.debateService.getOngoingPublicGlobalDebates();
-      return {
-        message: 'Ongoing public global debates fetched successfully',
-        data: ongoingDebates,
-      };
+      return await this.debateService.getOngoingPublicGlobalDebates(
+        page,
+        limit
+      );
+
+
     } catch (error) {
       throw new HttpException(
         {
@@ -320,10 +325,12 @@ export class DebateController {
     return this.debateService.toggleVote(argumentId, userId, voteType);
   }
 
-  @Get('proposed/:entityId/:entityType')
+  @Get('proposed/:entityId/:entityType/:page')
   async getProposedDebatesByClub(
     @Req() req: Request,
     @Param('entityId') entityId: string,
+    @Param('page') page: number,
+
     @Param('entityType') entityType: 'club' | 'node',
   ) {
     try {
@@ -332,6 +339,7 @@ export class DebateController {
         entityType,
         entityId,
         userId,
+        page
       );
     } catch (error) {
       if (error instanceof HttpException) {
@@ -343,6 +351,8 @@ export class DebateController {
       );
     }
   }
+
+
   @Put('accept/:debateId')
   async acceptDebate(@Param('debateId') debateId: string): Promise<Debate> {
     return this.debateService.acceptDebate(debateId);
