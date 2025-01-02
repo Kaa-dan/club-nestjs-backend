@@ -136,4 +136,10 @@ export class ChapterController {
         const userId = new Types.ObjectId(req.user._id);
         return await this.chapterService.removeUserFromChapter(userId, removeUserChapterDto);
     }
+
+    @Get(':id')
+    async getChapter(@Param('id') id: string) {
+        const chapterId = new Types.ObjectId(id);
+        return await this.chapterService.getChapter(chapterId);
+    }
 }

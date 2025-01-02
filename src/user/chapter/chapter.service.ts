@@ -7,6 +7,7 @@ import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { DeleteChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
+import { async } from 'rxjs';
 
 @Injectable()
 export class ChapterService {
@@ -144,11 +145,65 @@ export class ChapterService {
                 throw new NotFoundException('Please provide node id');
             }
 
-            const chapters = await this.chapterModel.find({
-                node: nodeId,
-                status: 'published',
-                isDeleted: false,
-            })
+            const chapters = await this.chapterModel.aggregate([
+                {
+                    $match: {
+                        node: nodeId,
+                        status: 'published',
+                        isDeleted: false,
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'chaptermembers',
+                        let: { chapterId: '$_id' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$chapter', '$$chapterId'] },
+                                            { $eq: ['$status', 'MEMBER'] },
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'members'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'members.user',
+                        foreignField: '_id',
+                        as: 'members'
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        name: 1,
+                        profileImage: 1,
+                        coverImage: 1,
+                        club: 1,
+                        node: 1,
+                        status: 1,
+                        createdAt: 1,
+                        updatedAt: 1,
+                        "members._id": 1,
+                        "members.userName": 1,
+                        "members.email": 1,
+                        "members.profileImage": 1,
+                        "members.coverImage": 1,
+                        "members.dateOfBirth": 1,
+                        "members.firstName": 1,
+                        "members.lastName": 1,
+                        "members.gender": 1
+                    }
+                }
+
+            ])
 
             return chapters;
 
@@ -241,11 +296,16 @@ export class ChapterService {
                 throw new NotFoundException('Please provide node id');
             }
 
-            const nodeProposedChapters = await this.chapterModel.find({
-                node: nodeId,
-                status: 'proposed',
-                isDeleted: false,
-            })
+            const nodeProposedChapters = await this.chapterModel
+                .find({
+                    node: new Types.ObjectId(nodeId),
+                    status: 'proposed',
+                    isDeleted: false,
+                })
+                .populate({
+                    path: 'proposedBy',
+                    select: '-password -isBlocked -emailVerified -registered -signupThrough -isOnBoarded -onBoardingStage -__v'
+                })
 
             return nodeProposedChapters;
 
@@ -289,7 +349,7 @@ export class ChapterService {
                 updateChapterStatusDto.chapterId,
                 {
                     status: 'published',
-                    publishedBy: chapterUserData.userId
+                    publishedBy: new Types.ObjectId(chapterUserData.userId)
                 },
                 { session, new: true }
             );
@@ -307,8 +367,8 @@ export class ChapterService {
             }
 
             const chapterPublishedMemberData = new this.chapterMemberModel({
-                chapter: updateChapterStatusDto.chapterId,
-                user: chapterUserData.userId,
+                chapter: new Types.ObjectId(updateChapterStatusDto.chapterId),
+                user: new Types.ObjectId(chapterUserData.userId),
                 role: assignedRole,
                 status: 'MEMBER',
             })
@@ -316,8 +376,8 @@ export class ChapterService {
             await chapterPublishedMemberData.save({ session });
 
             const chapterProposedMemberData = new this.chapterMemberModel({
-                chapter: updateChapterStatusDto.chapterId,
-                user: existedChapter.proposedBy,
+                chapter: new Types.ObjectId(updateChapterStatusDto.chapterId),
+                user: new Types.ObjectId(existedChapter.proposedBy),
                 role: 'member',
                 status: 'MEMBER',
             })
@@ -400,15 +460,18 @@ export class ChapterService {
         const session = await this.connection.startSession();
         session.startTransaction();
         try {
-            const chapter = await this.chapterModel.findById(joinUserChapterDto.chapter).session(session);
+            const chapter = await this.chapterModel.findOne({
+                _id: new Types.ObjectId(joinUserChapterDto.chapter),
+                status: 'published'
+            }).session(session);
 
             if (!chapter) {
                 throw new NotFoundException('Chapter not found');
             }
 
             const existedMember = await this.chapterMemberModel.findOne({
-                chapter: joinUserChapterDto.chapter,
-                user: userData.userId
+                chapter: new Types.ObjectId(joinUserChapterDto.chapter),
+                user: new Types.ObjectId(userData.userId)
             }).session(session);
 
             if (existedMember) {
@@ -423,8 +486,8 @@ export class ChapterService {
             }
 
             const chapterMemberData = new this.chapterMemberModel({
-                chapter: joinUserChapterDto.chapter,
-                user: userData.userId,
+                chapter: new Types.ObjectId(joinUserChapterDto.chapter),
+                user: new Types.ObjectId(userData.userId),
                 role: assignedRole,
                 status: 'MEMBER',
             })
@@ -433,7 +496,7 @@ export class ChapterService {
             await session.commitTransaction();
 
             return {
-                message: 'Chapter joined',
+                message: 'user joined chapter',
                 status: true
             }
 
@@ -464,8 +527,8 @@ export class ChapterService {
         try {
             // check if user who is removing the user exists
             const userExists = await this.chapterMemberModel.findOne({
-                chapter: removeUserChapterDto.chapter,
-                user: userId
+                chapter: new Types.ObjectId(removeUserChapterDto.chapter),
+                user: new Types.ObjectId(userId),
             });
 
             if (!userExists) {
@@ -474,8 +537,8 @@ export class ChapterService {
 
             // check if user to remove exists
             const userToRemoveExists = await this.chapterMemberModel.findOne({
-                chapter: removeUserChapterDto.chapter,
-                user: removeUserChapterDto.userToRemove
+                chapter: new Types.ObjectId(removeUserChapterDto.chapter),
+                user: new Types.ObjectId(removeUserChapterDto.userToRemove)
             });
 
             if (!userToRemoveExists) {
@@ -534,7 +597,7 @@ export class ChapterService {
             }
 
             await this.chapterModel.findByIdAndUpdate(
-                deleteChapterDto.chapter,
+                new Types.ObjectId(deleteChapterDto.chapter),
                 { isDeleted: true },
                 { new: true }
             );
@@ -545,12 +608,48 @@ export class ChapterService {
             };
 
         } catch (error) {
+            console.error('Error deleting chapter:', error);
             if (error instanceof NotFoundException || error instanceof ConflictException) {
                 throw error;
             }
 
-            console.error('Error deleting chapter:', error);
             throw new Error('Error deleting chapter');
+        }
+    }
+
+    //----------------GET CHAPTER------------------
+    /**
+     * Retrieves a chapter by id.
+     * @param chapterId The id of the chapter to retrieve.
+     * @returns A promise that resolves to the chapter, or an error object if there was an error.
+     * @throws {NotFoundException} If the chapter is not found.
+     * @throws {Error} If there was an error while retrieving the chapter.
+     */
+    async getChapter(chapterId: Types.ObjectId) {
+        if (!chapterId) {
+            throw new NotFoundException('Chapter id is required');
+        }
+
+        try {
+            const chapter = await this.chapterModel.findById(chapterId).populate([
+                { path: 'node', select: 'name about profileImage coverImage' },
+                { path: 'club', select: 'name about profileImage coverImage' }
+            ]);
+
+            if (!chapter) {
+                throw new NotFoundException('Chapter not found');
+            }
+
+            return chapter;
+
+        } catch (error) {
+            console.error('Error getting chapter:', error);
+
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+
+            throw new Error('Error getting chapter');
         }
     }
 }
