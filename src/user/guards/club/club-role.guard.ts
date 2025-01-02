@@ -10,18 +10,19 @@ export class ClubRoleGuard implements CanActivate {
     async canActivate(context: ExecutionContext) {
         const request = context.switchToHttp().getRequest();
         const userId = new Types.ObjectId(request.user._id);
-        const clubId = new Types.ObjectId(request.params.id);
+        const clubId = request.params.id || request.body.club;
 
 
-        const clubMember = await this.clubMembersModel.findOne({ user: userId, club: clubId });
+        const clubMember = await this.clubMembersModel.findOne({ user: userId, club: new Types.ObjectId(clubId) });
 
         if (!clubMember) {
-            throw new NotFoundException('Club account not found')
+            throw new NotFoundException('you are not a member of this club');
         }
 
         const requiredRoles = this.getRequiredRoles(context);
 
         if (requiredRoles.includes(clubMember.role)) {
+            request['role'] = clubMember.role;
             return true; // User's role is in the allowed roles for this route
         }
 
