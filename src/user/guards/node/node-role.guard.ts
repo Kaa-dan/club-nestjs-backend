@@ -9,7 +9,7 @@ export class NodeRoleGuard implements CanActivate {
 
     async canActivate(context: ExecutionContext) {
         const request = context.switchToHttp().getRequest();
-        const userId = request.user._id;
+        const userId = new Types.ObjectId(request.user._id);
         const nodeId = request.params.id || request.body.node;
 
         console.log({ userId, nodeId });

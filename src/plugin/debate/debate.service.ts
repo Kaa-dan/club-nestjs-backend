@@ -329,14 +329,20 @@ export class DebateService {
       );
     }
   }
+
+
   async myDebates({
     entity,
     userId,
     entityId,
+    page = 1,
+    limit = 10,
   }: {
     entity: 'club' | 'node';
     userId: string;
     entityId: string;
+    page?: number;
+    limit?: number;
   }): Promise<DebatesResponse> {
     try {
       // Build the base query object to find debates created by the user
@@ -363,10 +369,21 @@ export class DebateService {
         throw new Error('Invalid entity type. Use "club" or "node".');
       }
 
-      // Fetch debates matching the query
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const totalCount = await this.debateModel.countDocuments(query);
+
+      // Calculate total pages
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Fetch debates matching the query with pagination
       const debates = await this.debateModel
         .find(query)
         .populate('createdBy')
+        .skip(skip)
+        .limit(limit)
         .exec();
 
       if (!debates || debates.length === 0) {
@@ -378,7 +395,7 @@ export class DebateService {
         debates.map(async (debate) => {
           const args = await this.debateArgumentModel
             .find({ debate: debate._id })
-            .populate('participant.user', 'name') // Populate participant user details
+            .populate('participant.user', 'name')
             .lean();
 
           const forArguments = args.filter(
@@ -398,10 +415,17 @@ export class DebateService {
         }),
       );
 
-      // Return response with debates and grouped arguments
+      // Return response with debates, grouped arguments, and pagination metadata
       return {
         message: 'Debates fetched successfully.',
         data: debatesWithArguments,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+          // itemsPerPage: limit,
+
+        },
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
@@ -413,18 +437,41 @@ export class DebateService {
   }
 
   // Fetch ongoing public global debates (not expired)
-  async getOngoingPublicGlobalDebates(): Promise<any[]> {
+  async getOngoingPublicGlobalDebates(
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    data: any[];
+    pagination: {
+      total: number;
+      currentPage: number;
+      totalPages: number;
+    }
+
+  }> {
     try {
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const totalDebates = await this.debateModel.countDocuments({
+        publishedStatus: 'published',
+        isPublic: true
+      });
+
+      // Fetch paginated debates
       const debates = await this.debateModel
-        .find({ publishedStatus: 'published', isPublic: true }) // Fetch debates with published status
-        .populate('createdBy'); // Populate createdBy field with user details
+        .find({ publishedStatus: 'published', isPublic: true })
+        .populate('createdBy')
+        .skip(skip)
+        .limit(limit);
 
       // Fetch args for each debate and group by side
       const debateWithArguments = await Promise.all(
         debates.map(async (debate) => {
           const args = await this.debateArgumentModel
-            .find({ debate: debate._id }) // Fetch args related to the debate
-            .populate('participant.user', 'name') // Populate user details in participant
+            .find({ debate: debate._id })
+            .populate('participant.user', 'name')
             .lean();
 
           // Group args by side
@@ -445,7 +492,18 @@ export class DebateService {
         }),
       );
 
-      return debateWithArguments;
+      // Calculate total pages
+      const totalPages = Math.ceil(totalDebates / limit);
+
+      return {
+        data: debateWithArguments,
+        pagination: {
+          total: totalDebates,
+          currentPage: page,
+          totalPages,
+        }
+
+      };
     } catch (error) {
       throw error;
     }
@@ -454,9 +512,13 @@ export class DebateService {
   async myDebatesByStatus({
     entity,
     entityId,
+    page = 1,
+    limit = 10,
   }: {
-    entity: 'club' | 'node'; // Define entity type
-    entityId?: string; // This will hold either clubId or nodeId based on entity
+    entity: 'club' | 'node';
+    entityId?: string;
+    page?: number;
+    limit?: number;
   }): Promise<DebatesResponse> {
     try {
       // Build the base query object to find debates
@@ -465,18 +527,29 @@ export class DebateService {
       // Entity-specific filtering based on the 'entity' argument
       if (entity === 'club') {
         if (entityId) {
-          query.club = new Types.ObjectId(entityId); // Filter by clubId
+          query.club = new Types.ObjectId(entityId);
         }
       } else if (entity === 'node') {
         if (entityId) {
-          query.node = new Types.ObjectId(entityId); // Filter by nodeId
+          query.node = new Types.ObjectId(entityId);
         }
       }
 
-      // Fetch debates based on the entity and status
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const totalCount = await this.debateModel.countDocuments(query);
+
+      // Calculate total pages
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Fetch debates based on the entity and status with pagination
       const debates = await this.debateModel
         .find(query)
-        .populate('createdBy') // Populate the creator of the debate
+        .populate('createdBy')
+        .skip(skip)
+        .limit(limit)
         .exec();
 
       // Check if no debates are found
@@ -490,11 +563,10 @@ export class DebateService {
           // Fetch all arguments related to the current debate
           const args = await this.debateArgumentModel
             .find({ debate: debate._id })
-            .populate('participant.user', 'name') // Populate participant details
+            .populate('participant.user', 'name')
             .lean();
 
           // Separate arguments into "for" and "against"
-
           const forArgs = args.filter(
             (arg) => arg.participant.side === 'support',
           );
@@ -513,14 +585,19 @@ export class DebateService {
         }),
       );
 
-      // Return the fetched debates along with arguments
+      // Return the fetched debates along with arguments and pagination metadata
       return {
         message: 'Debates fetched successfully.',
         data: debatesWithArgs,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+
+        },
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
-      // Throw internal server error with details of the exception
       throw new InternalServerErrorException(
         'Error while fetching debates.',
         error.message,
@@ -580,14 +657,23 @@ export class DebateService {
   async getOngoingDebatesForEntity({
     entityId,
     entityType,
+    page = 1,
+    limit = 10,
   }: {
     entityId: string;
     entityType: 'club' | 'node';
+    page?: number;
+    limit?: number;
   }): Promise<DebatesResponse> {
     try {
       // Validate input parameters
       if (!entityId || !entityType) {
         throw new Error('Both entityId and entityType are required.');
+      }
+
+      // Validate pagination parameters
+      if (page < 1 || limit < 1) {
+        throw new Error('Page and limit must be positive numbers.');
       }
 
       const currentTime = new Date();
@@ -602,7 +688,20 @@ export class DebateService {
         throw new Error('Invalid entity type. Use "club" or "node".');
       }
 
-      // Fetch ongoing debates
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const totalCount = await this.debateModel.countDocuments({
+        ...query,
+        createdAt: { $lte: currentTime },
+        closingDate: { $gt: currentTime },
+      });
+
+      // Calculate total pages
+      const totalPages = Math.ceil(totalCount / limit);
+
+      // Fetch ongoing debates with pagination
       const ongoingDebates = await this.debateModel
         .find({
           ...query,
@@ -610,6 +709,8 @@ export class DebateService {
           closingDate: { $gt: currentTime },
         })
         .populate('createdBy')
+        .skip(skip)
+        .limit(limit)
         .exec();
 
       // Check for empty result
@@ -644,10 +745,16 @@ export class DebateService {
         }),
       );
 
-      // Return the response with a success message
+      // Return the response with pagination metadata
       return {
         message: `Ongoing debates fetched successfully for the ${entityType}.`,
         data: debatesWithArgs,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+
+        },
       };
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
@@ -1008,17 +1115,26 @@ export class DebateService {
 
     return updatedArgument;
   }
-
   async getProposedDebatesByEntityWithAuthorization(
     entity: 'club' | 'node',
     entityId: string,
     userId: string,
+    page: number = 1,
+    limit: number = 10,
   ) {
     try {
       // Validate entity ID
       if (!Types.ObjectId.isValid(entityId)) {
         throw new NotFoundException(`Invalid ${entity} ID`);
       }
+
+      // Validate pagination parameters
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException('Invalid pagination parameters');
+      }
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
 
       // Determine which model to use based on entity
       const membershipModel: any =
@@ -1044,29 +1160,58 @@ export class DebateService {
         );
       }
 
-      // Fetch proposed debates for the entity
+      // Fetch proposed debates for the entity with pagination
       const filter =
         entity === 'club'
           ? { club: new Types.ObjectId(entityId), publishedStatus: 'proposed' }
           : { node: new Types.ObjectId(entityId), publishedStatus: 'proposed' };
 
-      const debates = await this.debateModel
-        .find(filter)
-        .populate('createdBy')
-        .exec();
+      // Get total count for pagination metadata
+      const totalCount = await this.debateModel.countDocuments(filter);
+      const totalPages = Math.ceil(totalCount / limit);
 
-      if (!debates.length) {
+      // If no debates found, throw NotFoundException
+      if (totalCount === 0) {
         throw new NotFoundException(
           `No proposed debates found for this ${entity}`,
         );
       }
 
-      return debates;
+      // If requested page exceeds total pages, throw BadRequestException
+      if (page > totalPages) {
+        throw new BadRequestException(
+          `Page ${page} exceeds total number of pages (${totalPages})`,
+        );
+      }
+
+      // Fetch paginated debates
+      const debates = await this.debateModel
+        .find(filter)
+        .populate('createdBy')
+        .skip(skip)
+        .limit(limit)
+        .exec();
+
+      // Return paginated response
+      return {
+        data: debates,
+        metadata: {
+          currentPage: page,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: limit,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+        },
+      };
+
     } catch (error) {
       console.error(`Error fetching proposed debates for ${entity}:`, error);
       throw error;
     }
   }
+
+
   async acceptDebate(debateId: string): Promise<Debate> {
     try {
       const updatedDebate = await this.debateModel.findByIdAndUpdate(
