@@ -178,6 +178,13 @@ export class ChapterController {
         return await this.chapterService.leaveUserFromChapter(chapterUserData, leaveUserChapterDto);
     }
 
+    //----------------GET CHAPTER MEMBER STATUS----------------
+
+    @Get('check-status')
+    async getChapterMemberStatus(@Req() req: Request, @Query('chapter') chapterId: string) {
+        return await this.chapterService.getChapterMemberStatus(req.user._id, chapterId);
+    }
+
     //----------------GET CHAPTER----------------
 
     @Get(':id')
