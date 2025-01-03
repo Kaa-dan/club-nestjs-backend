@@ -112,7 +112,7 @@ export class ChapterController {
 
     @Roles('owner', 'admin', 'moderator', 'member')
     @UseGuards(NodeRoleGuard)
-    @Post('join-user')
+    @Put('join-user')
     async joinChapter(
         @Req() req: Request,
         @Body(
@@ -176,6 +176,13 @@ export class ChapterController {
         }
 
         return await this.chapterService.leaveUserFromChapter(chapterUserData, leaveUserChapterDto);
+    }
+
+    //----------------GET CHAPTER MEMBER STATUS----------------
+
+    @Get('check-status')
+    async getChapterMemberStatus(@Req() req: Request, @Query('chapter') chapterId: string) {
+        return await this.chapterService.getChapterMemberStatus(req.user._id, chapterId);
     }
 
     //----------------GET CHAPTER----------------
