@@ -112,7 +112,7 @@ export class ChapterController {
 
     @Roles('owner', 'admin', 'moderator', 'member')
     @UseGuards(NodeRoleGuard)
-    @Post('join-user')
+    @Put('join-user')
     async joinChapter(
         @Req() req: Request,
         @Body(
