@@ -16,7 +16,7 @@ import {
 import { IssuesService } from './issues.service';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { CreateIssuesDto } from './dto/create-issue.dto';
-import e, { Request } from 'express';
+import e, { query, Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
@@ -173,10 +173,12 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getAllActiveIssues(
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
 
@@ -185,10 +187,12 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getAllIssues(
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
 
@@ -197,16 +201,18 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getMyIssues(
       new Types.ObjectId(req.user._id),
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
   @Get('global-active-issues')
-  async getGlobalActiveIssues() {
-    return await this.issuesService.getGlobalActiveIssues();
+  async getGlobalActiveIssues(@Query('page') page: number) {
+    return await this.issuesService.getGlobalActiveIssues(page);
   }
   @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
