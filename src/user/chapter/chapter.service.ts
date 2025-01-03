@@ -5,7 +5,7 @@ import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
-import { DeleteChapterDto, JoinUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
+import { DeleteChapterDto, JoinUserChapterDto, LeaveUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async } from 'rxjs';
 
@@ -593,7 +593,7 @@ export class ChapterService {
             }
 
             if (chapter.isDeleted) {
-                throw new ConflictException('Chapter is already deleted');
+                throw new ConflictException('Chapter is not found');
             }
 
             await this.chapterModel.findByIdAndUpdate(
@@ -633,14 +633,19 @@ export class ChapterService {
         try {
             const chapter = await this.chapterModel.findById(chapterId).populate([
                 { path: 'node', select: 'name about profileImage coverImage' },
-                { path: 'club', select: 'name about profileImage coverImage' }
+                { path: 'club', select: 'name about profileImage coverImage' },
             ]);
 
             if (!chapter) {
                 throw new NotFoundException('Chapter not found');
             }
 
-            return chapter;
+            const chapterMembers = await this.chapterMemberModel.find({
+                chapter: new Types.ObjectId(chapterId),
+            })
+                .populate('user', 'userName email firstName lastName dateOfBirth gender profileImage coverImage interests');
+
+            return { chapter, chapterMembers };
 
         } catch (error) {
             console.error('Error getting chapter:', error);
@@ -650,6 +655,67 @@ export class ChapterService {
             }
 
             throw new Error('Error getting chapter');
+        }
+    }
+
+    async leaveUserFromChapter(chapterUserData: any, leaveUserChapterDto: LeaveUserChapterDto) {
+        try {
+
+            console.log({ chapterUserData, leaveUserChapterDto });
+
+            const chapterAdmins = await this.chapterMemberModel.find({
+                chapter: new Types.ObjectId(leaveUserChapterDto.chapter),
+                role: 'admin',
+                user: { $ne: chapterUserData.userId }
+            })
+
+            if (chapterUserData.userRole !== 'admin' || chapterAdmins.length > 1) {
+
+                console.log("hell")
+                await this.chapterMemberModel.findOneAndDelete({
+                    chapter: new Types.ObjectId(leaveUserChapterDto.chapter),
+                    user: new Types.ObjectId(chapterUserData.userId)
+                })
+
+                return {
+                    message: 'User left from chapter',
+                    status: true
+                }
+            }
+
+            let newChapterAdmin;
+
+            newChapterAdmin = await this.chapterMemberModel
+                .findOne({
+                    role: 'moderator',
+                })
+                .sort({ createdAt: 1 })
+                .exec();
+
+            if (!newChapterAdmin) {
+                newChapterAdmin = await this.chapterMemberModel
+                    .findOne({
+                        role: 'member',
+                    })
+                    .sort({ createdAt: 1 })
+                    .exec();
+            }
+
+            if (!newChapterAdmin) {
+                throw new Error("you can't leave the chapter");
+            }
+
+            newChapterAdmin.role = 'admin';
+            await newChapterAdmin.save();
+
+            return {
+                message: 'User left from chapter',
+                status: true
+            }
+
+        } catch (error) {
+            console.log('error leaving user from chapter', error);
+            throw new Error('Error leaving user from chapter');
         }
     }
 }
