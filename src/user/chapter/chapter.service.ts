@@ -718,4 +718,25 @@ export class ChapterService {
             throw new Error('Error leaving user from chapter');
         }
     }
+
+    async getChapterMemberStatus(userId: string, chapterId: string) {
+        try {
+            let status = 'VISITOR';
+
+            const isMember = await this.chapterMemberModel.findOne({
+                chapter: new Types.ObjectId(chapterId),
+                user: new Types.ObjectId(userId)
+            });
+
+            if (isMember) {
+                status = isMember.status;
+                return { status };
+            }
+
+            return { status };
+        } catch (error) {
+            console.log('error getting chapter member status', error);
+            throw new Error('Error getting chapter member status');
+        }
+    }
 }

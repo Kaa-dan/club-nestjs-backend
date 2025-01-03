@@ -1,9 +1,9 @@
 import { IsEnum, IsNotEmpty, IsString } from "class-validator"
 
 export class AccessDto {
-    @IsEnum(['club', 'node'])
+    @IsEnum(['club', 'node', 'chapter'])
     @IsNotEmpty()
-    entity: 'club' | 'node'
+    entity: 'club' | 'node' | 'chapter'
 
     @IsString()
     @IsNotEmpty()
