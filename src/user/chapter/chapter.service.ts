@@ -633,14 +633,19 @@ export class ChapterService {
         try {
             const chapter = await this.chapterModel.findById(chapterId).populate([
                 { path: 'node', select: 'name about profileImage coverImage' },
-                { path: 'club', select: 'name about profileImage coverImage' }
+                { path: 'club', select: 'name about profileImage coverImage' },
             ]);
 
             if (!chapter) {
                 throw new NotFoundException('Chapter not found');
             }
 
-            return chapter;
+            const chapterMembers = await this.chapterMemberModel.find({
+                chapter: new Types.ObjectId(chapterId),
+            })
+                .populate('user', 'userName email firstName lastName dateOfBirth gender profileImage coverImage interests');
+
+            return { chapter, chapterMembers };
 
         } catch (error) {
             console.error('Error getting chapter:', error);
