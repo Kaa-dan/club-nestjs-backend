@@ -1,9 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
+import { Project } from './project.entity';
 
 @Schema({ timestamps: true })
-export class Parameter extends Document {
-  @Prop({ type: Types.ObjectId, ref: 'Project', required: true })
+export class ProjectParameter extends Document {
+  @Prop({ type: Types.ObjectId, ref: Project.name, required: true })
   project: Types.ObjectId;
 
   @Prop({ required: true })
@@ -17,4 +18,4 @@ export class Parameter extends Document {
 
 }
 
-export const ParameterSchema = SchemaFactory.createForClass(Parameter);
+export const ProjectParameterSchema = SchemaFactory.createForClass(ProjectParameter);

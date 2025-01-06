@@ -37,14 +37,14 @@ import {
   DebateArgumentSchema,
 } from './entities/debate-argument';
 import { Project, ProjectSchema } from './entities/projects/project.entity';
-import { Faq, FaqSchema } from './entities/projects/faq.enitity';
+import { ProjectFaq, ProjectFaqSchema } from './entities/projects/faq.enitity';
 import {
-  Parameter,
-  ParameterSchema,
+  ProjectParameter,
+  ProjectParameterSchema,
 } from './entities/projects/parameter.entity';
 import {
-  Contribution,
-  ContributionSchema,
+  ProjectContribution,
+  ProjectContributionSchema,
 } from './entities/projects/contribution.entity';
 import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/project-adoption.entity';
 import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
@@ -77,9 +77,9 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
       { name: Project.name, schema: ProjectSchema },
-      { name: Faq.name, schema: FaqSchema },
-      { name: Parameter.name, schema: ParameterSchema },
-      { name: Contribution.name, schema: ContributionSchema },
+      { name: ProjectFaq.name, schema: ProjectFaqSchema },
+      { name: ProjectParameter.name, schema: ProjectParameterSchema },
+      { name: ProjectContribution.name, schema: ProjectContributionSchema },
       { name: ProjectAdoption.name, schema: ProjectAdoptionSchema },
       { name: ProjectActivities.name, schema: ProjectActivitiesSchema },
       { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema },
