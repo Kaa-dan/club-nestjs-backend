@@ -63,6 +63,8 @@ export class ProjectService {
     documentFiles: Express.Multer.File[],
     bannerImage: Express.Multer.File | null,
   ) {
+    console.log({ createProjectDto, userId, documentFiles, bannerImage })
+
     const session = await this.connection.startSession();
     session.startTransaction();
 
@@ -159,6 +161,7 @@ export class ProjectService {
           throw new Error('You are not a member of this group');
         }
       }
+      console.log({ membership })
 
       // Set project status based on user's role
       const projectData = {
@@ -214,7 +217,7 @@ export class ProjectService {
 
       // Commit all changes
       await session.commitTransaction();
-
+      console.log({ savedProject })
       return savedProject;
     } catch (error) {
       // Rollback all changes if any operation fails
@@ -850,8 +853,7 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
-    // console.log({ status });
-    // console.log({ node, club });
+    console.log({ status, page, limit, search, node, club })
 
     try {
       const query: any = {
@@ -859,8 +861,8 @@ export class ProjectService {
         // active: isActive,
       };
 
-      if (node) query.node = node;
-      else if (club) query.club = club;
+      if (node) query.node = new Types.ObjectId(node);
+      else if (club) query.club = new Types.ObjectId(club);
 
       if (search) {
         query.$or = [
@@ -872,6 +874,10 @@ export class ProjectService {
 
       const total = await this.projectModel.countDocuments(query);
 
+
+      if (node) query.node = new Types.ObjectId(node);
+      else query.club = new Types.ObjectId(club);
+      console.log({ query })
       const projects = await this.projectModel
         .find(query)
         .sort({ createdAt: -1 })
@@ -880,10 +886,6 @@ export class ProjectService {
         .populate('node', 'name profileImage')
         .populate('club', 'name profileImage')
         .populate('createdBy', 'userName profileImage firstName lastName');
-
-      if (node) query.node = new Types.ObjectId(node);
-      else query.club = new Types.ObjectId(club);
-
       const adoptedProjects = await this.projectAdoptionModel
         .find(query)
         .populate('node', 'name profileImage')
@@ -893,7 +895,7 @@ export class ProjectService {
           'project',
           '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
         );
-      console.log({ adoptedProjects });
+      console.log({ adoptedProjects, projects });
 
       return {
         projects,
