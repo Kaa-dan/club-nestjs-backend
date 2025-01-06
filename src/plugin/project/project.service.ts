@@ -15,10 +15,10 @@ import { Connection, Model, Types } from 'mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
-import { Parameter } from 'src/shared/entities/projects/parameter.entity';
+import { ProjectParameter } from 'src/shared/entities/projects/parameter.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
-import { Faq } from 'src/shared/entities/projects/faq.enitity';
-import { Contribution } from 'src/shared/entities/projects/contribution.entity';
+import { ProjectFaq } from 'src/shared/entities/projects/faq.enitity';
+import { ProjectContribution } from 'src/shared/entities/projects/contribution.entity';
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
@@ -37,11 +37,11 @@ export class ProjectService {
     private readonly clubMembersModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
     private readonly nodeMembersModel: Model<NodeMembers>,
-    @InjectModel(Faq.name) private readonly faqModel: Model<Faq>,
-    @InjectModel(Parameter.name)
-    private readonly parameterModel: Model<Parameter>,
-    @InjectModel(Contribution.name)
-    private readonly contributionModel: Model<Contribution>,
+    @InjectModel(ProjectFaq.name) private readonly faqModel: Model<ProjectFaq>,
+    @InjectModel(ProjectParameter.name)
+    private readonly parameterModel: Model<ProjectParameter>,
+    @InjectModel(ProjectContribution.name)
+    private readonly contributionModel: Model<ProjectContribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
   ) { }

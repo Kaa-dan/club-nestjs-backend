@@ -7,7 +7,7 @@ import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto'
 import { Model, Types } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { Contribution } from 'src/shared/entities/projects/contribution.entity';
+import { ProjectContribution } from 'src/shared/entities/projects/contribution.entity';
 import { async, of } from 'rxjs';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -26,8 +26,8 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 export class AdoptContributionService {
   constructor(
     @InjectModel(Project.name) private projectModel: Model<Project>,
-    @InjectModel(Contribution.name)
-    private contributionModel: Model<Contribution>,
+    @InjectModel(ProjectContribution.name)
+    private contributionModel: Model<ProjectContribution>,
     @InjectModel(ClubMembers.name)
     private clubMemberModel: Model<ClubMembers>,
     @InjectModel(NodeMembers.name)
