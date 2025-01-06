@@ -15,14 +15,14 @@ import { SkipAuth } from 'src/decorators/skip-auth.decorator';
 @SkipAuth()
 @Controller('login')
 export class LoginController {
-  constructor(private readonly loginService: LoginService) {}
+  constructor(private readonly loginService: LoginService) { }
 
   @Post()
   async login(@Body() loginDto: LoginDto, @Res() response: Response) {
     try {
-      console.log({ loginDto });
+      ({ loginDto });
       // Call the login service to authenticate the user
-      const result = await this.loginService.login(loginDto);
+      const result = await this.loginService.login(response, loginDto);
       return response.status(HttpStatus.OK).json(result); // Return the response with 200 OK
     } catch (error) {
       // Handle errors thrown by the service

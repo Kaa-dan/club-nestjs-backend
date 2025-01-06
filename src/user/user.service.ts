@@ -3,6 +3,7 @@ import {
   NotFoundException,
   InternalServerErrorException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Types } from 'mongoose';
@@ -16,6 +17,7 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
+import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
 
 @Injectable()
 export class UserService {
@@ -25,11 +27,13 @@ export class UserService {
     private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ClubMembers.name)
     private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(ChapterMember.name)
+    private readonly chapterMemberModel: Model<ChapterMember>,
     @InjectModel(NodeJoinRequest.name)
     private readonly nodeJoinRequestModel: Model<NodeJoinRequest>,
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
-  ) {}
+  ) { }
 
   async getUsersNotInClubOrNode(
     search: string,
@@ -168,7 +172,7 @@ export class UserService {
 
       return userResponse;
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -210,7 +214,7 @@ export class UserService {
         success: true,
       };
     } catch (error) {
-      console.log(error);
+      (error);
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -272,7 +276,7 @@ export class UserService {
         };
       }
       return { isLogged: true, user };
-    } catch (error) {}
+    } catch (error) { }
   }
 
   /**
@@ -293,8 +297,10 @@ export class UserService {
       const { entity, entityId, accessToUserId } = accessDto;
 
       if (entity === 'node') {
+
         const nodeMember = await this.nodeMembersModel.findOne({
           node: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!nodeMember) {
           throw new NotFoundException('Node Member not found');
@@ -312,9 +318,12 @@ export class UserService {
           { $set: { role: 'admin' } },
           { new: true },
         );
-      } else {
+
+      } else if (entity === 'club') {
+
         const clubMember = await this.clubMembersModel.findOne({
           club: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!clubMember) {
           throw new NotFoundException('Club Member not found');
@@ -332,9 +341,33 @@ export class UserService {
           { $set: { role: 'admin' } },
           { new: true },
         );
+
+      } else if (entity === 'chapter') {
+
+        const chapterMember = await this.chapterMemberModel.findOne({
+          chapter: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
+        });
+
+        if (!chapterMember) {
+          throw new NotFoundException('Chapter Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+        return await this.chapterMemberModel.findOneAndUpdate(
+          { chapter: chapterMember.chapter, user: user._id },
+          { $set: { role: 'admin' } },
+          { new: true },
+        );
+
       }
+
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -360,8 +393,10 @@ export class UserService {
       const { entity, entityId, accessToUserId } = accessDto;
 
       if (entity === 'node') {
+
         const nodeMember = await this.nodeMembersModel.findOne({
           node: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!nodeMember) {
           throw new NotFoundException('Node Member not found');
@@ -379,9 +414,12 @@ export class UserService {
           { $set: { role: 'moderator' } },
           { new: true },
         );
-      } else {
+
+      } else if (entity === 'club') {
+
         const clubMember = await this.clubMembersModel.findOne({
           club: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!clubMember) {
           throw new NotFoundException('Club Member not found');
@@ -399,9 +437,34 @@ export class UserService {
           { $set: { role: 'moderator' } },
           { new: true },
         );
+
+      } else if (entity === 'chapter') {
+
+        const chapterMember = await this.chapterMemberModel.findOne({
+          chapter: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
+        });
+
+        if (!chapterMember) {
+          throw new NotFoundException('Chapter Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.chapterMemberModel.findOneAndUpdate(
+          { chapter: chapterMember.chapter, user: user._id },
+          { $set: { role: 'moderator' } },
+          { new: true },
+        )
+
       }
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -427,8 +490,10 @@ export class UserService {
       const { entity, entityId, accessToUserId } = accessDto;
 
       if (entity === 'node') {
+
         const nodeMember = await this.nodeMembersModel.findOne({
           node: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!nodeMember) {
           throw new NotFoundException('Node Member not found');
@@ -446,9 +511,12 @@ export class UserService {
           { $set: { role: 'member' } },
           { new: true },
         );
-      } else {
+
+      } else if (entity === 'club') {
+
         const clubMember = await this.clubMembersModel.findOne({
           club: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
         });
         if (!clubMember) {
           throw new NotFoundException('Club Member not found');
@@ -466,9 +534,34 @@ export class UserService {
           { $set: { role: 'member' } },
           { new: true },
         );
+
+      } else if (entity === 'chapter') {
+
+        const chapterMember = await this.chapterMemberModel.findOne({
+          chapter: new Types.ObjectId(entityId),
+          user: new Types.ObjectId(accessToUserId),
+        });
+
+        if (!chapterMember) {
+          throw new NotFoundException('Chapter Member not found');
+        }
+
+        const user = await this.userModel.findById(
+          new Types.ObjectId(accessToUserId),
+        );
+
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+
+        return await this.chapterMemberModel.findOneAndUpdate(
+          { chapter: chapterMember.chapter, user: user._id },
+          { $set: { role: 'member' } },
+          { new: true },
+        )
+
       }
     } catch (error) {
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -567,7 +660,6 @@ export class UserService {
       }
     } catch (error) {
       await session.abortTransaction();
-      console.log(error, 'error');
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -576,4 +668,125 @@ export class UserService {
       await session.endSession();
     }
   }
+
+
+  async updateDesignation(userId: string, memberId: string, nodeId: string, designation: string) {
+    try {
+      console.log({
+        userId,
+        memberId,
+        nodeId,
+      })
+      // Check if the requesting user is an owner or admin of the specific node
+      const userMembership = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(userId),
+        role: { $in: ['owner', 'admin'] },
+        status: 'MEMBER'
+      });
+
+      // If user is not an owner or admin of the node, throw unauthorized exception
+      // if (!userMembership) {
+      //   throw new UnauthorizedException('Only owners and admins can update designations');
+      // }
+
+      // Check if the member being updated exists in the same node
+      const memberToUpdate = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(memberId),
+        status: 'MEMBER'
+      });
+
+      if (!memberToUpdate) {
+        throw new NotFoundException('Member not found in the node');
+      }
+
+      // Perform the update
+      const result = await this.nodeMembersModel.updateOne(
+        {
+          _id: memberToUpdate._id
+        },
+        {
+          $set: {
+            designation
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new InternalServerErrorException('Failed to update designation');
+      }
+
+      return result;
+
+    } catch (error) {
+      console.log({ error })
+      throw error
+    }
+  }
+
+  async updatePosition(
+    userId: string,
+    memberId: string,
+    nodeId: string,
+    position: string
+  ) {
+    try {
+      // Validate input parameters
+      if (!userId || !memberId || !nodeId || !position) {
+        throw new Error('Missing required parameters');
+      }
+
+      // Check if the requesting user is an owner or admin of the specific node
+      const userMembership = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(userId),
+        role: { $in: ['owner', 'admin'] },
+        status: 'MEMBER'
+      });
+
+      // If user is not an owner or admin of the node, throw unauthorized exception
+      if (!userMembership) {
+        throw new UnauthorizedException('Only owners and admins can update positions');
+      }
+
+      // Check if the member being updated exists in the same node
+      const memberToUpdate = await this.nodeMembersModel.findOne({
+        node: new Types.ObjectId(nodeId),
+        user: new Types.ObjectId(memberId),
+        status: 'MEMBER'
+      });
+
+      if (!memberToUpdate) {
+        throw new NotFoundException('Member not found in the node');
+      }
+
+      // Perform the position update
+      const result = await this.nodeMembersModel.updateOne(
+        {
+          _id: memberToUpdate._id
+        },
+        {
+          $set: {
+            position: position
+          }
+        }
+      );
+
+      if (result.modifiedCount === 0) {
+        throw new InternalServerErrorException('Failed to update position');
+      }
+
+      return {
+        success: true,
+        message: 'Position updated successfully',
+        result
+      };
+
+    } catch (error) {
+      console.error('Error updating position:', error);
+      throw error;
+    }
+  }
+
 }

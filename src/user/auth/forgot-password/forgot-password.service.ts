@@ -324,7 +324,6 @@ export class ForgotPasswordService {
         data: changePasswordUrl,
       };
     } catch (error) {
-      console.log(error, 'err');
 
       throw error;
     }

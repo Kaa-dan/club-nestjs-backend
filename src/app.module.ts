@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
+;;;;;;;;;;;;;;;;;;;;; import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
@@ -13,6 +13,9 @@ import { MailerModule } from './mailer/mailer.module';
 import { PluginModule } from './plugin/plugin.module';
 import { RecaptchaModule } from './recaptcha/recaptcha.module';
 import { SocketModule } from './socket/socket.module';
+import { AssetsModule } from './assets/assets.module';
+import { BookmarksModule } from './user/bookmarks/bookmarks.module';
+// import { BookmarksModule } from './bookmarks/bookmarks.module';
 @Module({
   imports: [
     UserModule,
@@ -28,6 +31,8 @@ import { SocketModule } from './socket/socket.module';
     PluginModule,
     RecaptchaModule,
     SocketModule,
+    AssetsModule,
+    BookmarksModule,
   ],
   providers: [],
 })

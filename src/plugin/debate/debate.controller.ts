@@ -18,6 +18,8 @@ import {
   UploadedFile,
   NotFoundException,
   Delete,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { DebateService } from './debate.service';
 import { CreateDebateDto } from './dto/create.dto';
@@ -32,7 +34,7 @@ import { Debate } from 'src/shared/entities/debate.entity';
 
 @Controller('debate')
 export class DebateController {
-  constructor(private readonly debateService: DebateService) {}
+  constructor(private readonly debateService: DebateService) { }
 
   @UseInterceptors(
     FilesInterceptor('files', 5, {
@@ -133,86 +135,71 @@ export class DebateController {
       throw error;
     }
   }
-
   @Get('my-debates')
   async getMyDebates(
-    @Query('entityId') entityId: string, // Optional Club ID to filter by (if provided)
+    @Query('entityId') entityId: string,
     @Query('entity') entity: 'node' | 'club',
+    @Query('page') page: number,
+    @Query('limit') limit: number,
     @Req() req: Request,
   ) {
     const userId = req.user._id;
-    // Validate that userId is provided
-    if (!userId) {
-      throw new BadRequestException('User ID is required.');
-    }
 
-    try {
-      // Call the myDebates method from the service
-      const result = await this.debateService.myDebates({
-        entity,
+    const result = await this.debateService.myDebates({
+      entity,
+      userId,
+      entityId,
+      page,
+      limit
+    });
 
-        userId,
-        entityId,
-      });
-
-      // Return the result to the client
-      return result;
-    } catch (error) {
-      // Handle and rethrow error appropriately (it's already handled in the service)
-      throw error;
-    }
+    return result;
   }
 
   @Get('all-debates')
   async allDebates(
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number,
+    @Query('limit') limit: number,
     @Req() req: Request,
   ) {
-    try {
-      return await this.debateService.myDebatesByStatus({
-        entity,
-
-        entityId,
-      });
-    } catch (error) {
-      throw error;
-    }
+    return await this.debateService.myDebatesByStatus({
+      entity,
+      entityId,
+      page,
+      limit
+    });
   }
   @Get('ongoing')
   async getOngoingDebates(
     @Query('entityId') entityId: string,
     @Query('entity') entityType: 'club' | 'node',
+    @Query('page') page: number,
+    @Query('limit') limit: number,
   ) {
-    try {
-      if (!entityId || !entityType) {
-        throw new BadRequestException(
-          'Both entityId and entityType are required.',
-        );
-      }
+    const result = await this.debateService.getOngoingDebatesForEntity({
+      entityId,
+      entityType,
+      page,
+      limit,
+    });
 
-      // Call the service to get ongoing debates for the given entity (club or node)
-      const result = await this.debateService.getOngoingDebatesForEntity({
-        entityId,
-        entityType,
-      });
-
-      // Return the result from the service
-      return result;
-    } catch (error) {
-      throw error;
-    }
+    return result;
   }
 
   @Get('global')
-  async getOngoingPublicGlobalDebates() {
+  async getOngoingPublicGlobalDebates(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
     try {
-      const ongoingDebates =
-        await this.debateService.getOngoingPublicGlobalDebates();
-      return {
-        message: 'Ongoing public global debates fetched successfully',
-        data: ongoingDebates,
-      };
+      return await this.debateService.getOngoingPublicGlobalDebates(
+        page,
+        limit
+      );
+
+
     } catch (error) {
       throw new HttpException(
         {
@@ -338,10 +325,12 @@ export class DebateController {
     return this.debateService.toggleVote(argumentId, userId, voteType);
   }
 
-  @Get('proposed/:entityId/:entityType')
+  @Get('proposed/:entityId/:entityType/:page')
   async getProposedDebatesByClub(
     @Req() req: Request,
     @Param('entityId') entityId: string,
+    @Param('page') page: number,
+
     @Param('entityType') entityType: 'club' | 'node',
   ) {
     try {
@@ -350,6 +339,7 @@ export class DebateController {
         entityType,
         entityId,
         userId,
+        page
       );
     } catch (error) {
       if (error instanceof HttpException) {
@@ -361,6 +351,8 @@ export class DebateController {
       );
     }
   }
+
+
   @Put('accept/:debateId')
   async acceptDebate(@Param('debateId') debateId: string): Promise<Debate> {
     return this.debateService.acceptDebate(debateId);

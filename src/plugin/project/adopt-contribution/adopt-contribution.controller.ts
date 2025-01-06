@@ -3,16 +3,14 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Req,
   UploadedFiles,
+  Query,
 } from '@nestjs/common';
 import { Types } from 'mongoose';
 import { AdoptContributionService } from './adopt-contribution.service';
 import { CreateAdoptContributionDto } from './dto/create-adopt-contribution.dto';
-import { UpdateAdoptContributionDto } from './dto/update-adopt-contribution.dto';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 
@@ -20,7 +18,7 @@ import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 export class AdoptContributionController {
   constructor(
     private readonly adoptContributionService: AdoptContributionService,
-  ) {}
+  ) { }
 
   @Post()
   @ProjectFiles()
@@ -44,16 +42,14 @@ export class AdoptContributionController {
         },
       }),
     )
-    files: {
-      file?: Express.Multer.File[];
-      bannerImage?: Express.Multer.File[];
-    },
+    files: { file: Express.Multer.File[] },
   ) {
-    const documentFiles = files.file || [];
+    console.log(files.file);
+
     return this.adoptContributionService.create(
       createAdoptContributionDto,
       user._id,
-      documentFiles,
+      files,
     );
   }
 
@@ -62,11 +58,37 @@ export class AdoptContributionController {
     return this.adoptContributionService.adoptForum(user._id, adoptForumDto);
   }
 
+  /**
+   * 
+   * @param param0 
+   * @param projectId 
+   * @returns   
+   * 
+   */
   @Get('not-adopted-forum/:projectId')
   notAdoptedForum(
     @Req() { user },
     @Param('projectId') projectId: Types.ObjectId,
   ) {
     return this.adoptContributionService.notAdoptedForum(user._id, projectId);
+  }
+
+  @Get('project-activities/:projectId')
+  projectActivities(@Param('projectId') projectId: Types.ObjectId) {
+    return this.adoptContributionService.getActivitiesOfProject(projectId);
+  }
+  @Get('leaderboard')
+  getLeaderBoard(
+    @Req() { user },
+    @Query('projectId') projectId: Types.ObjectId | null,
+    @Query('forumId') forumId?: Types.ObjectId | null,
+    @Query('forumType') forumType?: 'club' | 'node' | null,
+  ) {
+    return this.adoptContributionService.getLeaderBoard(
+      user._id,
+      projectId,
+      forumId,
+      forumType,
+    );
   }
 }

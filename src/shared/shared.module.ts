@@ -10,7 +10,7 @@ import { ClubMembers, ClubMembersSchema } from './entities/clubmembers.entitiy';
 import {
   RulesRegulations,
   RulesRegulationsSchema,
-} from './entities/rules-requlations.entity';
+} from './entities/rules-regulations.entity';
 import { Comment, CommentSchema } from './entities/comment.entity';
 import { Reports, ReportsSchema } from './entities/reports.entity';
 import {
@@ -37,15 +37,21 @@ import {
   DebateArgumentSchema,
 } from './entities/debate-argument';
 import { Project, ProjectSchema } from './entities/projects/project.entity';
-import { Faq, FaqSchema } from './entities/projects/faq.enitity';
+import { ProjectFaq, ProjectFaqSchema } from './entities/projects/faq.enitity';
 import {
-  Parameter,
-  ParameterSchema,
+  ProjectParameter,
+  ProjectParameterSchema,
 } from './entities/projects/parameter.entity';
 import {
-  Contribution,
-  ContributionSchema,
+  ProjectContribution,
+  ProjectContributionSchema,
 } from './entities/projects/contribution.entity';
+import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/project-adoption.entity';
+import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
+import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
+import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
+import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
+import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
 
 @Module({
   imports: [
@@ -71,12 +77,18 @@ import {
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
       { name: Project.name, schema: ProjectSchema },
-      { name: Faq.name, schema: FaqSchema },
-      { name: Parameter.name, schema: ParameterSchema },
-      { name: Contribution.name, schema: ContributionSchema },
+      { name: ProjectFaq.name, schema: ProjectFaqSchema },
+      { name: ProjectParameter.name, schema: ProjectParameterSchema },
+      { name: ProjectContribution.name, schema: ProjectContributionSchema },
+      { name: ProjectAdoption.name, schema: ProjectAdoptionSchema },
+      { name: ProjectActivities.name, schema: ProjectActivitiesSchema },
+      { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema },
+      { name: Chapter.name, schema: ChapterSchema },
+      { name: ChapterMember.name, schema: ChapterMemberSchema },
+      { name: Bookmarks.name, schema: BookmarksSchema },
     ]),
     forwardRef(() => SearchModule),
   ],
   exports: [MongooseModule, UploadModule, SearchModule],
 })
-export class SharedModule {}
+export class SharedModule { }

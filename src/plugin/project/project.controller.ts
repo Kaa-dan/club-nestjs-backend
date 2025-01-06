@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
   Query,
   ParseBoolPipe,
+  Patch,
 } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import {
@@ -32,7 +33,8 @@ import {
 } from '@nestjs/swagger';
 import { ProjectFiles } from 'src/decorators/project-file-upload/project-files.decorator';
 import { Types } from 'mongoose';
-import { Query as NestQuery } from '@nestjs/common';
+import { User } from 'src/shared/entities/user.entity';
+import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 
 /**
  * Controller handling all project-related operations
@@ -41,7 +43,7 @@ import { Query as NestQuery } from '@nestjs/common';
 @ApiTags('Projects')
 @Controller('project')
 export class ProjectController {
-  constructor(private readonly projectService: ProjectService) {}
+  constructor(private readonly projectService: ProjectService) { }
 
   /**
    * Creates a new project with provided details and files
@@ -55,7 +57,8 @@ export class ProjectController {
   @ProjectFiles()
   async create(
     @Req() req: Request,
-    @Body(ValidationPipe) createProjectDto: CreateProjectDto,
+    // @Body() createProjectDto: CreateProjectDto,
+    @Body() createProjectDto: CreateProjectDto,
     @UploadedFiles(
       new FileValidationPipe({
         files: {
@@ -81,6 +84,7 @@ export class ProjectController {
     // Extract files from request
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
+    console.log({ documentFiles, bannerImage })
     return await this.projectService.create(
       createProjectDto,
       req.user._id,
@@ -202,6 +206,7 @@ export class ProjectController {
     },
   ) {
     // Extract files from request
+
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
     // Forward request to service layer
@@ -228,6 +233,8 @@ export class ProjectController {
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
   ) {
+    console.log({ search })
+
     return await this.projectService.getAllProjects(
       status,
       page,
@@ -241,15 +248,74 @@ export class ProjectController {
   @Get('my-projects')
   async getMyProjects(
     @Req() req: Request,
-    @Query('status', new ParseBoolPipe()) status: boolean,
     @Query('page', new ParseIntPipe()) page: number,
     @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('node') node?: Types.ObjectId,
+    @Query('club') club?: Types.ObjectId,
   ) {
     return await this.projectService.getMyProjects(
       req.user._id,
-      status,
       page,
       limit,
+      node,
+      club,
     );
+  }
+
+  @Get('global-projects')
+  async getGlobalProjects(
+    @Req() req: Request,
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+  ) {
+    return await this.projectService.getGlobalProjects(page, limit);
+  }
+
+
+  @Get('contributions/:projectId/:status')
+  async getContributions(@Req() { user }, @Param('projectId') projectId: Types.ObjectId, @Param('status') status: 'accepted' | 'pending' | 'rejected') {
+    return await this.projectService.getContributions(user._id, projectId, status)
+  }
+
+  @Put('accept-contributions/:contributionId/:type')
+  async acceptOrRejectContributions(@Req() { user }, @Param('contributionId') contributionId: Types.ObjectId, @Param('type', ParseBoolPipe) type: boolean) {
+    return this.projectService.acceptOrRejectContributions(user._id, contributionId, type)
+  }
+  /**
+   * @get 
+
+   */
+
+  @Put('accept-proposed-project/:projectId/:type')
+  async acceptOrRejectProposedProjectInForum(@Req() { user },
+    @Param('projectId') projectId: Types.ObjectId,
+    @Param('type') type: 'accept' | 'reject',
+    @Body() { creationType }: { creationType: 'proposed' | 'creation' }) {
+    return this.projectService.acceptOrRejectProposedProjectInForum(user._id, projectId, type, creationType);
+  }
+
+  @Post('ask-faq')
+  async askFaq(@Req() { user }, @Body() createFaqDto: CreateDtoFaq) {
+    return this.projectService.askFaq(user._id, createFaqDto)
+  }
+
+  @Get('get-faq/:projectId')
+  async getQuestionFaq(@Param('projectId') projectID: Types.ObjectId) {
+    return this.getQuestionFaq(projectID)
+  }
+
+  @Put('answer-faq')
+  async answerFaq(@Req() { user }, @Body() answerFaqDto: AnswerFaqDto) {
+    return this.answerFaq(user._id, answerFaqDto)
+  }
+
+  @Patch('/react')
+  async reactToPost(
+    @Req() { user },
+    @Body('postId') postId: string,
+
+    @Body('action') action: 'like' | 'dislike'
+  ) {
+    return this.projectService.reactToPost(postId, user?._id, action);
   }
 }

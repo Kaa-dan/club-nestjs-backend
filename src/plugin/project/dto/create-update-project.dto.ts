@@ -17,7 +17,7 @@ class TeamMemberDto {
   name: Types.ObjectId;
 
   @IsString()
-  designation: string;
+  designation: string[];
 }
 
 class BudgetDto {
@@ -123,10 +123,8 @@ export class CreateProjectDto {
   committees?: TeamMemberDto[];
 
   @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => TeamMemberDto)
   @IsOptional()
-  champions?: TeamMemberDto[];
+  champions?: { user: Types.ObjectId }[];
 
   @IsString()
   @IsOptional()
@@ -171,4 +169,4 @@ export class CreateProjectDto {
   createdBy?: Types.ObjectId;
 }
 
-export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
+export class UpdateProjectDto extends PartialType(CreateProjectDto) { }

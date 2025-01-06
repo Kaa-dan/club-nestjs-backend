@@ -16,7 +16,7 @@ import {
 import { IssuesService } from './issues.service';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { CreateIssuesDto } from './dto/create-issue.dto';
-import e, { Request } from 'express';
+import e, { query, Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
@@ -24,7 +24,7 @@ import { Issues } from 'src/shared/entities/issues.entity';
 
 @Controller('issues')
 export class IssuesController {
-  constructor(private readonly issuesService: IssuesService) {}
+  constructor(private readonly issuesService: IssuesService) { }
 
   /**
    * POST / => Create Issue
@@ -88,7 +88,7 @@ export class IssuesController {
       return await this.issuesService.createIssue(dataToSave);
     }
 
-    if (memberRole !== 'admin') {
+    if (!['admin', 'owner'].includes(memberRole)) {
       const dataToSave = {
         ...createIssuesData,
         createdBy: new Types.ObjectId(req.user._id),
@@ -173,10 +173,12 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getAllActiveIssues(
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
 
@@ -185,10 +187,12 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getAllIssues(
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
 
@@ -197,16 +201,18 @@ export class IssuesController {
     @Req() req: Request,
     @Query('entity') entity: 'node' | 'club',
     @Query('entityId') entityId: string,
+    @Query('page') page: number
   ) {
     return await this.issuesService.getMyIssues(
       new Types.ObjectId(req.user._id),
       entity,
       new Types.ObjectId(entityId),
+      page
     );
   }
   @Get('global-active-issues')
-  async getGlobalActiveIssues() {
-    return await this.issuesService.getGlobalActiveIssues();
+  async getGlobalActiveIssues(@Query('page') page: number) {
+    return await this.issuesService.getGlobalActiveIssues(page);
   }
   @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
@@ -238,7 +244,6 @@ export class IssuesController {
 
   @Put('like/:issueId')
   async likeIssue(@Req() req: Request, @Param('issueId') issueId) {
-    console.log('like');
     return await this.issuesService.likeIssue(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),
@@ -247,7 +252,6 @@ export class IssuesController {
 
   @Put('dislike/:issueId')
   async dislikeIssue(@Req() req: Request, @Param('issueId') issueId) {
-    console.log('dislike');
     return await this.issuesService.dislikeIssue(
       new Types.ObjectId(req.user._id),
       new Types.ObjectId(issueId),

@@ -8,7 +8,7 @@ import { Project } from './project.entity';
   toJSON: { virtuals: true, getters: true },
   toObject: { virtuals: true, getters: true },
 })
-export class Faq {
+export class ProjectFaq {
   @Prop({ type: Types.ObjectId, required: true, ref: Project.name })
   project: Types.ObjectId;
 
@@ -17,9 +17,9 @@ export class Faq {
     required: true,
     enum: ['proposed', 'approved', 'rejected'],
   })
-  status: boolean;
+  status: string;
 
-  @Prop({ type: String, required: true, trim: true })
+  @Prop({ type: String, required: false, trim: true })
   answer: string;
 
   @Prop({ type: String, required: true, trim: true })
@@ -28,12 +28,12 @@ export class Faq {
   @Prop({ type: Types.ObjectId, required: true, ref: User.name })
   askedBy: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: User.name })
+  @Prop({ type: Types.ObjectId, required: false, ref: User.name })
   answeredBy: Types.ObjectId;
 
   @Prop({ type: Date, required: true })
   Date: Date;
 }
 
-export type FaqDocument = HydratedDocument<Faq>;
-export const FaqSchema = SchemaFactory.createForClass(Faq);
+export type ProjectFaqDocument = HydratedDocument<ProjectFaq>;
+export const ProjectFaqSchema = SchemaFactory.createForClass(ProjectFaq);

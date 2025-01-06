@@ -15,7 +15,7 @@ export class GoogleSignupService {
   async googleAuth(googleAuthData: GoogleAuthDto): Promise<ServiceResponse> {
     const { email, userName, imageUrl, phoneNumber, signupThrough } =
       googleAuthData;
-    console.log({ googleAuthData });
+    ({ googleAuthData });
 
     try {
       let token: string;
@@ -61,7 +61,7 @@ export class GoogleSignupService {
         const newUser = new this.userModel({
           email,
           signupThrough,
-          userName: userName.split(' ')[0],
+          firstName: userName.split(' ')[0],
           profileImage: imageUrl,
           phoneNumber,
           emailVerified: true,
@@ -86,7 +86,7 @@ export class GoogleSignupService {
         data: user,
       };
     } catch (error) {
-      console.log({ error });
+      ({ error });
       throw error;
     }
   }

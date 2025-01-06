@@ -37,7 +37,7 @@ export class IssuesService {
     private readonly nodeModel: Model<Node_>,
     @InjectModel(Club.name)
     private readonly clubModel: Model<Club>,
-  ) {}
+  ) { }
 
   /**
    * Create a new issue. This function will also handle the upload of any files
@@ -78,7 +78,6 @@ export class IssuesService {
       const newIssue = new this.issuesModel(dataToSave);
       return await newIssue.save();
     } catch (error) {
-      console.log({ error });
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
         error,
@@ -176,7 +175,6 @@ export class IssuesService {
 
       return updatedDocument;
     } catch (error) {
-      console.log({ error });
       throw new InternalServerErrorException(
         'Error while updating rules-regulations',
         error,
@@ -190,28 +188,51 @@ export class IssuesService {
    * @param entityId - The id of the entity
    * @returns An array of active issues
    */
-  async getAllActiveIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
+  async getAllActiveIssues(
+    entity: 'node' | 'club',
+    entityId: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10
+  ) {
     try {
-      let query = {};
-      if (entity === 'node') {
-        query = {
-          node: entityId,
-          isActive: true,
-          publishedStatus: 'published',
-        };
-      } else {
-        query = {
-          club: entityId,
-          isActive: true,
-          publishedStatus: 'published',
-        };
-      }
-      return await this.issuesModel
+      // Ensure page and limit are positive numbers
+      const validPage = Math.max(1, page);
+      const validLimit = Math.max(1, limit);
+      const skip = (validPage - 1) * validLimit;
+
+      // Construct the query based on entity type
+      const query = {
+        [entity]: entityId,
+        isActive: true,
+        publishedStatus: 'published',
+      };
+
+      // Get total count for pagination metadata
+      const totalCount = await this.issuesModel.countDocuments(query);
+      const totalPages = Math.ceil(totalCount / validLimit);
+
+      // Get paginated results
+      const issues = await this.issuesModel
         .find(query)
         .populate('createdBy', '-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(validLimit)
         .exec();
+
+      // Return both the data and pagination metadata
+      return {
+        issues,
+        pagination: {
+          currentPage: validPage,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: validLimit,
+          hasNextPage: validPage < totalPages,
+          hasPreviousPage: validPage > 1
+        }
+      };
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -219,24 +240,50 @@ export class IssuesService {
     }
   }
 
-  async getAllIssues(entity: 'node' | 'club', entityId: Types.ObjectId) {
+
+  async getAllIssues(
+    entity: 'node' | 'club',
+    entityId: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10
+  ) {
     try {
-      let query = {};
-      if (entity === 'node') {
-        query = {
-          node: entityId,
-        };
-      } else {
-        query = {
-          club: entityId,
-        };
-      }
-      return await this.issuesModel
+      // Ensure page and limit are positive numbers
+      const validPage = Math.max(1, page);
+      const validLimit = Math.max(1, limit);
+      const skip = (validPage - 1) * validLimit;
+
+      // Construct the query based on entity type
+      const query = {
+        [entity]: entityId,
+      };
+
+      // Get total count for pagination metadata
+      const totalCount = await this.issuesModel.countDocuments(query);
+      const totalPages = Math.ceil(totalCount / validLimit);
+
+      // Get paginated results
+      const issues = await this.issuesModel
         .find(query)
         .populate('createdBy', '-password')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(validLimit)
         .exec();
+
+      // Return both the data and pagination metadata
+      return {
+        issues,
+        pagination: {
+          currentPage: validPage,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: validLimit,
+          hasNextPage: validPage < totalPages,
+          hasPreviousPage: validPage > 1
+        }
+      };
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -255,24 +302,46 @@ export class IssuesService {
     userId: Types.ObjectId,
     entity: 'node' | 'club',
     entityId: Types.ObjectId,
+    page: number = 1,
+    limit: number = 10
   ) {
     try {
-      let query = {};
+      // Ensure page and limit are positive numbers
+      const validPage = Math.max(1, page);
+      const validLimit = Math.max(1, limit);
+      const skip = (validPage - 1) * validLimit;
 
-      if (entity === 'node') {
-        query = {
-          createdBy: userId,
-          node: entityId,
-        };
-      } else {
-        query = {
-          createdBy: userId,
-          club: entityId,
-        };
-      }
-      return await this.issuesModel.find(query).exec();
+      // Construct the query based on entity type
+      const query = {
+        createdBy: userId,
+        [entity]: entityId,
+      };
+
+      // Get total count for pagination metadata
+      const totalCount = await this.issuesModel.countDocuments(query);
+      const totalPages = Math.ceil(totalCount / validLimit);
+
+      // Get paginated results
+      const issues = await this.issuesModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(validLimit)
+        .exec();
+
+      // Return both the data and pagination metadata
+      return {
+        issues,
+        pagination: {
+          currentPage: validPage,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: validLimit,
+          hasNextPage: validPage < totalPages,
+          hasPreviousPage: validPage > 1
+        }
+      };
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -280,20 +349,47 @@ export class IssuesService {
     }
   }
 
-  async getGlobalActiveIssues() {
+  async getGlobalActiveIssues(page: number = 1, limit: number = 10) {
     try {
-      return await this.issuesModel
-        .find({
-          isActive: true,
+      // Ensure page and limit are positive numbers
+      const validPage = Math.max(1, page);
+      const validLimit = Math.max(1, limit);
+      const skip = (validPage - 1) * validLimit;
 
-          publishedStatus: 'published',
-        })
+      // Define the base query
+      const query = {
+        isActive: true,
+        publishedStatus: 'published',
+      };
+
+      // Get total count for pagination metadata
+      const totalCount = await this.issuesModel.countDocuments(query);
+      const totalPages = Math.ceil(totalCount / validLimit);
+
+      // Get paginated results with populated fields
+      const issues = await this.issuesModel
+        .find(query)
         .populate('createdBy', '-password')
         .populate('node')
         .populate('club')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(validLimit)
         .exec();
+
+      // Return both the data and pagination metadata
+      return {
+        issues,
+        pagination: {
+          currentPage: validPage,
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: validLimit,
+          hasNextPage: validPage < totalPages,
+          hasPreviousPage: validPage > 1
+        }
+      };
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -309,12 +405,11 @@ export class IssuesService {
         .populate('whoShouldAddress')
         .populate('node')
         .populate('club')
+        .sort({ createdAt: -1 })
         .exec();
 
-      console.log(response, 'ice');
       return response;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting specific issue',
         error,
@@ -334,7 +429,6 @@ export class IssuesService {
       );
       return response;
     } catch (error) {
-      console.log(error);
       throw new BadRequestException(
         'Failed to upload file. Please try again later.',
       );
@@ -348,7 +442,6 @@ export class IssuesService {
           node: new Types.ObjectId(createIssuesData.node),
           user: new Types.ObjectId(userId),
         });
-        console.log(memberInfo);
         return memberInfo.role;
       }
 
@@ -356,10 +449,8 @@ export class IssuesService {
         club: new Types.ObjectId(createIssuesData.club),
         user: new Types.ObjectId(userId),
       });
-      console.log(memberInfo);
       return memberInfo.role;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting user roles',
         error,
@@ -470,7 +561,6 @@ export class IssuesService {
 
       // return adoptedIssue;
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while adopting issue',
         error,
@@ -551,16 +641,15 @@ export class IssuesService {
       if (entity === 'node') {
         return await this.issuesModel
           .find({ node: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password')
+          .populate('createdBy', '-password').sort({ createdAt: -1 })
           .exec();
       } else {
         return await this.issuesModel
           .find({ club: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password')
+          .populate('createdBy', '-password').sort({ createdAt: -1 })
           .exec();
       }
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while getting proposed issues',
         error,
@@ -609,7 +698,6 @@ export class IssuesService {
         { new: true },
       );
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -663,7 +751,6 @@ export class IssuesService {
         { new: true },
       );
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;
@@ -810,7 +897,6 @@ export class IssuesService {
         nodes: memberNodes,
       };
     } catch (error) {
-      console.log(error);
 
       if (error instanceof NotFoundException) {
         throw error;

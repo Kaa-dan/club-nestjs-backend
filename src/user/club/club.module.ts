@@ -25,4 +25,4 @@ import {
   controllers: [ClubController],
   providers: [ClubService],
 })
-export class ClubModule {}
+export class ClubModule { }

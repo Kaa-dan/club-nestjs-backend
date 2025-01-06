@@ -9,7 +9,7 @@ import {
   IsMongoId,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Node_ } from '../node.entity';
 import { Club } from '../club.entity';
 import { User } from '../user.entity';
@@ -21,8 +21,7 @@ class TeamMember {
   @IsMongoId()
   user: Types.ObjectId;
 
-  @IsString()
-  designation: string;
+  designation: string[];
 }
 //type for budget
 type Budget = { from: number; to: number; currency: string };
@@ -38,7 +37,7 @@ type Budget = { from: number; to: number; currency: string };
     getters: true,
   },
 })
-export class Project {
+export class Project extends Document {
   @Prop({ type: Types.ObjectId, ref: Club.name })
   @IsOptional()
   club: Types.ObjectId;
@@ -113,8 +112,8 @@ export class Project {
 
   @Prop({ type: [Object] })
   @IsArray()
-  @Type(() => TeamMember)
-  champions: TeamMember[];
+  @IsOptional()
+  champions: { user: Types.ObjectId }[];
 
   @Prop({
     type: String,
@@ -177,6 +176,27 @@ export class Project {
   @Prop({ type: Types.ObjectId, ref: User.name, default: null })
   @IsOptional()
   publishedBy: Types.ObjectId | null;
+
+  @Prop({
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
+    default: []
+  })
+  relevant: Array<{ user: Types.ObjectId; date: Date }>;
+
+  @Prop({
+    type: [{
+      user: { type: Types.ObjectId, ref: User.name },
+      date: { type: Date, default: Date.now }
+    }],
+    default: []
+  })
+  irrelevant: Array<{ user: Types.ObjectId; date: Date }>;
+
+  @Prop({ type: String, default: 'creation' })
+  type: string
 }
 
 //Mongoose schema

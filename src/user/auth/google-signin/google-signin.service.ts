@@ -83,7 +83,7 @@ export class GoogleSigninService {
         };
       }
     } catch (error) {
-      console.log(error)
+      (error)
       throw error;
     }
   }

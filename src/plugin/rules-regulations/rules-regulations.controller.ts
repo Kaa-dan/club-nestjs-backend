@@ -21,7 +21,7 @@ import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
 
-import { RulesRegulations } from 'src/shared/entities/rules-requlations.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -35,15 +35,24 @@ export class RulesRegulationsController {
   constructor(
     private readonly rulesRegulationsService: RulesRegulationsService,
     private readonly commentService: CommentService,
-  ) {}
+  ) { }
   /*---------------GET ALL RULES-REGULATIONS
   
   @Query type:node|club
   @return :RulesRegulations*/
   @Get()
-  getAllRulesRegulations() {
+  async getAllRulesRegulations(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
     try {
-      return this.rulesRegulationsService.getAllRulesRegulations();
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
+
+      return await this.rulesRegulationsService.getAllRulesRegulations(
+        pageNumber,
+        limitNumber
+      );
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -90,7 +99,6 @@ export class RulesRegulationsController {
     files: Express.Multer.File[],
     @Body() createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
-    console.log('nithin');
     try {
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
@@ -131,7 +139,6 @@ export class RulesRegulationsController {
         );
       }
     } catch (error) {
-      console.log({ error });
 
       if (error instanceof BadRequestException) {
         throw error;
@@ -180,10 +187,7 @@ export class RulesRegulationsController {
     @Body() createRulesRegulationsDto,
   ) {
     try {
-      console.log({
-        createRulesRegulationsDto,
-      });
-      console.log('nihtin');
+
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
           'Invalid type parameter. Must be "node" or "club".',
@@ -223,7 +227,6 @@ export class RulesRegulationsController {
         );
       }
     } catch (error) {
-      console.log('error', error);
       if (error instanceof BadRequestException) {
         throw error;
       }
@@ -271,11 +274,11 @@ export class RulesRegulationsController {
       // Initialize fileObjects array
       const fileObjects = file
         ? file.map((singleFile) => ({
-            buffer: singleFile.buffer,
-            originalname: singleFile.originalname,
-            mimetype: singleFile.mimetype,
-            size: singleFile.size,
-          }))
+          buffer: singleFile.buffer,
+          originalname: singleFile.originalname,
+          mimetype: singleFile.mimetype,
+          size: singleFile.size,
+        }))
         : [];
 
       // Validate the total file count if `files` exist in DTO
@@ -316,20 +319,26 @@ export class RulesRegulationsController {
   @Query : from = club|node id
   @Req   : req.user 
   */
+
   @Get('get-all-active-rules')
   async getAllActiveRulesRegulations(
     @Query('from') forId: Types.ObjectId,
     @Query('type') type: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
     @Req() req: Request,
   ) {
     try {
-      console.log({ forId, type });
-      console.log('callethi');
-
       const ID = new Types.ObjectId(forId);
+      // Convert string to number since query params come as strings
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
+
       return await this.rulesRegulationsService.getAllActiveRulesRegulations(
         type,
         ID,
+        pageNumber,
+        limitNumber
       );
     } catch (error) {
       throw new InternalServerErrorException(
@@ -341,20 +350,26 @@ export class RulesRegulationsController {
   /*-------------------GET MY RULES
    @Req:user_id
    @eturn:RulesRegulations */
+
+
   @Get('get-my-rules')
   async getMyRules(
     @Req() req: Request,
     @Query('entity') entity: Types.ObjectId,
     @Query('type') type: 'node' | 'club',
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     try {
-      console.log({ type });
-      console.log({ entity });
+      const pageNumber = parseInt(page as any) || 1;
+      const limitNumber = parseInt(limit as any) || 10;
 
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
         entity,
+        pageNumber,
+        limitNumber
       );
     } catch (error) {
       throw new InternalServerErrorException(
@@ -386,12 +401,10 @@ export class RulesRegulationsController {
         nodeId,
         userId: req.user._id,
       };
-      // console.log(data);
-      console.log({ adoptClub: type });
+
 
       return await this.rulesRegulationsService.adoptRules(data);
     } catch (error) {
-      console.log(error);
 
       throw new InternalServerErrorException(
         'Error while adopting rules-regulations',
@@ -411,7 +424,6 @@ export class RulesRegulationsController {
         new Types.ObjectId(rulesId),
       );
     } catch (error) {
-      console.log('errrrr ', error);
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
         error,
@@ -425,7 +437,6 @@ export class RulesRegulationsController {
     try {
       return await this.rulesRegulationsService.getRules(ruleId);
     } catch (error) {
-      console.log({ error });
 
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
@@ -448,7 +459,6 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
-      console.log(error);
 
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
@@ -470,7 +480,6 @@ export class RulesRegulationsController {
         rulesId,
       );
     } catch (error) {
-      console.log({ error });
 
       throw new InternalServerErrorException(
         'Error while liking rules-regulations',
@@ -544,14 +553,12 @@ export class RulesRegulationsController {
       //   size: singleFile.size,
       // }));
 
-      console.log(file, 'file');
       return await this.rulesRegulationsService.reportOffense(
         req.user._id,
         reportData,
         file[0],
       );
     } catch (error) {
-      console.log(error);
       throw new InternalServerErrorException(
         'Error while report offense rules-regulations',
         error,
@@ -563,12 +570,19 @@ export class RulesRegulationsController {
   async getAllOffence(
     @Query('type') type: 'node' | 'club',
     @Query('clubId') clubId: Types.ObjectId,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
     try {
-      return this.rulesRegulationsService.getAllReportOffence(clubId, type);
+      return await this.rulesRegulationsService.getAllReportOffence(
+        clubId,
+        type,
+        Number(page),
+        Number(limit)
+      );
     } catch (error) {
       throw new InternalServerErrorException(
-        'Error while liking rules-regulations',
+        'Error while getting rules-regulations',
         error,
       );
     }
@@ -581,7 +595,6 @@ export class RulesRegulationsController {
     @Body('rulesId') rulesId: Types.ObjectId,
   ) {
     try {
-      console.log({ rulesId });
       return await this.rulesRegulationsService.createViewsForRulesAndRegulations(
         req.user._id,
         rulesId,

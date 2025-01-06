@@ -5,6 +5,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: Document<unknown, {}, User> & User & { _id: Types.ObjectId };
+      role?: string;
     }
   }
 }
