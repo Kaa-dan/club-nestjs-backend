@@ -8,7 +8,7 @@ import { Project } from './project.entity';
   toJSON: { virtuals: true, getters: true },
   toObject: { virtuals: true, getters: true },
 })
-export class Faq {
+export class ProjectFaq {
   @Prop({ type: Types.ObjectId, required: true, ref: Project.name })
   project: Types.ObjectId;
 
@@ -35,5 +35,5 @@ export class Faq {
   Date: Date;
 }
 
-export type FaqDocument = HydratedDocument<Faq>;
-export const FaqSchema = SchemaFactory.createForClass(Faq);
+export type ProjectFaqDocument = HydratedDocument<ProjectFaq>;
+export const ProjectFaqSchema = SchemaFactory.createForClass(ProjectFaq);

@@ -4,17 +4,17 @@ import { Project } from './project.entity';
 import { User } from '../user.entity';
 import { Club } from '../club.entity';
 import { Node_ } from '../node.entity';
-import { Parameter } from './parameter.entity';
+import { ProjectParameter } from './parameter.entity';
 
 @Schema({ timestamps: true })
-export class Contribution {
+export class ProjectContribution {
   @Prop({ type: Types.ObjectId, ref: Project.name, required: true })
   rootProject: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, required: true, ref: Project.name })
   project: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: Parameter.name })
+  @Prop({ type: Types.ObjectId, required: true, ref: ProjectParameter.name })
   parameter: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, required: true, ref: User.name })
@@ -51,4 +51,4 @@ export class Contribution {
   status: string;
 }
 
-export const ContributionSchema = SchemaFactory.createForClass(Contribution);
+export const ProjectContributionSchema = SchemaFactory.createForClass(ProjectContribution);
