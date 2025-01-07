@@ -8,11 +8,13 @@ import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { DeleteChapterDto, JoinUserChapterDto, LeaveUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async } from 'rxjs';
+import { Node_ } from 'src/shared/entities/node.entity';
 
 @Injectable()
 export class ChapterService {
     constructor(
         @InjectModel(Club.name) private readonly clubModel: Model<Club>,
+        @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
         @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
         @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
         @InjectModel(ChapterMember.name) private readonly chapterMemberModel: Model<ChapterMember>,
@@ -46,6 +48,12 @@ export class ChapterService {
                 throw new NotFoundException('Club not found');
             }
 
+            const existedNode = await this.nodeModel.findById(new Types.ObjectId(node)).session(session);
+
+            if (!existedNode) {
+                throw new NotFoundException('Node not found');
+            }
+
             const existedChapter = await this.chapterModel.findOne({
                 node: new Types.ObjectId(node),
                 club: new Types.ObjectId(club)
@@ -56,12 +64,9 @@ export class ChapterService {
             }
 
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
-            console.log({ isPrivilegedUser });
-            console.log({ userRole });
-
 
             const chapterData = new this.chapterModel({
-                name: existedClub.name,
+                name: `${existedNode.name} - ${existedClub.name}`,
                 about: existedClub.about,
                 description: existedClub.description,
                 profileImage: existedClub.profileImage,
@@ -737,6 +742,95 @@ export class ChapterService {
         } catch (error) {
             console.log('error getting chapter member status', error);
             throw new Error('Error getting chapter member status');
+        }
+    }
+
+    async upvoteProposedChapter(chapterId: string, userId: string) {
+        try {
+            if (!chapterId) {
+                throw new NotFoundException('Chapter id is required');
+            }
+
+            const existedChapter = await this.chapterModel.findOne({
+                _id: new Types.ObjectId(chapterId),
+                status: 'proposed'
+            });
+
+            if (!existedChapter) {
+                throw new NotFoundException('No proposed chapter found');
+            }
+
+            const alreadyUpvote = existedChapter.upvotes.some((upvote) =>
+                upvote.user.equals(new Types.ObjectId(userId))
+            )
+
+            console.log(alreadyUpvote, 'alreadyUpvote');
+
+            if (alreadyUpvote) {
+                return await this.chapterModel.findByIdAndUpdate(
+                    new Types.ObjectId(chapterId),
+                    { $pull: { upvotes: { user: new Types.ObjectId(userId) } } },
+                    { new: true }
+                )
+            }
+
+            return await this.chapterModel.findByIdAndUpdate(
+                new Types.ObjectId(chapterId),
+                {
+                    $addToSet: { upvotes: { user: new Types.ObjectId(userId), date: new Date() } },
+                    $pull: { downvotes: { user: new Types.ObjectId(userId) } }
+                },
+                { new: true }
+            );
+
+        } catch (error) {
+            console.log('error upvoting chapter', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error upvoting chapter');
+        }
+    }
+
+    async downvoteProposedChapter(chapterId: string, userId: string) {
+        try {
+
+            if (!chapterId) {
+                throw new NotFoundException('Chapter id is required');
+            }
+
+            const existedChapter = await this.chapterModel.findOne({
+                _id: new Types.ObjectId(chapterId),
+                status: 'proposed'
+            });
+
+            if (!existedChapter) {
+                throw new NotFoundException('No proposed chapter found');
+            }
+
+            const alreadyDownvote = existedChapter.downvotes.some((downvote) =>
+                downvote.user.equals(new Types.ObjectId(userId))
+            )
+
+            if (alreadyDownvote) {
+                return await this.chapterModel.findByIdAndUpdate(
+                    new Types.ObjectId(chapterId),
+                    { $pull: { downvotes: { user: new Types.ObjectId(userId) } } },
+                    { new: true }
+                )
+            }
+
+            return await this.chapterModel.findByIdAndUpdate(
+                new Types.ObjectId(chapterId),
+                {
+                    $addToSet: { downvotes: { user: new Types.ObjectId(userId), date: new Date() } },
+                    $pull: { upvotes: { user: new Types.ObjectId(userId) } }
+                },
+                { new: true }
+            )
+
+        } catch (error) {
+            console.log('error downvoting chapter', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error downvoting chapter');
         }
     }
 }

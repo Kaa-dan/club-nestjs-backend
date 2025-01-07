@@ -178,6 +178,20 @@ export class ChapterController {
         return await this.chapterService.leaveUserFromChapter(chapterUserData, leaveUserChapterDto);
     }
 
+    //----------------UPVOTE PROPOSED CHAPTER----------------
+
+    @Put('upvote-proposed')
+    async upvoteProposedChapter(@Req() req: Request, @Body('chapter') chapterId: string) {
+        return await this.chapterService.upvoteProposedChapter(chapterId, req.user._id);
+    }
+
+    //----------------DOWNVOTE PROPOSED CHAPTER----------------
+
+    @Put('downvote-proposed')
+    async downvoteProposedChapter(@Req() req: Request, @Body('chapter') chapterId: string) {
+        return await this.chapterService.downvoteProposedChapter(chapterId, req.user._id);
+    }
+
     //----------------GET CHAPTER MEMBER STATUS----------------
 
     @Get('check-status')
