@@ -236,7 +236,6 @@ export class ChapterService {
                 throw new NotFoundException('Please provide node id');
             }
 
-            console.log({ nodeId, term })
             let query = { isPublic: true } as { isPublic: boolean; name?: { $regex: string; $options: string } };
             if (term) {
                 query = { isPublic: true, name: { $regex: term, $options: 'i' } }
@@ -343,10 +342,21 @@ export class ChapterService {
         try {
 
             if (updateChapterStatusDto.status === 'reject') {
-                await this.chapterModel.findByIdAndDelete(updateChapterStatusDto.chapterId, { session });
+                await this.chapterModel.findByIdAndUpdate(
+                    updateChapterStatusDto.chapterId,
+                    {
+                        status: 'rejected',
+                        rejectedBy: new Types.ObjectId(chapterUserData.userId),
+                        rejectedReason: updateChapterStatusDto.rejectedReason
+                    },
+                    { session, new: true }
+                )
+
+                await session.commitTransaction();
+
                 return {
-                    message: 'Chapter rejected',
-                    status: true
+                    message: 'Chapter rejected successfully',
+                    status: 'success'
                 }
             }
 
@@ -676,7 +686,6 @@ export class ChapterService {
 
             if (chapterUserData.userRole !== 'admin' || chapterAdmins.length > 1) {
 
-                console.log("hell")
                 await this.chapterMemberModel.findOneAndDelete({
                     chapter: new Types.ObjectId(leaveUserChapterDto.chapter),
                     user: new Types.ObjectId(chapterUserData.userId)
@@ -763,8 +772,6 @@ export class ChapterService {
             const alreadyUpvote = existedChapter.upvotes.some((upvote) =>
                 upvote.user.equals(new Types.ObjectId(userId))
             )
-
-            console.log(alreadyUpvote, 'alreadyUpvote');
 
             if (alreadyUpvote) {
                 return await this.chapterModel.findByIdAndUpdate(
