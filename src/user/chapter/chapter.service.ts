@@ -735,10 +735,10 @@ export class ChapterService {
 
             if (isMember) {
                 status = isMember.status;
-                return { status };
+                return { status, role: isMember.role };
             }
 
-            return { status };
+            return { status, role: null };
         } catch (error) {
             console.log('error getting chapter member status', error);
             throw new Error('Error getting chapter member status');
