@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { User } from "../user.entity";
-import { Contribution } from "./contribution.entity";
+import { ProjectContribution } from "./contribution.entity";
 
 @Schema({ timestamps: true })
 
@@ -16,7 +16,7 @@ export class ProjectActivities extends Document {
     @Prop({ default: "contribution" })
     activityType: "contribution"
 
-    @Prop({ required: true, ref: Contribution.name })
+    @Prop({ required: true, ref: ProjectContribution.name })
     contribution: Types.ObjectId
 
 }

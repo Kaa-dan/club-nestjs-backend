@@ -25,6 +25,8 @@ import { UserResponseDto } from './dto/user.dto';
 import { UserWithoutPassword } from './dto/user.type';
 import { Request } from 'express';
 import { AccessDto } from './dto/access.dto';
+import { RoleManagementGuard } from './guards/role-management.guard';
+import { Roles } from 'src/decorators/role.decorator';
 
 @ApiTags('Users')
 @Controller('users')
@@ -97,18 +99,24 @@ export class UserController {
   // }
 
   //----------------- MAKE ADMIN -------------------------
+  // @Roles('owner', 'admin')
+  // @UseGuards(RoleManagementGuard)
   @Put('make-admin')
   async makeAdmin(@Req() req: Request, @Body() accessDto: AccessDto) {
     return await this.userService.makeAdmin(accessDto);
   }
 
   //----------------- MAKE MODERATOR -------------------------
+  // @Roles('owner', 'admin')
+  // @UseGuards(RoleManagementGuard)
   @Put('make-moderator')
   async makeModerator(@Req() req: Request, @Body() accessDto: AccessDto) {
     return await this.userService.makeModerator(accessDto);
   }
 
   //----------------- MAKE MEMBER -------------------------
+  // @Roles('owner', 'admin')
+  // @UseGuards(RoleManagementGuard)
   @Put('make-member')
   async makeMember(@Req() req: Request, @Body() accessDto: AccessDto) {
     return await this.userService.makeMember(accessDto);
