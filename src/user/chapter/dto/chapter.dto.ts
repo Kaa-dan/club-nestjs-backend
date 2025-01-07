@@ -1,4 +1,4 @@
-import { IsEnum, IsMongoId, IsNotEmpty, IsString } from "class-validator";
+import { IsEnum, IsMongoId, IsNotEmpty, IsString, ValidateIf } from "class-validator";
 import { Types } from "mongoose";
 
 export class CreateChapterDto {
@@ -25,6 +25,13 @@ export class UpdateChapterStatusDto {
     })
     @IsNotEmpty()
     status: ChapterStatus;
+
+    @ValidateIf((o) => o.status === 'reject', {
+        message: 'Reason is required when status is "reject"',
+    })
+    @IsString()
+    @IsNotEmpty()
+    rejectedReason: string;
 
     @IsMongoId()
     @IsNotEmpty()
