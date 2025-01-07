@@ -81,6 +81,13 @@ export class ChapterController {
         return await this.chapterService.getProposedChaptersOfNode(nodeId);
     }
 
+    //----------------GET REJECTED CHAPTERS----------------
+    @Get('get-rejected')
+    async getRejectedChaptersOfNode(@Req() req: Request, @Query('nodeId') node: string) {
+        const nodeId = new Types.ObjectId(node);
+        return await this.chapterService.getRejectedChaptersOfNode(nodeId);
+    }
+
     //----------------UPDATE CHAPTER STATUS REJECTED OR PUBLISHED----------------
 
     @Roles('owner', 'admin', 'moderator')

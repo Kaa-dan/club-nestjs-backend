@@ -840,4 +840,31 @@ export class ChapterService {
             throw new Error('Error downvoting chapter');
         }
     }
+
+    async getRejectedChaptersOfNode(nodeId: Types.ObjectId) {
+        try {
+
+            if (!nodeId) {
+                throw new NotFoundException('Node id is required');
+            }
+
+            const nodeRejectedChapters = await this.chapterModel
+                .find({
+                    node: nodeId,
+                    status: 'rejected',
+                    isDeleted: false,
+                })
+                .populate({
+                    path: 'rejectedBy',
+                    select: '-password -isBlocked -emailVerified -registered -signupThrough -isOnBoarded -onBoardingStage -__v'
+                })
+
+            return nodeRejectedChapters;
+
+        } catch (error) {
+            console.log('error getting rejected chapters of node', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error getting rejected chapters of node');
+        }
+    }
 }
