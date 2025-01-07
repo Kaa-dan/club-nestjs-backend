@@ -4,6 +4,11 @@ import { Club } from "../club.entity";
 import { Node_ } from "../node.entity";
 import { User } from "../user.entity";
 
+export interface IVote {
+    user: Types.ObjectId;
+    date: Date;
+}
+
 @Schema({ timestamps: true })
 export class Chapter extends Document {
     @Prop({ required: true })
@@ -59,6 +64,22 @@ export class Chapter extends Document {
 
     @Prop({ type: Boolean, default: false })
     isDeleted: boolean
+
+    @Prop([
+        {
+            user: { type: Types.ObjectId, ref: User.name },
+            date: { type: Date, default: Date.now },
+        },
+    ])
+    upvotes: IVote[];
+
+    @Prop([
+        {
+            user: { type: Types.ObjectId, ref: User.name },
+            date: { type: Date, default: Date.now },
+        },
+    ])
+    downvotes: IVote[];
 }
 
 export const ChapterSchema = SchemaFactory.createForClass(Chapter);
