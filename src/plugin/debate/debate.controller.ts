@@ -354,13 +354,13 @@ export class DebateController {
 
 
   @Put('accept/:debateId')
-  async acceptDebate(@Param('debateId') debateId: string): Promise<Debate> {
-    return this.debateService.acceptDebate(debateId);
+  async acceptDebate(@Req() req: Request, @Param('debateId') debateId: string, @Param('type') type: string) {
+    return this.debateService.acceptDebate(debateId, type, req.user._id);
   }
 
   @Put('reject/:debateId')
-  async rejectDebate(@Param('debateId') debateId: string): Promise<Debate> {
-    return this.debateService.rejectDebate(debateId);
+  async rejectDebate(@Param('debateId') debateId: string, @Param('type') type: string, @Req() req: Request) {
+    return this.debateService.rejectDebate(debateId, type, req.user._id);
   }
 
   @Post('check-status')

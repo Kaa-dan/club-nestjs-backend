@@ -8,6 +8,8 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { PipelineStage } from 'mongoose';
+
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, StringExpression, Types } from 'mongoose';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -18,7 +20,8 @@ import { CreateDebateDto } from './dto/create.dto';
 import { DebateArgument } from 'src/shared/entities/debate-argument';
 import { CreateDebateArgumentDto } from './dto/argument.dto';
 import { DebatesResponse } from 'typings';
-import { console, url } from 'node:inspector';
+import { DebateAdoption } from 'src/shared/entities/debate/debate-adoption-entity';
+import { query } from 'express';
 @Injectable()
 export class DebateService {
   constructor(
@@ -27,6 +30,7 @@ export class DebateService {
     @InjectModel(NodeMembers.name) private nodeMembersModel: Model<NodeMembers>,
     @InjectModel(DebateArgument.name)
     private debateArgumentModel: Model<DebateArgument>,
+    @InjectModel(DebateAdoption.name) private debateAdoptionModel: Model<DebateAdoption>,
     private readonly s3FileUpload: UploadService,
   ) { }
   async createDebate(createDebateDto, userId: string) {
@@ -195,117 +199,52 @@ export class DebateService {
         throw new NotFoundException('Debate not found');
       }
 
-      // Get the root ID (original source debate)
-      const rootId = existingDebate.rootParentId || existingDebate._id;
-
-      // Check if the debate is already adopted by checking both rootParentId and _id
-      const alreadyAdopted = await this.debateModel.findOne({
-        $or: [
-          {
-            rootParentId: new Types.ObjectId(rootId as string),
-            [dataToSave.type]:
-              dataToSave.type === 'club'
-                ? dataToSave.clubId
-                : dataToSave.nodeId,
-          },
-          {
-            _id: rootId,
-            [dataToSave.type]:
-              dataToSave.type === 'club'
-                ? dataToSave.clubId
-                : dataToSave.nodeId,
-          },
-        ],
+      // Check if an adoption already exists
+      const existingAdoption = await this.debateAdoptionModel.findOne({
+        debate: new Types.ObjectId(dataToSave.debateId),
+        ...(dataToSave.type === 'club'
+          ? { club: new Types.ObjectId(dataToSave.clubId) }
+          : { node: new Types.ObjectId(dataToSave.nodeId) }),
       });
 
-      if (alreadyAdopted) {
+      if (existingAdoption) {
         return {
-          message:
-            'This debate or its variant is already adopted by the specified entity',
-          data: existingDebate,
+          message: 'This debate is already adopted or has a pending adoption request',
+          data: existingAdoption,
         };
       }
 
-      // Prepare base data for the new debate
-      const debateData = {
-        ...existingDebate.toObject(),
-        _id: undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        views: [],
-        adoptedBy: new Types.ObjectId(dataToSave.userId),
-        createdBy: new Types.ObjectId(dataToSave.userId),
-        adoptedClubs: [],
-        adoptedNodes: [],
-        club:
-          dataToSave.type === 'club'
-            ? new Types.ObjectId(dataToSave.clubId)
-            : null,
-        node:
-          dataToSave.type === 'node'
-            ? new Types.ObjectId(dataToSave.nodeId)
-            : null,
-        adoptedDate: new Date(),
-        publishedDate: isAuthorized ? new Date() : null,
-        publishedStatus: isAuthorized ? 'published' : 'proposed',
-        adoptedFrom: new Types.ObjectId(existingDebate._id as string),
-        rootParentId: rootId,
+      // Create new adoption record
+      const adoptionData = {
+        proposedBy: new Types.ObjectId(dataToSave.userId),
+        debate: new Types.ObjectId(dataToSave.debateId),
+        club: dataToSave.type === 'club' ? new Types.ObjectId(dataToSave.clubId) : undefined,
+        node: dataToSave.type === 'node' ? new Types.ObjectId(dataToSave.nodeId) : undefined,
+
+        status: isAuthorized ? 'published' : 'proposed',
+        type: 'adopted',
       };
 
-      let updateOperation;
-      let newDebate;
-
-      // Update only the root parent debate
-      if (dataToSave.type === 'club') {
-        updateOperation = this.debateModel.findByIdAndUpdate(
-          rootId, // Update root parent instead of immediate parent
-          {
-            $addToSet: {
-              adoptedClubs: isAuthorized
-                ? {
-                  club: new Types.ObjectId(dataToSave.clubId),
-                  date: new Date(),
-                }
-                : [],
-            },
-          },
-          { new: true },
-        );
-
-        newDebate = new this.debateModel({
-          ...debateData,
-          club: new Types.ObjectId(dataToSave.clubId),
-        });
-      } else if (dataToSave.type === 'node') {
-        updateOperation = this.debateModel.findByIdAndUpdate(
-          rootId, // Update root parent instead of immediate parent
-          {
-            $addToSet: {
-              adoptedNodes: isAuthorized
-                ? {
-                  node: new Types.ObjectId(dataToSave.nodeId),
-                  date: new Date(),
-                }
-                : [],
-            },
-          },
-          { new: true },
-        );
-
-        newDebate = new this.debateModel({
-          ...debateData,
-          node: new Types.ObjectId(dataToSave.nodeId),
-        });
+      if (isAuthorized) {
+        adoptionData['acceptedBy'] = new Types.ObjectId(dataToSave.userId);
       }
 
-      const [updatedParent, savedDebate] = await Promise.all([
-        updateOperation,
-        newDebate.save(),
-      ]);
+      const newAdoption = new this.debateAdoptionModel(adoptionData);
+      const savedAdoption = await newAdoption.save();
 
-      if (!updatedParent || !savedDebate) {
-        throw new InternalServerErrorException(
-          'Failed to save or update debates',
+      if (isAuthorized) {
+        // Update the debate's adoption information
+        await this.debateModel.findByIdAndUpdate(
+          dataToSave.debateId,
+          {
+            $addToSet: {
+              [dataToSave.type === 'club' ? 'adoptedClubs' : 'adoptedNodes']: {
+                [dataToSave.type]: dataToSave.type === 'club' ? dataToSave.clubId : dataToSave.nodeId,
+                date: new Date(),
+              },
+            },
+          },
+          { new: true },
         );
       }
 
@@ -313,7 +252,7 @@ export class DebateService {
         message: isAuthorized
           ? 'Debate adopted and published successfully'
           : 'Debate adoption proposed for review',
-        data: savedDebate,
+        data: savedAdoption,
       };
     } catch (error) {
       console.error('Adoption error:', error);
@@ -331,6 +270,8 @@ export class DebateService {
   }
 
 
+
+
   async myDebates({
     entity,
     userId,
@@ -345,90 +286,152 @@ export class DebateService {
     limit?: number;
   }): Promise<DebatesResponse> {
     try {
-      // Build the base query object to find debates created by the user
-      const query: any = {
-        createdBy: new Types.ObjectId(userId),
-      };
-
-      // Add entity-specific filtering based on the 'entity' argument
-      if (entity === 'club') {
-        if (entityId) {
-          query.club = new Types.ObjectId(entityId);
-          query.publishedStatus = { $in: ['published', 'draft', 'proposed'] };
-        } else {
-          throw new Error('clubId is required for club entity type.');
-        }
-      } else if (entity === 'node') {
-        if (entityId) {
-          query.node = new Types.ObjectId(entityId);
-          query.publishedStatus = { $in: ['published', 'draft', 'proposed'] };
-        } else {
-          throw new Error('nodeId is required for node entity type.');
-        }
-      } else {
-        throw new Error('Invalid entity type. Use "club" or "node".');
-      }
-
-      // Calculate skip value for pagination
       const skip = (page - 1) * limit;
 
-      // Get total count for pagination
-      const totalCount = await this.debateModel.countDocuments(query);
+      const pipeline: PipelineStage[] = [
+        // Match stage for initial filtering
+        {
+          $match: {
+            $and: [
+              { createdBy: new Types.ObjectId(userId) },
+              { [entity]: new Types.ObjectId(entityId) },
+              { publishedStatus: { $in: ['published', 'draft', 'proposed'] } }
+            ]
+          }
+        },
 
-      // Calculate total pages
-      const totalPages = Math.ceil(totalCount / limit);
+        // Lookup adopted debates
+        {
+          $unionWith: {
+            coll: 'debateadoptions',
+            pipeline: [
+              {
+                $match: {
+                  proposedBy: new Types.ObjectId(userId),
+                  [entity]: new Types.ObjectId(entityId),
+                  status: { $in: ['published', 'draft', 'proposed'] }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'debates',
+                  localField: 'debate',
+                  foreignField: '_id',
+                  as: 'debateDetails'
+                }
+              },
+              { $unwind: '$debateDetails' },
+              {
+                $replaceRoot: {
+                  newRoot: {
+                    $mergeObjects: [
+                      '$debateDetails',
+                      {
+                        isAdopted: true,
+                        adoptionStatus: '$status',
+                        adoptedDate: '$createdAt'
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
 
-      // Fetch debates matching the query with pagination
-      const debates = await this.debateModel
-        .find(query)
-        .populate('createdBy')
-        .skip(skip)
-        .limit(limit)
-        .exec();
+        // Lookup creator details
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creator'
+          }
+        },
+        { $unwind: '$creator' },
 
-      if (!debates || debates.length === 0) {
+        // Lookup arguments
+        {
+          $lookup: {
+            from: 'debatearguments',
+            let: { debateId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$debate', '$$debateId'] }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'participant.user',
+                  foreignField: '_id',
+                  as: 'participant.userDetails'
+                }
+              },
+              { $unwind: '$participant.userDetails' }
+            ],
+            as: 'allArguments'
+          }
+        },
+
+        // Facet for pagination and total count
+        {
+          $facet: {
+            data: [
+              {
+                $addFields: {
+                  args: {
+                    for: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'support'] }
+                      }
+                    },
+                    against: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'against'] }
+                      }
+                    }
+                  }
+                }
+              },
+              { $unset: 'allArguments' },
+              { $sort: { createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            totalCount: [{ $count: 'count' }]
+          }
+        }
+      ];
+
+      const [result] = await this.debateModel.aggregate(pipeline);
+
+      if (!result.data || result.data.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Fetch arguments for each debate and group by side
-      const debatesWithArguments = await Promise.all(
-        debates.map(async (debate) => {
-          const args = await this.debateArgumentModel
-            .find({ debate: debate._id })
-            .populate('participant.user', 'name')
-            .lean();
+      const totalCount = result.totalCount[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
-          const forArguments = args.filter(
-            (arg) => arg.participant.side === 'support',
-          );
-          const againstArguments = args.filter(
-            (arg) => arg.participant.side === 'against',
-          );
-
-          return {
-            ...debate.toObject(),
-            args: {
-              for: forArguments,
-              against: againstArguments,
-            },
-          };
-        }),
-      );
-
-      // Return response with debates, grouped arguments, and pagination metadata
       return {
         message: 'Debates fetched successfully.',
-        data: debatesWithArguments,
+        data: result.data,
         pagination: {
           currentPage: page,
           totalPages,
           totalItems: totalCount,
-          // itemsPerPage: limit,
-
         },
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         'Error while fetching debates.',
         error.message,
@@ -508,7 +511,6 @@ export class DebateService {
       throw error;
     }
   }
-
   async myDebatesByStatus({
     entity,
     entityId,
@@ -521,83 +523,161 @@ export class DebateService {
     limit?: number;
   }): Promise<DebatesResponse> {
     try {
-      // Build the base query object to find debates
-      const query: any = { publishedStatus: 'published' };
-
-      // Entity-specific filtering based on the 'entity' argument
-      if (entity === 'club') {
-        if (entityId) {
-          query.club = new Types.ObjectId(entityId);
-        }
-      } else if (entity === 'node') {
-        if (entityId) {
-          query.node = new Types.ObjectId(entityId);
-        }
-      }
-
-      // Calculate skip value for pagination
       const skip = (page - 1) * limit;
 
-      // Get total count for pagination
-      const totalCount = await this.debateModel.countDocuments(query);
+      const matchStage: PipelineStage.Match = {
+        $match: {
+          publishedStatus: 'published',
+          ...(entityId && { [entity]: new Types.ObjectId(entityId) })
+        }
+      };
 
-      // Calculate total pages
-      const totalPages = Math.ceil(totalCount / limit);
+      const pipeline: PipelineStage[] = [
+        // Initial match for regular debates
+        matchStage,
 
-      // Fetch debates based on the entity and status with pagination
-      const debates = await this.debateModel
-        .find(query)
-        .populate('createdBy')
-        .skip(skip)
-        .limit(limit)
-        .exec();
+        // Combine with adopted debates
+        {
+          $unionWith: {
+            coll: 'debateadoptions',
+            pipeline: [
+              {
+                $match: {
+                  status: 'published',
+                  ...(entityId && { [entity]: new Types.ObjectId(entityId) })
+                }
+              },
+              {
+                $lookup: {
+                  from: 'debates',
+                  localField: 'debate',
+                  foreignField: '_id',
+                  as: 'debateDetails'
+                }
+              },
+              { $unwind: '$debateDetails' },
+              {
+                $match: {
+                  'debateDetails.publishedStatus': 'published'
+                }
+              },
+              {
+                $replaceRoot: {
+                  newRoot: {
+                    $mergeObjects: [
+                      '$debateDetails',
+                      {
+                        isAdopted: true,
+                        adoptionStatus: '$status',
+                        adoptedDate: '$createdAt'
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
 
-      // Check if no debates are found
-      if (!debates || debates.length === 0) {
+        // Lookup creator details
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorDetails'
+          }
+        },
+        { $unwind: '$creatorDetails' },
+
+        // Lookup debate arguments
+        {
+          $lookup: {
+            from: 'debatearguments',
+            let: { debateId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$debate', '$$debateId'] }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'participant.user',
+                  foreignField: '_id',
+                  as: 'participant.userDetails'
+                }
+              },
+              { $unwind: '$participant.userDetails' }
+            ],
+            as: 'allArguments'
+          }
+        },
+
+        // Use facet for pagination and counts
+        {
+          $facet: {
+            data: [
+              {
+                $addFields: {
+                  args: {
+                    for: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'support'] }
+                      }
+                    },
+                    against: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'against'] }
+                      }
+                    }
+                  }
+                }
+              },
+              { $unset: 'allArguments' },
+              {
+                $addFields: {
+                  createdBy: '$creatorDetails',
+                }
+              },
+              { $unset: 'creatorDetails' },
+              { $sort: { createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            totalCount: [{ $count: 'count' }]
+          }
+        }
+      ];
+
+      const [result] = await this.debateModel.aggregate(pipeline);
+
+      if (!result.data || result.data.length === 0) {
         throw new NotFoundException('No debates found for the given criteria.');
       }
 
-      // Fetch "for" and "against" arguments for each debate
-      const debatesWithArgs = await Promise.all(
-        debates.map(async (debate) => {
-          // Fetch all arguments related to the current debate
-          const args = await this.debateArgumentModel
-            .find({ debate: debate._id })
-            .populate('participant.user', 'name')
-            .lean();
+      const totalCount = result.totalCount[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
-          // Separate arguments into "for" and "against"
-          const forArgs = args.filter(
-            (arg) => arg.participant.side === 'support',
-          );
-          const againstArgs = args.filter(
-            (arg) => arg.participant.side === 'against',
-          );
-
-          // Return the debate with categorized arguments
-          return {
-            ...debate.toObject(),
-            args: {
-              for: forArgs,
-              against: againstArgs,
-            },
-          };
-        }),
-      );
-
-      // Return the fetched debates along with arguments and pagination metadata
       return {
         message: 'Debates fetched successfully.',
-        data: debatesWithArgs,
+        data: result.data,
         pagination: {
           currentPage: page,
           totalPages,
           totalItems: totalCount,
-
         },
       };
     } catch (error) {
       console.error('Error fetching debates:', error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new InternalServerErrorException(
         'Error while fetching debates.',
         error.message,
@@ -666,99 +746,180 @@ export class DebateService {
     limit?: number;
   }): Promise<DebatesResponse> {
     try {
-      // Validate input parameters
+      // Input validation
       if (!entityId || !entityType) {
-        throw new Error('Both entityId and entityType are required.');
+        throw new BadRequestException('Both entityId and entityType are required.');
       }
-
-      // Validate pagination parameters
       if (page < 1 || limit < 1) {
-        throw new Error('Page and limit must be positive numbers.');
+        throw new BadRequestException('Page and limit must be positive numbers.');
+      }
+      if (!['club', 'node'].includes(entityType)) {
+        throw new BadRequestException('Invalid entity type. Use "club" or "node".');
       }
 
       const currentTime = new Date();
-      const query: any = { publishedStatus: 'published' };
-
-      // Entity-specific filtering
-      if (entityType === 'club') {
-        query.club = new Types.ObjectId(entityId);
-      } else if (entityType === 'node') {
-        query.node = new Types.ObjectId(entityId);
-      } else {
-        throw new Error('Invalid entity type. Use "club" or "node".');
-      }
-
-      // Calculate skip value for pagination
       const skip = (page - 1) * limit;
 
-      // Get total count for pagination
-      const totalCount = await this.debateModel.countDocuments({
-        ...query,
-        createdAt: { $lte: currentTime },
-        closingDate: { $gt: currentTime },
-      });
+      const pipeline: PipelineStage[] = [
+        // Match stage for regular debates
+        {
+          $match: {
+            publishedStatus: 'published',
+            [entityType]: new Types.ObjectId(entityId),
+            createdAt: { $lte: currentTime },
+            closingDate: { $gt: currentTime }
+          }
+        },
 
-      // Calculate total pages
-      const totalPages = Math.ceil(totalCount / limit);
+        // Combine with adopted debates
+        {
+          $unionWith: {
+            coll: 'debateadoptions',
+            pipeline: [
+              {
+                $match: {
+                  status: 'published',
+                  [entityType]: new Types.ObjectId(entityId)
+                }
+              },
+              {
+                $lookup: {
+                  from: 'debates',
+                  localField: 'debate',
+                  foreignField: '_id',
+                  as: 'debateDetails'
+                }
+              },
+              { $unwind: '$debateDetails' },
+              {
+                $match: {
+                  'debateDetails.publishedStatus': 'published',
+                  'debateDetails.createdAt': { $lte: currentTime },
+                  'debateDetails.closingDate': { $gt: currentTime }
+                }
+              },
+              {
+                $replaceRoot: {
+                  newRoot: {
+                    $mergeObjects: [
+                      '$debateDetails',
+                      {
+                        isAdopted: true,
+                        adoptionStatus: '$status',
+                        adoptedDate: '$createdAt'
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        },
 
-      // Fetch ongoing debates with pagination
-      const ongoingDebates = await this.debateModel
-        .find({
-          ...query,
-          createdAt: { $lte: currentTime },
-          closingDate: { $gt: currentTime },
-        })
-        .populate('createdBy')
-        .skip(skip)
-        .limit(limit)
-        .exec();
+        // Lookup creator details
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'creatorDetails'
+          }
+        },
+        { $unwind: '$creatorDetails' },
 
-      // Check for empty result
-      if (!ongoingDebates || ongoingDebates.length === 0) {
+        // Lookup arguments
+        {
+          $lookup: {
+            from: 'debatearguments',
+            let: { debateId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: { $eq: ['$debate', '$$debateId'] }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'participant.user',
+                  foreignField: '_id',
+                  as: 'participant.userDetails'
+                }
+              },
+              { $unwind: '$participant.userDetails' }
+            ],
+            as: 'allArguments'
+          }
+        },
+
+        // Facet for pagination and counts
+        {
+          $facet: {
+            data: [
+              {
+                $addFields: {
+                  args: {
+                    for: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'support'] }
+                      }
+                    },
+                    against: {
+                      $filter: {
+                        input: '$allArguments',
+                        as: 'arg',
+                        cond: { $eq: ['$$arg.participant.side', 'against'] }
+                      }
+                    }
+                  }
+                }
+              },
+              { $unset: 'allArguments' },
+              {
+                $addFields: {
+                  createdBy: '$creatorDetails',
+                }
+              },
+              { $unset: 'creatorDetails' },
+              { $sort: { createdAt: -1 } },
+              { $skip: skip },
+              { $limit: limit }
+            ],
+            totalCount: [{ $count: 'count' }]
+          }
+        }
+      ];
+
+      const [result] = await this.debateModel.aggregate(pipeline);
+
+      if (!result.data || result.data.length === 0) {
         throw new NotFoundException(
-          `No ongoing debates found for the ${entityType}.`,
+          `No ongoing debates found for the ${entityType}.`
         );
       }
 
-      // Fetch "for" and "against" arguments (now `args`) for each debate
-      const debatesWithArgs = await Promise.all(
-        ongoingDebates.map(async (debate) => {
-          const args = await this.debateArgumentModel
-            .find({ debate: debate._id })
-            .populate('participant.user', 'name')
-            .lean();
+      const totalCount = result.totalCount[0]?.count || 0;
+      const totalPages = Math.ceil(totalCount / limit);
 
-          const forArgs = args.filter(
-            (arg) => arg.participant.side === 'support',
-          );
-          const againstArgs = args.filter(
-            (arg) => arg.participant.side === 'against',
-          );
-
-          return {
-            ...debate.toObject(),
-            args: {
-              for: forArgs,
-              against: againstArgs,
-            },
-          };
-        }),
-      );
-
-      // Return the response with pagination metadata
       return {
         message: `Ongoing debates fetched successfully for the ${entityType}.`,
-        data: debatesWithArgs,
+        data: result.data,
         pagination: {
           currentPage: page,
           totalPages,
           totalItems: totalCount,
-
         },
       };
     } catch (error) {
       console.error('Error fetching ongoing debates:', error);
-      throw new Error(`Error while fetching ongoing debates: ${error.message}`);
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Error while fetching ongoing debates: ${error.message}`
+      );
     }
   }
 
@@ -854,17 +1015,15 @@ export class DebateService {
 
   async getNonAdoptedClubsAndNodes(userId: string, debateId: Types.ObjectId) {
     try {
-      // Fetch the debate to get its rootId
+      // Fetch the debate
       const sourceDebate = await this.debateModel
         .findById(debateId)
-        .select('rootParentId club node')
+        .select('club node')
         .lean();
 
       if (!sourceDebate) {
         throw new NotFoundException('Debate not found');
       }
-
-      const rootId = sourceDebate.rootParentId || sourceDebate._id;
 
       // Fetch all clubs the user is part of
       const userClubs = await this.clubMembersModel
@@ -901,40 +1060,36 @@ export class DebateService {
         return acc;
       }, {});
 
-      // Find clubs that already have any version of this debate (using rootId)
-      const clubsWithDebate = await this.debateModel
+      // Find clubs that already have adoption requests for this debate
+      const clubAdoptions = await this.debateAdoptionModel
         .find({
-          $or: [
-            { rootParentId: rootId }, // Matches debates with the given rootId in rootParentId
-            { _id: rootId }, // Matches the main parent debate (where rootId is _id)
-          ],
-          club: { $in: userClubIds.map((id) => new Types.ObjectId(id)) }, // Filters by user's clubs
+          debate: new Types.ObjectId(debateId),
+          club: { $in: userClubIds.map((id) => new Types.ObjectId(id)) },
+          status: { $in: ['published', 'proposed'] }, // Only consider active adoptions
         })
         .select('club')
         .lean();
 
-      const clubIdsWithDebate = clubsWithDebate.map((d) => d?.club?.toString());
+      const clubIdsWithAdoption = clubAdoptions.map((d) => d?.club?.toString());
 
-      // Find nodes that already have any version of this debate (using rootId)
-
-      const nodesWithDebate = await this.debateModel
+      // Find nodes that already have adoption requests for this debate
+      const nodeAdoptions = await this.debateAdoptionModel
         .find({
-          $or: [
-            { rootParentId: rootId }, // Include debates with this rootId in rootParentId
-            { _id: rootId }, // Include the root debate itself
-          ],
-          node: { $in: userNodeIds.map((id) => new Types.ObjectId(id)) }, // Filter by user's nodes
+          debate: new Types.ObjectId(debateId),
+          node: { $in: userNodeIds.map((id) => new Types.ObjectId(id)) },
+          status: { $in: ['published', 'proposed'] }, // Only consider active adoptions
         })
         .select('node')
         .lean();
-      const nodeIdsWithDebate = nodesWithDebate.map((d) => d.node.toString());
 
-      // Filter out clubs that already have any version of the debate
+      const nodeIdsWithAdoption = nodeAdoptions.map((d) => d?.node?.toString());
+
+      // Filter out clubs that already have adoption requests
       // and the creator club
       const nonAdoptedClubs = userClubIds
         .filter(
           (clubId) =>
-            !clubIdsWithDebate.includes(clubId) &&
+            !clubIdsWithAdoption.includes(clubId) &&
             clubId !== sourceDebate.club?.toString(),
         )
         .map((clubId) => ({
@@ -944,12 +1099,12 @@ export class DebateService {
           image: userClubDetails[clubId].image,
         }));
 
-      // Filter out nodes that already have any version of the debate
+      // Filter out nodes that already have adoption requests
       // and the creator node
       const nonAdoptedNodes = userNodeIds
         .filter(
           (nodeId) =>
-            !nodeIdsWithDebate.includes(nodeId) &&
+            !nodeIdsWithAdoption.includes(nodeId) &&
             nodeId !== sourceDebate.node?.toString(),
         )
         .map((nodeId) => ({
@@ -1212,40 +1367,218 @@ export class DebateService {
   }
 
 
-  async acceptDebate(debateId: string): Promise<Debate> {
+  async acceptDebate(
+    debateId: string,
+    type: string,
+    userId: Types.ObjectId
+  ): Promise<Debate | DebateAdoption> {
     try {
-      const updatedDebate = await this.debateModel.findByIdAndUpdate(
-        new Types.ObjectId(debateId),
-        { publishedStatus: 'published' },
-        { new: true },
-      );
+      if (type === 'adopted') {
+        // Find the adoption request first to check permissions
+        const adoptionRequest = await this.debateAdoptionModel.findOne({
+          debate: new Types.ObjectId(debateId),
+          status: 'proposed'
+        });
 
-      if (!updatedDebate) {
-        throw new NotFoundException('Debate not found');
+        if (!adoptionRequest) {
+          throw new NotFoundException('Adoption request not found');
+        }
+
+        // Check member role for adoption
+        let member;
+        if (adoptionRequest.club) {
+          member = await this.clubMembersModel.findOne({
+            club: adoptionRequest.club,
+            user: userId
+          });
+        } else if (adoptionRequest.node) {
+          member = await this.nodeMembersModel.findOne({
+            node: adoptionRequest.node,
+            user: userId
+          });
+        }
+
+        if (!member || !['admin', 'moderator', 'owner'].includes(member.role)) {
+          throw new BadRequestException('Unauthorized: Only admins, moderators, or owners can accept adoptions');
+        }
+
+        // Update adoption status
+        const updatedAdoption = await this.debateAdoptionModel.findByIdAndUpdate(
+          adoptionRequest._id,
+          {
+            status: 'published',
+            acceptedBy: userId
+          },
+          { new: true }
+        );
+
+        // Update the debate's adoption information
+        await this.debateModel.findByIdAndUpdate(
+          debateId,
+          {
+            $addToSet: {
+              [updatedAdoption.club ? 'adoptedClubs' : 'adoptedNodes']: {
+                [updatedAdoption.club ? 'club' : 'node']:
+                  updatedAdoption.club || updatedAdoption.node,
+                date: new Date()
+              }
+            }
+          }
+        );
+
+        return updatedAdoption;
+      } else {
+        // For regular debate, first find the debate to check permissions
+        const debate = await this.debateModel.findById(debateId);
+
+        if (!debate) {
+          throw new NotFoundException('Debate not found');
+        }
+
+        // Check member role for regular debate
+        let member;
+        if (debate.club) {
+          member = await this.clubMembersModel.findOne({
+            club: debate.club,
+            user: userId
+          });
+        } else if (debate.node) {
+          member = await this.nodeMembersModel.findOne({
+            node: debate.node,
+            user: userId
+          });
+        }
+
+        if (!member || !['admin', 'moderator', 'owner'].includes(member.role)) {
+          throw new BadRequestException('Unauthorized: Only admins, moderators, or owners can accept debates');
+        }
+
+        // Update debate status
+        const updatedDebate = await this.debateModel.findByIdAndUpdate(
+          new Types.ObjectId(debateId),
+          {
+            publishedStatus: 'published',
+            publishedBy: userId
+          },
+          { new: true }
+        );
+
+        if (!updatedDebate) {
+          throw new NotFoundException('Debate not found');
+        }
+
+        return updatedDebate;
       }
-      return updatedDebate;
     } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException(
-        error.message || 'An error occurred while accepting the debate',
+        error.message || 'An error occurred while accepting the debate'
       );
     }
   }
 
-  async rejectDebate(debateId: string): Promise<Debate> {
-    try {
-      const updatedDebate = await this.debateModel.findByIdAndUpdate(
-        debateId,
-        { publishedStatus: 'Rejected' },
-        { new: true },
-      );
-      if (!updatedDebate) {
-        throw new NotFoundException('Debate not found');
-      }
 
-      return updatedDebate;
+
+  async rejectDebate(
+    debateId: string,
+    type: string,
+    userId: Types.ObjectId
+  ): Promise<Debate | DebateAdoption> {
+    try {
+      if (type === 'adopted') {
+        // Find the adoption request first to check permissions
+        const adoptionRequest = await this.debateAdoptionModel.findOne({
+          debate: new Types.ObjectId(debateId),
+          status: 'proposed'
+        });
+
+        if (!adoptionRequest) {
+          throw new NotFoundException('Adoption request not found');
+        }
+
+        // Check member role for adoption
+        let member;
+        if (adoptionRequest.club) {
+          member = await this.clubMembersModel.findOne({
+            club: adoptionRequest.club,
+            user: userId
+          });
+        } else if (adoptionRequest.node) {
+          member = await this.nodeMembersModel.findOne({
+            node: adoptionRequest.node,
+            user: userId
+          });
+        }
+
+        if (!member || !['admin', 'moderator', 'owner'].includes(member.role)) {
+          throw new BadRequestException('Unauthorized: Only admins, moderators, or owners can reject adoptions');
+        }
+
+        // Update adoption status
+        const updatedAdoption = await this.debateAdoptionModel.findByIdAndUpdate(
+          adoptionRequest._id,
+          {
+            status: 'rejected',
+            acceptedBy: userId  // Using acceptedBy to track who rejected it
+          },
+          { new: true }
+        );
+
+        if (!updatedAdoption) {
+          throw new NotFoundException('Adoption request not found');
+        }
+
+        return updatedAdoption;
+      } else {
+        // For regular debate, first find the debate to check permissions
+        const debate = await this.debateModel.findById(debateId);
+
+        if (!debate) {
+          throw new NotFoundException('Debate not found');
+        }
+
+        // Check member role for regular debate
+        let member;
+        if (debate.club) {
+          member = await this.clubMembersModel.findOne({
+            club: debate.club,
+            user: userId
+          });
+        } else if (debate.node) {
+          member = await this.nodeMembersModel.findOne({
+            node: debate.node,
+            user: userId
+          });
+        }
+
+        if (!member || !['admin', 'moderator', 'owner'].includes(member.role)) {
+          throw new BadRequestException('Unauthorized: Only admins, moderators, or owners can reject debates');
+        }
+
+        // Update debate status
+        const updatedDebate = await this.debateModel.findByIdAndUpdate(
+          debateId,
+          {
+            publishedStatus: 'rejected',
+            publishedBy: userId  // Using publishedBy to track who rejected it
+          },
+          { new: true }
+        );
+
+        if (!updatedDebate) {
+          throw new NotFoundException('Debate not found');
+        }
+
+        return updatedDebate;
+      }
     } catch (error) {
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException(
-        error.message || 'An error occurred while rejecting the debate',
+        error.message || 'An error occurred while rejecting the debate'
       );
     }
   }

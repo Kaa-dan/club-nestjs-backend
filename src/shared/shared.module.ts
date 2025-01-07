@@ -52,6 +52,7 @@ import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/proje
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
+import { DebateAdoption, DebateAdoptionSchema } from './entities/debate/debate-adoption-entity';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
         schema: ProposeRulesAndRegulationSchema,
       },
       { name: Debate.name, schema: DebateSchema },
+      { name: DebateAdoption.name, schema: DebateAdoptionSchema },
       { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
@@ -86,6 +88,7 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
       { name: Bookmarks.name, schema: BookmarksSchema },
+
     ]),
     forwardRef(() => SearchModule),
   ],
