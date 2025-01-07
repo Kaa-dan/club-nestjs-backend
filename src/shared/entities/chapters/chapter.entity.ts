@@ -53,13 +53,19 @@ export class Chapter extends Document {
     @Prop({ type: Types.ObjectId, ref: Node_.name, required: true })
     node: Types.ObjectId
 
-    @Prop({ enum: ['proposed', 'published'], required: true })
-    status: 'proposed' | 'published'
+    @Prop({ enum: ['proposed', 'published', 'rejected'], required: true })
+    status: 'proposed' | 'published' | 'rejected'
+
+    @Prop({ type: String, required: function () { return this.status === 'rejected' } })
+    rejectedReason: string
+
+    @Prop({ type: Types.ObjectId, ref: User.name, required: function () { return this.status === 'rejected' } })
+    rejectedBy: Types.ObjectId
 
     @Prop({ type: Types.ObjectId, ref: User.name, required: true })
     proposedBy: Types.ObjectId
 
-    @Prop({ type: Types.ObjectId, ref: User.name })
+    @Prop({ type: Types.ObjectId, ref: User.name, required: function () { return this.status === 'published' } })
     publishedBy: Types.ObjectId
 
     @Prop({ type: Boolean, default: false })

@@ -69,7 +69,6 @@ export class ChapterController {
 
     @Get('get-public-clubs')
     async getPublicClubs(@Req() req: Request, @Query('nodeId') node: string, @Query('term') term: string) {
-        console.log({ node, term });
         const nodeId = new Types.ObjectId(node);
         return await this.chapterService.getPublicClubs(nodeId, term);
     }
