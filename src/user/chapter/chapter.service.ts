@@ -673,6 +673,13 @@ export class ChapterService {
         }
     }
 
+    /**
+     * Removes a user from a chapter.
+     * @param chapterUserData - An object containing the user's role and ID.
+     * @param leaveUserChapterDto - An object containing the chapter id.
+     * @returns A promise that resolves to an object containing a message and status.
+     * @throws {Error} If there was an error while removing the user from the chapter.
+     */
     async leaveUserFromChapter(chapterUserData: any, leaveUserChapterDto: LeaveUserChapterDto) {
         try {
 
@@ -733,6 +740,15 @@ export class ChapterService {
         }
     }
 
+    /**
+     * Retrieves the status of a user in a chapter.
+     * @param userId The id of the user.
+     * @param chapterId The id of the chapter.
+     * @returns A promise that resolves to an object with the user's status and role in the chapter.
+     * The status can be 'VISITOR', 'MEMBER', 'BLOCKED', or 'PENDING'.
+     * The role can be null, 'owner', 'admin', 'moderator', or 'member'.
+     * @throws {Error} If there was an error while retrieving the user's status.
+     */
     async getChapterMemberStatus(userId: string, chapterId: string) {
         try {
             let status = 'VISITOR';
@@ -754,6 +770,17 @@ export class ChapterService {
         }
     }
 
+    /**
+     * Upvotes a proposed chapter. If the user has already upvoted the chapter, 
+     * their upvote is removed. If the user has downvoted the chapter, the downvote 
+     * is also removed upon upvoting.
+     * 
+     * @param chapterId - The ID of the chapter to upvote.
+     * @param userId - The ID of the user performing the upvote.
+     * @returns A promise that resolves to the updated chapter document.
+     * @throws {NotFoundException} If the chapter ID is not provided or if no proposed chapter is found.
+     * @throws {Error} If there is an error while upvoting the chapter.
+     */
     async upvoteProposedChapter(chapterId: string, userId: string) {
         try {
             if (!chapterId) {
@@ -797,6 +824,17 @@ export class ChapterService {
         }
     }
 
+    /**
+     * Downvotes a proposed chapter. If the user has already downvoted the chapter,
+     * their downvote is removed. If the user has upvoted the chapter, the upvote
+     * is also removed upon downvoting.
+     *
+     * @param chapterId - The ID of the chapter to downvote.
+     * @param userId - The ID of the user performing the downvote.
+     * @returns A promise that resolves to the updated chapter document.
+     * @throws {NotFoundException} If the chapter ID is not provided or if no proposed chapter is found.
+     * @throws {Error} If there is an error while downvoting the chapter.
+     */
     async downvoteProposedChapter(chapterId: string, userId: string) {
         try {
 
