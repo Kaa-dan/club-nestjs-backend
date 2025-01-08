@@ -66,7 +66,7 @@ export class ChapterService {
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
 
             const chapterData = new this.chapterModel({
-                name: `${existedNode.name} - ${existedClub.name}`,
+                name: `${existedClub.name} - ${existedNode.name}`,
                 about: existedClub.about,
                 description: existedClub.description,
                 profileImage: existedClub.profileImage,
