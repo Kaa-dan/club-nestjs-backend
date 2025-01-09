@@ -52,6 +52,7 @@ import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/proje
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
+import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects';
 
 @Module({
   imports: [
@@ -68,10 +69,7 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
       { name: Reports.name, schema: ReportsSchema },
       { name: ReportOffence.name, schema: ReportOffenceSchema },
       { name: Issues.name, schema: IssuesSchema },
-      {
-        name: ProposeRulesAndRegulation.name,
-        schema: ProposeRulesAndRegulationSchema,
-      },
+      { name: ProposeRulesAndRegulation.name, schema: ProposeRulesAndRegulationSchema },
       { name: Debate.name, schema: DebateSchema },
       { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
@@ -83,9 +81,11 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
       { name: ProjectAdoption.name, schema: ProjectAdoptionSchema },
       { name: ProjectActivities.name, schema: ProjectActivitiesSchema },
       { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema },
+      { name: Bookmarks.name, schema: BookmarksSchema },
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
-      { name: Bookmarks.name, schema: BookmarksSchema },
+
+      { name: ChapterProject.name, schema: ChapterProjectSchema }
     ]),
     forwardRef(() => SearchModule),
   ],
