@@ -58,6 +58,25 @@ export class Issues extends Document {
   @Prop({ default: false })
   isAnonymous: boolean;
 
+  @Prop({
+    type: [{
+      comment: { type: Types.ObjectId },
+      creator: { type: Types.ObjectId },
+      date: { type: Date, default: Date.now }
+    }],
+    validate: {
+      validator: function (solutions: any[]) {
+        return solutions.length <= 10;
+      },
+      message: 'Solutions cannot exceed 10 items'
+    }
+  })
+  solutions: {
+    comment: Types.ObjectId;
+    creator: Types.ObjectId;
+    date: Date;
+  }[];
+
   @Prop([
     {
       user: { type: Types.ObjectId, ref: User.name },
