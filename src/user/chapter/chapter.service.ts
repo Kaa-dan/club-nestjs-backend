@@ -9,6 +9,8 @@ import { DeleteChapterDto, JoinUserChapterDto, LeaveUserChapterDto, RemoveUserCh
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async } from 'rxjs';
 import { Node_ } from 'src/shared/entities/node.entity';
+import { Project } from 'src/shared/entities/projects/project.entity';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
 
 @Injectable()
 export class ChapterService {
@@ -19,6 +21,8 @@ export class ChapterService {
         @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
         @InjectModel(ChapterMember.name) private readonly chapterMemberModel: Model<ChapterMember>,
         @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
+        @InjectModel(Project.name) private readonly ProjectModel: Model<Project>,
+        @InjectModel(ChapterProject.name) private readonly ChapterProjectModel: Model<ChapterProject>,
         @InjectConnection() private connection: Connection,
     ) { }
 
@@ -116,6 +120,21 @@ export class ChapterService {
                         runValidators: true
                     }
                 );
+            }
+
+            // Copy Assets from Club to Chapter
+            // Project Assets
+
+            const clubProjects = await this.ProjectModel.find({ club: new Types.ObjectId(club), status: 'published' }).session(session);
+
+            if (clubProjects.length > 0) {
+                const chapterProjectsToInsert = clubProjects.map(project => ({
+                    chapter: chapter._id,
+                    project: project._id,
+                    status: 'published'
+                }));
+
+                await this.ChapterProjectModel.insertMany(chapterProjectsToInsert, { session });
             }
 
             await session.commitTransaction();
