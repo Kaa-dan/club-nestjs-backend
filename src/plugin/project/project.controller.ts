@@ -234,7 +234,6 @@ export class ProjectController {
     @Query('club') club?: Types.ObjectId,
     @Query('chapter') chapter?: Types.ObjectId,
   ) {
-    console.log({ search })
 
     return await this.projectService.getAllProjects(
       status,
@@ -256,10 +255,29 @@ export class ProjectController {
     @Query('search') search: string,
     @Query('chapter') chapter?: Types.ObjectId,
   ) {
-    console.log({ search, status, page, limit, isActive, chapter })
 
     return await this.projectService.getChapterAllProjects(
       status,
+      page,
+      limit,
+      isActive,
+      search,
+      chapter
+    );
+  }
+
+  @Get('chapter-all-club-projects')
+  async getAllClubProjectsWithChapterId(
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('isActive', new ParseBoolPipe()) isActive: boolean,
+    @Query('search') search: string,
+    @Query('chapter') chapter?: Types.ObjectId,
+  ) {
+
+    console.log('hehehe club chap')
+
+    return await this.projectService.getAllClubProjectsWithChapterId(
       page,
       limit,
       isActive,

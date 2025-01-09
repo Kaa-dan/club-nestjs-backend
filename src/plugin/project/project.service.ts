@@ -23,6 +23,7 @@ import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
 import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
+import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 
 /**
  * Service responsible for managing all project-related operations
@@ -32,20 +33,18 @@ import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-pro
 export class ProjectService {
   constructor(
     @InjectModel(Project.name) private readonly projectModel: Model<Project>,
-    @InjectModel(ProjectAdoption.name)
-    private readonly projectAdoptionModel: Model<ProjectAdoption>,
-    @InjectModel(ClubMembers.name)
-    private readonly clubMembersModel: Model<ClubMembers>,
-    @InjectModel(NodeMembers.name)
-    private readonly nodeMembersModel: Model<NodeMembers>,
+    @InjectModel(ProjectAdoption.name) private readonly projectAdoptionModel: Model<ProjectAdoption>,
+    @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
+    @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
+    @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
     @InjectModel(ProjectFaq.name) private readonly faqModel: Model<ProjectFaq>,
-    @InjectModel(ProjectParameter.name)
-    private readonly parameterModel: Model<ProjectParameter>,
+    @InjectModel(ProjectParameter.name) private readonly parameterModel: Model<ProjectParameter>,
     @InjectModel(ProjectContribution.name)
     private readonly contributionModel: Model<ProjectContribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
     @InjectModel(ChapterProject.name) private readonly chapterProjectModel: Model<ChapterProject>,
+
   ) { }
 
   /**
@@ -1122,6 +1121,129 @@ export class ProjectService {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
+      throw new BadRequestException(
+        'Failed to get all projects. Please try again later.',
+      );
+    }
+  }
+  // async getAllClubProjectsWithChapterId(
+  //   page: number,
+  //   limit: number,
+  //   isActive: boolean,
+  //   search: string,
+  //   chapter?: Types.ObjectId,
+  // ): Promise<any> {
+  //   try {
+  //     let query: any = {};
+
+  //     if (chapter) {
+  //       query.chapter = new Types.ObjectId(chapter);
+  //     }
+
+  //     console.log('pppp', { page, limit, chapter, query });
+
+  //     const chapterProjects = await this.chapterProjectModel
+  //       .find(query)
+  //       .populate({
+  //         path: 'project',
+  //         populate: [
+  //           { path: 'node', select: 'name profileImage' },
+  //           { path: 'club', select: 'name profileImage' },
+  //           { path: 'createdBy', select: 'userName profileImage firstName lastName' }
+  //         ]
+  //       })
+  //       .populate('chapter', 'name profileImage')
+  //       .lean();
+
+  //     console.log({ chapterProjects });
+
+  //     // Transform chapter projects
+  //     const transformedChapterProjects = chapterProjects.map(cp => ({
+  //       ...cp.project,
+  //       chapter: cp.chapter,
+  //       chapterProjectId: cp._id,
+  //       createdAt: cp.createdAt
+  //     }));
+
+  //     // Calculate pagination
+  //     const total = transformedChapterProjects.length;
+  //     const startIndex = (page - 1) * limit;
+  //     const paginatedProjects = transformedChapterProjects.slice(startIndex, startIndex + limit);
+
+  //     return {
+  //       projects: paginatedProjects,
+  //       page,
+  //       limit,
+  //       total,
+  //       totalPages: Math.ceil(total / limit),
+  //     };
+  //   } catch (error) {
+  //     console.log('chap err', { error });
+  //     throw new BadRequestException(
+  //       'Failed to get all projects. Please try again later.',
+  //     );
+  //   }
+  // }
+  async getAllClubProjectsWithChapterId(
+    page: number,
+    limit: number,
+    isActive: boolean,
+    search: string,
+    chapter?: Types.ObjectId,
+  ): Promise<any> {
+    try {
+      let query: any = {};
+
+      if (chapter) {
+        query.chapter = new Types.ObjectId(chapter);
+      }
+
+      console.log('pppp', { page, limit, chapter, query });
+
+      // Get total count first using countDocuments
+      const total = await this.chapterProjectModel.countDocuments(query);
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get paginated results
+      const chapterProjects = await this.chapterProjectModel
+        .find(query)
+        .populate({
+          path: 'project',
+          populate: [
+            { path: 'node', select: 'name profileImage' },
+            { path: 'club', select: 'name profileImage' },
+            { path: 'createdBy', select: 'userName profileImage firstName lastName' }
+          ]
+        })
+        .populate('chapter', 'name profileImage')
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }) // Add sorting if needed
+        .lean();
+
+      console.log({ chapterProjects });
+
+      // Transform chapter projects
+      const transformedChapterProjects = chapterProjects.map(cp => ({
+        ...cp.project,
+        chapter: cp.chapter,
+        chapterProjectId: cp._id,
+        createdAt: cp.createdAt
+      }));
+
+      return {
+        projects: transformedChapterProjects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1
+      };
+    } catch (error) {
+      console.log('chap err', { error });
       throw new BadRequestException(
         'Failed to get all projects. Please try again later.',
       );
