@@ -1226,7 +1226,7 @@ export class ProjectService {
       console.log({ chapterProjects });
 
       // Transform chapter projects
-      const transformedChapterProjects = chapterProjects.map(cp => ({
+      const transformedChapterProjects = chapterProjects.map((cp: any) => ({
         ...cp.project,
         chapter: cp.chapter,
         chapterProjectId: cp._id,
