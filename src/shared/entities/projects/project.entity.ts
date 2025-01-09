@@ -197,6 +197,9 @@ export class Project extends Document {
 
   @Prop({ type: String, default: 'creation' })
   type: string
+
+  // CreatedAt
+  createdAt: Date;
 }
 
 //Mongoose schema

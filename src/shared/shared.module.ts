@@ -37,21 +37,23 @@ import {
   DebateArgumentSchema,
 } from './entities/debate-argument';
 import { Project, ProjectSchema } from './entities/projects/project.entity';
-import { Faq, FaqSchema } from './entities/projects/faq.enitity';
+import { ProjectFaq, ProjectFaqSchema } from './entities/projects/faq.enitity';
 import {
-  Parameter,
-  ParameterSchema,
+  ProjectParameter,
+  ProjectParameterSchema,
 } from './entities/projects/parameter.entity';
 import {
-  Contribution,
-  ContributionSchema,
+  ProjectContribution,
+  ProjectContributionSchema,
 } from './entities/projects/contribution.entity';
 import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/project-adoption.entity';
 import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
 import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
-import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
+import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
+import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
+import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
 
 @Module({
   imports: [
@@ -68,24 +70,24 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
       { name: Reports.name, schema: ReportsSchema },
       { name: ReportOffence.name, schema: ReportOffenceSchema },
       { name: Issues.name, schema: IssuesSchema },
-      {
-        name: ProposeRulesAndRegulation.name,
-        schema: ProposeRulesAndRegulationSchema,
-      },
+      { name: ProposeRulesAndRegulation.name, schema: ProposeRulesAndRegulationSchema },
       { name: Debate.name, schema: DebateSchema },
       { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
       { name: Project.name, schema: ProjectSchema },
-      { name: Faq.name, schema: FaqSchema },
-      { name: Parameter.name, schema: ParameterSchema },
-      { name: Contribution.name, schema: ContributionSchema },
+      { name: ProjectFaq.name, schema: ProjectFaqSchema },
+      { name: ProjectParameter.name, schema: ProjectParameterSchema },
+      { name: ProjectContribution.name, schema: ProjectContributionSchema },
       { name: ProjectAdoption.name, schema: ProjectAdoptionSchema },
       { name: ProjectActivities.name, schema: ProjectActivitiesSchema },
       { name: ProjectAnnouncement.name, schema: ProjectAnnouncementSchema },
+      { name: Bookmarks.name, schema: BookmarksSchema },
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
-      { name: Bookmarks.name, schema: BookmarksSchema },
+
+      { name: ChapterProject.name, schema: ChapterProjectSchema },
+      { name: ChapterRuleRegulations.name, schema: ChapterRuleRegulationsSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

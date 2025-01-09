@@ -1,22 +1,32 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
-import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
+import { ChapterMember } from 'src/shared/entities/chapters/chapter-member.entity';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { DeleteChapterDto, JoinUserChapterDto, LeaveUserChapterDto, RemoveUserChapterDto, UpdateChapterStatusDto } from './dto/chapter.dto';
 import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async } from 'rxjs';
+import { Node_ } from 'src/shared/entities/node.entity';
+import { Project } from 'src/shared/entities/projects/project.entity';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
+import { ChapterRuleRegulations } from 'src/shared/entities/chapters/modules/chapter-rule-regulations.entity';
 
 @Injectable()
 export class ChapterService {
     constructor(
         @InjectModel(Club.name) private readonly clubModel: Model<Club>,
+        @InjectModel(Node_.name) private readonly nodeModel: Model<Node_>,
         @InjectModel(ClubMembers.name) private readonly clubMembersModel: Model<ClubMembers>,
         @InjectModel(Chapter.name) private readonly chapterModel: Model<Chapter>,
         @InjectModel(ChapterMember.name) private readonly chapterMemberModel: Model<ChapterMember>,
         @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
+        @InjectModel(Project.name) private readonly ProjectModel: Model<Project>,
+        @InjectModel(ChapterProject.name) private readonly ChapterProjectModel: Model<ChapterProject>,
+        @InjectModel(RulesRegulations.name) private readonly rulesRegulationsModel: Model<RulesRegulations>,
+        @InjectModel(ChapterRuleRegulations.name) private readonly chapterRuleRegulationsModel: Model<ChapterRuleRegulations>,
         @InjectConnection() private connection: Connection,
     ) { }
 
@@ -46,6 +56,12 @@ export class ChapterService {
                 throw new NotFoundException('Club not found');
             }
 
+            const existedNode = await this.nodeModel.findById(new Types.ObjectId(node)).session(session);
+
+            if (!existedNode) {
+                throw new NotFoundException('Node not found');
+            }
+
             const existedChapter = await this.chapterModel.findOne({
                 node: new Types.ObjectId(node),
                 club: new Types.ObjectId(club)
@@ -56,12 +72,9 @@ export class ChapterService {
             }
 
             const isPrivilegedUser = ['owner', 'admin', 'moderator'].includes(userRole);
-            console.log({ isPrivilegedUser });
-            console.log({ userRole });
-
 
             const chapterData = new this.chapterModel({
-                name: existedClub.name,
+                name: `${existedClub.name} - ${existedNode.name}`,
                 about: existedClub.about,
                 description: existedClub.description,
                 profileImage: existedClub.profileImage,
@@ -111,6 +124,38 @@ export class ChapterService {
                         runValidators: true
                     }
                 );
+            }
+
+            // Copy Assets from Club to Chapter
+            // Project Assets
+
+            const clubProjects = await this.ProjectModel.find({ club: new Types.ObjectId(club), status: 'published' }).session(session);
+
+            if (clubProjects.length > 0) {
+                const chapterProjectsToInsert = clubProjects.map(project => ({
+                    chapter: chapter._id,
+                    project: project._id,
+                    status: 'published'
+                }));
+
+                await this.ChapterProjectModel.insertMany(chapterProjectsToInsert, { session });
+            }
+
+
+            // Rules and Regulations
+            const clubRulesAndRegulations = await this.rulesRegulationsModel.find({
+                club: new Types.ObjectId(club),
+                publishedStatus: 'published'
+            }).session(session);
+
+            if (clubRulesAndRegulations.length > 0) {
+                const chapterRulesAndRegulationsToInsert = clubRulesAndRegulations.map(rule => ({
+                    chapter: chapter._id,
+                    rulesRegulations: rule._id,
+                    status: 'published'
+                }))
+
+                await this.chapterRuleRegulationsModel.insertMany(chapterRulesAndRegulationsToInsert, { session });
             }
 
             await session.commitTransaction();
@@ -231,7 +276,6 @@ export class ChapterService {
                 throw new NotFoundException('Please provide node id');
             }
 
-            console.log({ nodeId, term })
             let query = { isPublic: true } as { isPublic: boolean; name?: { $regex: string; $options: string } };
             if (term) {
                 query = { isPublic: true, name: { $regex: term, $options: 'i' } }
@@ -338,10 +382,21 @@ export class ChapterService {
         try {
 
             if (updateChapterStatusDto.status === 'reject') {
-                await this.chapterModel.findByIdAndDelete(updateChapterStatusDto.chapterId, { session });
+                await this.chapterModel.findByIdAndUpdate(
+                    updateChapterStatusDto.chapterId,
+                    {
+                        status: 'rejected',
+                        rejectedBy: new Types.ObjectId(chapterUserData.userId),
+                        rejectedReason: updateChapterStatusDto.rejectedReason
+                    },
+                    { session, new: true }
+                )
+
+                await session.commitTransaction();
+
                 return {
-                    message: 'Chapter rejected',
-                    status: true
+                    message: 'Chapter rejected successfully',
+                    status: 'success'
                 }
             }
 
@@ -658,6 +713,15 @@ export class ChapterService {
         }
     }
 
+    //----------------LEAVE USER FROM CHAPTER----------------
+
+    /**
+     * Removes a user from a chapter.
+     * @param chapterUserData - An object containing the user's role and ID.
+     * @param leaveUserChapterDto - An object containing the chapter id.
+     * @returns A promise that resolves to an object containing a message and status.
+     * @throws {Error} If there was an error while removing the user from the chapter.
+     */
     async leaveUserFromChapter(chapterUserData: any, leaveUserChapterDto: LeaveUserChapterDto) {
         try {
 
@@ -671,7 +735,6 @@ export class ChapterService {
 
             if (chapterUserData.userRole !== 'admin' || chapterAdmins.length > 1) {
 
-                console.log("hell")
                 await this.chapterMemberModel.findOneAndDelete({
                     chapter: new Types.ObjectId(leaveUserChapterDto.chapter),
                     user: new Types.ObjectId(chapterUserData.userId)
@@ -719,6 +782,17 @@ export class ChapterService {
         }
     }
 
+    //----------------GET CHAPTER MEMBER STATUS----------------
+
+    /**
+     * Retrieves the status of a user in a chapter.
+     * @param userId The id of the user.
+     * @param chapterId The id of the chapter.
+     * @returns A promise that resolves to an object with the user's status and role in the chapter.
+     * The status can be 'VISITOR', 'MEMBER', 'BLOCKED', or 'PENDING'.
+     * The role can be null, 'owner', 'admin', 'moderator', or 'member'.
+     * @throws {Error} If there was an error while retrieving the user's status.
+     */
     async getChapterMemberStatus(userId: string, chapterId: string) {
         try {
             let status = 'VISITOR';
@@ -730,13 +804,162 @@ export class ChapterService {
 
             if (isMember) {
                 status = isMember.status;
-                return { status };
+                return { status, role: isMember.role };
             }
 
-            return { status };
+            return { status, role: null };
         } catch (error) {
             console.log('error getting chapter member status', error);
             throw new Error('Error getting chapter member status');
+        }
+    }
+
+    //----------------UPVOTE PROPOSED CHAPTER----------------
+
+    /**
+     * Upvotes a proposed chapter. If the user has already upvoted the chapter, 
+     * their upvote is removed. If the user has downvoted the chapter, the downvote 
+     * is also removed upon upvoting.
+     * 
+     * @param chapterId - The ID of the chapter to upvote.
+     * @param userId - The ID of the user performing the upvote.
+     * @returns A promise that resolves to the updated chapter document.
+     * @throws {NotFoundException} If the chapter ID is not provided or if no proposed chapter is found.
+     * @throws {Error} If there is an error while upvoting the chapter.
+     */
+    async upvoteProposedChapter(chapterId: string, userId: string) {
+        try {
+            if (!chapterId) {
+                throw new NotFoundException('Chapter id is required');
+            }
+
+            const existedChapter = await this.chapterModel.findOne({
+                _id: new Types.ObjectId(chapterId),
+                status: 'proposed'
+            });
+
+            if (!existedChapter) {
+                throw new NotFoundException('No proposed chapter found');
+            }
+
+            const alreadyUpvote = existedChapter.upvotes.some((upvote) =>
+                upvote.user.equals(new Types.ObjectId(userId))
+            )
+
+            if (alreadyUpvote) {
+                return await this.chapterModel.findByIdAndUpdate(
+                    new Types.ObjectId(chapterId),
+                    { $pull: { upvotes: { user: new Types.ObjectId(userId) } } },
+                    { new: true }
+                )
+            }
+
+            return await this.chapterModel.findByIdAndUpdate(
+                new Types.ObjectId(chapterId),
+                {
+                    $addToSet: { upvotes: { user: new Types.ObjectId(userId), date: new Date() } },
+                    $pull: { downvotes: { user: new Types.ObjectId(userId) } }
+                },
+                { new: true }
+            );
+
+        } catch (error) {
+            console.log('error upvoting chapter', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error upvoting chapter');
+        }
+    }
+
+    //----------------DOWNVOTE PROPOSED CHAPTER----------------
+
+    /**
+     * Downvotes a proposed chapter. If the user has already downvoted the chapter,
+     * their downvote is removed. If the user has upvoted the chapter, the upvote
+     * is also removed upon downvoting.
+     *
+     * @param chapterId - The ID of the chapter to downvote.
+     * @param userId - The ID of the user performing the downvote.
+     * @returns A promise that resolves to the updated chapter document.
+     * @throws {NotFoundException} If the chapter ID is not provided or if no proposed chapter is found.
+     * @throws {Error} If there is an error while downvoting the chapter.
+     */
+    async downvoteProposedChapter(chapterId: string, userId: string) {
+        try {
+
+            if (!chapterId) {
+                throw new NotFoundException('Chapter id is required');
+            }
+
+            const existedChapter = await this.chapterModel.findOne({
+                _id: new Types.ObjectId(chapterId),
+                status: 'proposed'
+            });
+
+            if (!existedChapter) {
+                throw new NotFoundException('No proposed chapter found');
+            }
+
+            const alreadyDownvote = existedChapter.downvotes.some((downvote) =>
+                downvote.user.equals(new Types.ObjectId(userId))
+            )
+
+            if (alreadyDownvote) {
+                return await this.chapterModel.findByIdAndUpdate(
+                    new Types.ObjectId(chapterId),
+                    { $pull: { downvotes: { user: new Types.ObjectId(userId) } } },
+                    { new: true }
+                )
+            }
+
+            return await this.chapterModel.findByIdAndUpdate(
+                new Types.ObjectId(chapterId),
+                {
+                    $addToSet: { downvotes: { user: new Types.ObjectId(userId), date: new Date() } },
+                    $pull: { upvotes: { user: new Types.ObjectId(userId) } }
+                },
+                { new: true }
+            )
+
+        } catch (error) {
+            console.log('error downvoting chapter', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error downvoting chapter');
+        }
+    }
+
+    //----------------GET REJECTED CHAPTERS----------------
+
+    /**
+     * Retrieves all rejected chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of rejected chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving chapters
+     */
+    async getRejectedChaptersOfNode(nodeId: Types.ObjectId) {
+        try {
+
+            if (!nodeId) {
+                throw new NotFoundException('Node id is required');
+            }
+
+            const nodeRejectedChapters = await this.chapterModel
+                .find({
+                    node: nodeId,
+                    status: 'rejected',
+                    isDeleted: false,
+                })
+                .populate({
+                    path: 'rejectedBy',
+                    select: '-password -isBlocked -emailVerified -registered -signupThrough -isOnBoarded -onBoardingStage -__v'
+                })
+
+            return nodeRejectedChapters;
+
+        } catch (error) {
+            console.log('error getting rejected chapters of node', error);
+            if (error instanceof NotFoundException) throw error
+            throw new Error('Error getting rejected chapters of node');
         }
     }
 }

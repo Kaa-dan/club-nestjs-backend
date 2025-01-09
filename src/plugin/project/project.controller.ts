@@ -84,6 +84,7 @@ export class ProjectController {
     // Extract files from request
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
+    console.log({ documentFiles, bannerImage })
     return await this.projectService.create(
       createProjectDto,
       req.user._id,
@@ -231,8 +232,8 @@ export class ProjectController {
     @Query('search') search: string,
     @Query('node') node?: Types.ObjectId,
     @Query('club') club?: Types.ObjectId,
+    @Query('chapter') chapter?: Types.ObjectId,
   ) {
-    console.log({ search })
 
     return await this.projectService.getAllProjects(
       status,
@@ -241,9 +242,50 @@ export class ProjectController {
       isActive,
       search,
       node,
-      club,
+      club
     );
   }
+
+  @Get('chapter-all-projects')
+  async getChapterAllProjects(
+    @Query('status') status: 'published' | 'proposed',
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('isActive', new ParseBoolPipe()) isActive: boolean,
+    @Query('search') search: string,
+    @Query('chapter') chapter?: Types.ObjectId,
+  ) {
+
+    return await this.projectService.getChapterAllProjects(
+      status,
+      page,
+      limit,
+      isActive,
+      search,
+      chapter
+    );
+  }
+
+  @Get('chapter-all-club-projects')
+  async getAllClubProjectsWithChapterId(
+    @Query('page', new ParseIntPipe()) page: number,
+    @Query('limit', new ParseIntPipe()) limit: number,
+    @Query('isActive', new ParseBoolPipe()) isActive: boolean,
+    @Query('search') search: string,
+    @Query('chapter') chapter?: Types.ObjectId,
+  ) {
+
+    console.log('hehehe club chap')
+
+    return await this.projectService.getAllClubProjectsWithChapterId(
+      page,
+      limit,
+      isActive,
+      search,
+      chapter
+    );
+  }
+
   @Get('my-projects')
   async getMyProjects(
     @Req() req: Request,

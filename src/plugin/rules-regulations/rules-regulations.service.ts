@@ -18,6 +18,7 @@ import { Node_ } from 'src/shared/entities/node.entity';
 import { ProposeRulesAndRegulation } from 'src/shared/entities/propose-rulesAndRegulations';
 import { type } from 'node:os';
 import { async } from 'rxjs';
+import { ChapterRuleRegulations } from 'src/shared/entities/chapters/modules/chapter-rule-regulations.entity';
 
 interface FileObject {
   buffer: Buffer;
@@ -46,6 +47,8 @@ export class RulesRegulationsService {
     private readonly reportOffenceModel: Model<ReportOffence>,
     @InjectModel(ProposeRulesAndRegulation.name)
     private readonly ProposeRulesAndRegulationModel: Model<ProposeRulesAndRegulation>,
+    @InjectModel(ChapterRuleRegulations.name)
+    private readonly chapterRuleRegulationsModel: Model<ChapterRuleRegulations>,
   ) { }
 
   /*
@@ -1145,6 +1148,45 @@ export class RulesRegulationsService {
       };
     } catch (error) {
       throw new BadRequestException('something went wrong');
+    }
+  }
+
+  async getChapterAllClubRules(chapterId: string) {
+    try {
+      if (!chapterId) {
+        throw new BadRequestException('chapter id is required');
+      }
+
+      const rulesByChapter = await this.ProposeRulesAndRegulationModel.aggregate([
+        {
+          $match: {
+            chapter: new Types.ObjectId(chapterId)
+          }
+        },
+        {
+          $lookup: {
+            from: 'rulesregulations',
+            localField: 'rulesRegulation',
+            foreignField: '_id',
+            as: 'rule'
+          }
+        },
+        {
+          $unwind: '$rule'
+        },
+        {
+          $replaceRoot: {
+            newRoot: '$rule'
+          }
+        }
+      ]);
+
+      return rulesByChapter;
+
+    } catch (error) {
+      console.log('error in get chapter all club rules', error);
+      if (error instanceof BadRequestException) throw error
+      throw new Error('something went wrong');
     }
   }
 

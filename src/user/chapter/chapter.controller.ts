@@ -69,7 +69,6 @@ export class ChapterController {
 
     @Get('get-public-clubs')
     async getPublicClubs(@Req() req: Request, @Query('nodeId') node: string, @Query('term') term: string) {
-        console.log({ node, term });
         const nodeId = new Types.ObjectId(node);
         return await this.chapterService.getPublicClubs(nodeId, term);
     }
@@ -80,6 +79,14 @@ export class ChapterController {
     async getProposedChaptersOfNode(@Req() req: Request, @Query('nodeId') node: string) {
         const nodeId = new Types.ObjectId(node);
         return await this.chapterService.getProposedChaptersOfNode(nodeId);
+    }
+
+    //----------------GET REJECTED CHAPTERS----------------
+
+    @Get('get-rejected')
+    async getRejectedChaptersOfNode(@Req() req: Request, @Query('nodeId') node: string) {
+        const nodeId = new Types.ObjectId(node);
+        return await this.chapterService.getRejectedChaptersOfNode(nodeId);
     }
 
     //----------------UPDATE CHAPTER STATUS REJECTED OR PUBLISHED----------------
@@ -154,6 +161,7 @@ export class ChapterController {
     }
 
     //----------------LEAVE USER FROM CHAPTER----------------
+
     @Roles('owner', 'admin', 'moderator', 'member')
     @UseGuards(ChapterRoleGuard)
     @Put('leave-user')
@@ -176,6 +184,20 @@ export class ChapterController {
         }
 
         return await this.chapterService.leaveUserFromChapter(chapterUserData, leaveUserChapterDto);
+    }
+
+    //----------------UPVOTE PROPOSED CHAPTER----------------
+
+    @Put('upvote-proposed')
+    async upvoteProposedChapter(@Req() req: Request, @Body('chapter') chapterId: string) {
+        return await this.chapterService.upvoteProposedChapter(chapterId, req.user._id);
+    }
+
+    //----------------DOWNVOTE PROPOSED CHAPTER----------------
+
+    @Put('downvote-proposed')
+    async downvoteProposedChapter(@Req() req: Request, @Body('chapter') chapterId: string) {
+        return await this.chapterService.downvoteProposedChapter(chapterId, req.user._id);
     }
 
     //----------------GET CHAPTER MEMBER STATUS----------------
