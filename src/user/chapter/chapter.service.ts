@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
-import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
+import { ChapterMember } from 'src/shared/entities/chapters/chapter-member.entity';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -10,7 +10,9 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { async } from 'rxjs';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
-import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects.entity';
+import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
+import { ChapterRuleRegulations } from 'src/shared/entities/chapters/modules/chapter-rule-regulations.entity';
 
 @Injectable()
 export class ChapterService {
@@ -23,6 +25,8 @@ export class ChapterService {
         @InjectModel(NodeMembers.name) private readonly nodeMembersModel: Model<NodeMembers>,
         @InjectModel(Project.name) private readonly ProjectModel: Model<Project>,
         @InjectModel(ChapterProject.name) private readonly ChapterProjectModel: Model<ChapterProject>,
+        @InjectModel(RulesRegulations.name) private readonly rulesRegulationsModel: Model<RulesRegulations>,
+        @InjectModel(ChapterRuleRegulations.name) private readonly chapterRuleRegulationsModel: Model<ChapterRuleRegulations>,
         @InjectConnection() private connection: Connection,
     ) { }
 
@@ -135,6 +139,23 @@ export class ChapterService {
                 }));
 
                 await this.ChapterProjectModel.insertMany(chapterProjectsToInsert, { session });
+            }
+
+
+            // Rules and Regulations
+            const clubRulesAndRegulations = await this.rulesRegulationsModel.find({
+                club: new Types.ObjectId(club),
+                publishedStatus: 'published'
+            }).session(session);
+
+            if (clubRulesAndRegulations.length > 0) {
+                const chapterRulesAndRegulationsToInsert = clubRulesAndRegulations.map(rule => ({
+                    chapter: chapter._id,
+                    rulesRegulations: rule._id,
+                    status: 'published'
+                }))
+
+                await this.chapterRuleRegulationsModel.insertMany(chapterRulesAndRegulationsToInsert, { session });
             }
 
             await session.commitTransaction();

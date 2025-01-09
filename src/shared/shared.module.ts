@@ -50,9 +50,10 @@ import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/proj
 import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
 import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
-import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
+import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
-import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects';
+import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
+import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
 
 @Module({
   imports: [
@@ -85,7 +86,8 @@ import { ChapterProject, ChapterProjectSchema } from './entities/chapters/module
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
 
-      { name: ChapterProject.name, schema: ChapterProjectSchema }
+      { name: ChapterProject.name, schema: ChapterProjectSchema },
+      { name: ChapterRuleRegulations.name, schema: ChapterRuleRegulationsSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

@@ -22,7 +22,7 @@ import { ProjectContribution } from 'src/shared/entities/projects/contribution.e
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
-import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects.entity';
 
 /**
  * Service responsible for managing all project-related operations
