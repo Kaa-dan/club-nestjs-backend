@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -16,6 +17,8 @@ import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { title } from 'process';
 import { CreateSolutionDto } from './dto/create-solution.dto';
+
+
 
 interface FileObject {
   buffer: Buffer;
@@ -911,12 +914,57 @@ export class IssuesService {
   }
 
 
+
   async createSolution(userId: Types.ObjectId, createSolutionDto: CreateSolutionDto) {
     try {
-      console.log({ userId, createSolutionDto })
-      // const isAdminOrModerator = await this.clubMembersModel.findOne({ _id: new Types.ObjectId(userId) })
-    } catch (error) {
+      console.log({ userId, createSolutionDto });
+      let isAdminOrModerator = null;
 
+      // checking the user is admin or moderator
+      if (createSolutionDto.forum === "node") {
+        isAdminOrModerator = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+          node: createSolutionDto.forumId,
+          role: { $in: ['admin', 'moderator'] }
+        });
+      } else if (createSolutionDto.forum === 'club') {
+        isAdminOrModerator = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+          club: createSolutionDto.forumId,
+          role: { $in: ['admin', 'moderator'] }
+        });
+      } else {
+        throw new BadRequestException('forum is required');
+      }
+
+      if (!isAdminOrModerator) {
+        throw new UnauthorizedException('Only admins and moderators can mark solutions');
+      }
+
+      const createdSolution = await this.issuesModel.findByIdAndUpdate(
+        new Types.ObjectId(createSolutionDto.postId),
+        {
+          $push: {
+            solutions: {
+              comment: new Types.ObjectId(createSolutionDto.commentId),
+              creator: userId,
+              date: new Date()
+            }
+          }
+        },
+        { new: true }
+      );
+
+      if (!createdSolution) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      return { data: createdSolution, message: 'solution created', success: true };
+    } catch (error) {
+      console.log({ error })
+      throw new BadRequestException(error);
     }
   }
 }

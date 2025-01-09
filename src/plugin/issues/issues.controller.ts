@@ -272,7 +272,7 @@ export class IssuesController {
     );
   }
 
-  @Post('create-solution/:commentId/:forumId')
+  @Post('create-solution')
   async createSolution(@Body() createSolution: CreateSolutionDto, @Req() { user }) {
     return await this.issuesService.createSolution(user._id, createSolution)
   }
