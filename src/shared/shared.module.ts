@@ -51,7 +51,6 @@ import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/
 import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
-import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
 import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
 import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
