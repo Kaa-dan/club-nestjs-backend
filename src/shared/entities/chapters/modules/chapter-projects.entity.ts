@@ -21,7 +21,7 @@ export class ChapterProject {
     project: Types.ObjectId
 
     // CreatedAt
-    createdAt: Date
+    // createdAt: Date
 }
 
 export const ChapterProjectSchema = SchemaFactory.createForClass(ChapterProject)

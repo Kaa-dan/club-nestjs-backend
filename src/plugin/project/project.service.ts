@@ -1102,7 +1102,7 @@ export class ProjectService {
         ...cp.project,
         chapter: cp.chapter,
         chapterProjectId: cp._id,
-        createdAt: cp.createdAt
+        createdAt: (cp as any).createdAt
       }));
 
       // Merge and sort
