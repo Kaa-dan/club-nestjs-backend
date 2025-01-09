@@ -84,6 +84,7 @@ export class ProjectController {
     // Extract files from request
     const documentFiles = files.file || [];
     const bannerImage = files.bannerImage?.[0] || null;
+    console.log({ documentFiles, bannerImage })
     return await this.projectService.create(
       createProjectDto,
       req.user._id,

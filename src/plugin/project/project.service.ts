@@ -65,6 +65,8 @@ export class ProjectService {
     documentFiles: Express.Multer.File[],
     bannerImage: Express.Multer.File | null,
   ) {
+    console.log({ createProjectDto, userId, documentFiles, bannerImage })
+
     const session = await this.connection.startSession();
     session.startTransaction();
 
@@ -161,6 +163,7 @@ export class ProjectService {
           throw new Error('You are not a member of this group');
         }
       }
+      console.log({ membership })
 
       // Set project status based on user's role
       const projectData = {
@@ -216,7 +219,7 @@ export class ProjectService {
 
       // Commit all changes
       await session.commitTransaction();
-
+      console.log({ savedProject })
       return savedProject;
     } catch (error) {
       // Rollback all changes if any operation fails
@@ -852,6 +855,7 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
+    console.log({ status, page, limit, search, node, club })
 
     try {
       const query: any = {
@@ -859,8 +863,6 @@ export class ProjectService {
         // active: isActive,
       };
 
-      if (node) query.node = node;
-      else if (club) query.club = club;
 
       if (search) {
         query.$or = [
@@ -872,27 +874,169 @@ export class ProjectService {
 
       const total = await this.projectModel.countDocuments(query);
 
-      const projects = await this.projectModel
-        .find(query)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .populate('node', 'name profileImage')
-        .populate('club', 'name profileImage')
-        .populate('createdBy', 'userName profileImage firstName lastName');
 
       if (node) query.node = new Types.ObjectId(node);
       else query.club = new Types.ObjectId(club);
+      console.log({ query })
 
-      const adoptedProjects = await this.projectAdoptionModel
-        .find(query)
-        .populate('node', 'name profileImage')
-        .populate('club', 'name profileImage')
-        .populate('proposedBy', 'userName profileImage firstName lastName')
-        .populate(
-          'project',
-          '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
-        );
+      const projects = await this.projectModel.aggregate([
+        { $match: query },
+        { $sort: { createdAt: -1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: 'projectadoptions',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'adoptions'
+          }
+        },
+        {
+          $addFields: {
+            adoptionCount: { $size: '$adoptions' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'node'
+          }
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'club'
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'createdBy'
+          }
+        },
+        {
+          $unwind: {
+            path: '$node',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$club',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$createdBy',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            'node.name': 1,
+            'node.profileImage': 1,
+            'club.name': 1,
+            'club.profileImage': 1,
+            'createdBy.userName': 1,
+            'createdBy.profileImage': 1,
+            'createdBy.firstName': 1,
+            'createdBy.lastName': 1,
+            adoptionCount: 1,
+            title: 1,
+            region: 1,
+            significance: 1,
+            solution: 1,
+            status: 1,
+            createdAt: 1
+          }
+        }
+      ]);
+
+      const adoptedProjects = await this.projectAdoptionModel.aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'node'
+          }
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'club'
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'proposedBy',
+            foreignField: '_id',
+            as: 'proposedBy'
+          }
+        },
+        {
+          $lookup: {
+            from: 'projects',
+            localField: 'project',
+            foreignField: '_id',
+            as: 'project'
+          }
+        },
+        {
+          $unwind: {
+            path: '$node',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$club',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$proposedBy',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: '$project'
+        },
+        {
+          $project: {
+            'node.name': 1,
+            'node.profileImage': 1,
+            'club.name': 1,
+            'club.profileImage': 1,
+            'proposedBy.userName': 1,
+            'proposedBy.profileImage': 1,
+            'proposedBy.firstName': 1,
+            'proposedBy.lastName': 1,
+            'project.title': 1,
+            'project.region': 1,
+            'project.significance': 1,
+            'project.solution': 1,
+            status: 1,
+            message: 1
+          }
+        }
+      ]);
+
+
+      console.log({ adoptedProjects, projects });
 
       return {
         projects,
