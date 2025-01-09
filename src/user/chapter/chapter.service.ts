@@ -713,6 +713,8 @@ export class ChapterService {
         }
     }
 
+    //----------------LEAVE USER FROM CHAPTER----------------
+
     /**
      * Removes a user from a chapter.
      * @param chapterUserData - An object containing the user's role and ID.
@@ -780,6 +782,8 @@ export class ChapterService {
         }
     }
 
+    //----------------GET CHAPTER MEMBER STATUS----------------
+
     /**
      * Retrieves the status of a user in a chapter.
      * @param userId The id of the user.
@@ -809,6 +813,8 @@ export class ChapterService {
             throw new Error('Error getting chapter member status');
         }
     }
+
+    //----------------UPVOTE PROPOSED CHAPTER----------------
 
     /**
      * Upvotes a proposed chapter. If the user has already upvoted the chapter, 
@@ -863,6 +869,8 @@ export class ChapterService {
             throw new Error('Error upvoting chapter');
         }
     }
+
+    //----------------DOWNVOTE PROPOSED CHAPTER----------------
 
     /**
      * Downvotes a proposed chapter. If the user has already downvoted the chapter,
@@ -919,6 +927,15 @@ export class ChapterService {
         }
     }
 
+    //----------------GET REJECTED CHAPTERS----------------
+
+    /**
+     * Retrieves all rejected chapters in a given node
+     * @param nodeId The ID of the node to retrieve chapters from
+     * @returns An array of rejected chapters in the node
+     * @throws {NotFoundException} If the node ID is not provided
+     * @throws {Error} If there is an error while retrieving chapters
+     */
     async getRejectedChaptersOfNode(nodeId: Types.ObjectId) {
         try {
 
