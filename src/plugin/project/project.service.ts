@@ -22,6 +22,7 @@ import { ProjectContribution } from 'src/shared/entities/projects/contribution.e
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
 
 /**
  * Service responsible for managing all project-related operations
@@ -44,6 +45,7 @@ export class ProjectService {
     private readonly contributionModel: Model<ProjectContribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
+    @InjectModel(ChapterProject.name) private readonly chapterProjectModel: Model<ChapterProject>,
   ) { }
 
   /**
@@ -850,8 +852,6 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
-    // console.log({ status });
-    // console.log({ node, club });
 
     try {
       const query: any = {
@@ -893,11 +893,85 @@ export class ProjectService {
           'project',
           '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
         );
-      console.log({ adoptedProjects });
 
       return {
         projects,
         adoptedProjects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get all projects. Please try again later.',
+      );
+    }
+  }
+
+  async getChapterAllProjects(
+    status: 'proposed' | 'published',
+    page: number,
+    limit: number,
+    isActive: boolean,
+    search: string,
+    chapter?: Types.ObjectId,
+  ): Promise<any> {
+    try {
+      const query: any = { status };
+
+      if (chapter) query.chapter = new Types.ObjectId(chapter);
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { region: { $regex: search, $options: 'i' } },
+          { significance: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      // Get direct projects
+      const projects = await this.projectModel
+        .find()
+        .sort({ createdAt: -1 })
+        .populate('node', 'name profileImage')
+        .populate('club', 'name profileImage')
+        .populate('createdBy', 'userName profileImage firstName lastName')
+        .lean(); // Use lean() to get plain JavaScript objects
+
+      // Get chapter projects
+      const chapterProjects = await this.chapterProjectModel
+        .find(query)
+        .populate({
+          path: 'project',
+          populate: [
+            { path: 'node', select: 'name profileImage' },
+            { path: 'club', select: 'name profileImage' },
+            { path: 'createdBy', select: 'userName profileImage firstName lastName' }
+          ]
+        })
+        .populate('chapter', 'name profileImage')
+        .lean(); // Use lean() to get plain JavaScript objects
+
+      // Transform chapter projects
+      const transformedChapterProjects = chapterProjects.map(cp => ({
+        ...cp.project,
+        chapter: cp.chapter,
+        chapterProjectId: cp._id,
+        createdAt: cp.createdAt
+      }));
+
+      // Merge and sort
+      const allProjects = [...projects, ...transformedChapterProjects]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // Calculate pagination
+      const total = allProjects.length;
+      const startIndex = (page - 1) * limit;
+      const paginatedProjects = allProjects.slice(startIndex, startIndex + limit);
+
+      return {
+        projects: paginatedProjects,
         page,
         limit,
         total,
