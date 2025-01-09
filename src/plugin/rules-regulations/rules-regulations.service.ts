@@ -1144,7 +1144,7 @@ export class RulesRegulationsService {
       return {
         data: { clubResponse, nodeResponse },
         status: true,
-        message: 'club fetched sucessfully',
+        message: 'club fetched successfully',
       };
     } catch (error) {
       throw new BadRequestException('something went wrong');
