@@ -12,7 +12,9 @@ import {
   UseGuards,
   UseInterceptors,
   ValidationPipe,
+
 } from '@nestjs/common';
+
 import { IssuesService } from './issues.service';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { CreateIssuesDto } from './dto/create-issue.dto';
@@ -21,6 +23,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { Issues } from 'src/shared/entities/issues.entity';
+import { CreateSolutionDto } from './dto/create-solution.dto';
 
 @Controller('issues')
 export class IssuesController {
@@ -269,8 +272,8 @@ export class IssuesController {
     );
   }
 
-  @Post('create-solution')
-  async createSolution() {
-    return await this.issuesService.createSolution()
+  @Post('create-solution/:commentId/:forumId')
+  async createSolution(@Body() createSolution: CreateSolutionDto, @Req() { user }) {
+    return await this.issuesService.createSolution(user._id, createSolution)
   }
 }

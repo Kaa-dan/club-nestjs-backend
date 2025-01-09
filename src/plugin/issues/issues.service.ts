@@ -15,6 +15,7 @@ import { async, publish } from 'rxjs';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { title } from 'process';
+import { CreateSolutionDto } from './dto/create-solution.dto';
 
 interface FileObject {
   buffer: Buffer;
@@ -910,9 +911,10 @@ export class IssuesService {
   }
 
 
-  async createSolution() {
+  async createSolution(userId: Types.ObjectId, createSolutionDto: CreateSolutionDto) {
     try {
-
+      console.log({ userId, createSolutionDto })
+      // const isAdminOrModerator = await this.clubMembersModel.findOne({ _id: new Types.ObjectId(userId) })
     } catch (error) {
 
     }
