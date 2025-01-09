@@ -22,7 +22,7 @@ import { ProjectContribution } from 'src/shared/entities/projects/contribution.e
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
-import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects.entity';
 import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 
 /**
@@ -1101,7 +1101,7 @@ export class ProjectService {
         ...cp.project,
         chapter: cp.chapter,
         chapterProjectId: cp._id,
-        createdAt: cp.createdAt
+        createdAt: (cp as any).createdAt
       }));
 
       // Merge and sort
