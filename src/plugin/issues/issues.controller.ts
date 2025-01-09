@@ -268,4 +268,9 @@ export class IssuesController {
       new Types.ObjectId(issueId),
     );
   }
+
+  @Post('create-solution')
+  async createSolution() {
+    return await this.issuesService.createSolution()
+  }
 }

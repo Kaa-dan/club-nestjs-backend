@@ -908,4 +908,13 @@ export class IssuesService {
       );
     }
   }
+
+
+  async createSolution() {
+    try {
+
+    } catch (error) {
+
+    }
+  }
 }
