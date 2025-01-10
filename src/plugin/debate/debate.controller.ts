@@ -353,7 +353,7 @@ export class DebateController {
   }
 
 
-  @Put('accept/:debateId')
+  @Put('accept/:debateId/:type')
   async acceptDebate(@Req() req: Request, @Param('debateId') debateId: string, @Param('type') type: string) {
     return this.debateService.acceptDebate(debateId, type, req.user._id);
   }
