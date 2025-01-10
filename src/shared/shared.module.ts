@@ -50,10 +50,12 @@ import { ProjectAdoption, ProjectAdoptionSchema } from './entities/projects/proj
 import { ProjectActivities, ProjectActivitiesSchema } from './entities/projects/project-activities.entity';
 import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/projects/project-announcement.entity';
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
-import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
+import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
-import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects';
+
 import { IssuesAdoption, IssuesAdoptionSchema } from './entities/issues/issues-adoption.entity';
+import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
+import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
 
 @Module({
   imports: [
@@ -86,7 +88,9 @@ import { IssuesAdoption, IssuesAdoptionSchema } from './entities/issues/issues-a
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
       { name: IssuesAdoption.name, schema: IssuesAdoptionSchema },
-      { name: ChapterProject.name, schema: ChapterProjectSchema }
+      { name: ChapterProject.name, schema: ChapterProjectSchema },
+
+      { name: ChapterRuleRegulations.name, schema: ChapterRuleRegulationsSchema },
     ]),
     forwardRef(() => SearchModule),
   ],

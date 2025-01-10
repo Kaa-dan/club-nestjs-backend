@@ -726,4 +726,9 @@ export class RulesRegulationsController {
       req.user._id,
     );
   }
+
+  @Get('chapter-all-club-rules')
+  async getChapterAllClubRules(@Req() req: Request, @Query('chapter') chapterId: string) {
+    return this.rulesRegulationsService.getChapterAllClubRules(chapterId);
+  }
 }
