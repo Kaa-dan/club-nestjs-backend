@@ -7,7 +7,7 @@ import {
   IsString,
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { IRelevantAndView } from 'src/shared/entities/issues.entity';
+import { IRelevantAndView } from 'src/shared/entities/issues/issues.entity';
 import { CreateIssuesDto } from './create-issue.dto';
 
 export class UpdateIssuesDto extends CreateIssuesDto {

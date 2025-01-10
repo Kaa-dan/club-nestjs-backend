@@ -2,11 +2,13 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotAcceptableException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Model, PipelineStage, Types } from 'mongoose';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateIssuesDto } from './dto/create-issue.dto';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -15,6 +17,10 @@ import { async, publish } from 'rxjs';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { title } from 'process';
+import { CreateSolutionDto } from './dto/create-solution.dto';
+import { IssuesAdoption } from 'src/shared/entities/issues/issues-adoption.entity';
+
+
 
 interface FileObject {
   buffer: Buffer;
@@ -37,6 +43,7 @@ export class IssuesService {
     private readonly nodeModel: Model<Node_>,
     @InjectModel(Club.name)
     private readonly clubModel: Model<Club>,
+    @InjectModel(IssuesAdoption.name) private readonly issueAdoptionModel: Model<IssuesAdoption>
   ) { }
 
   /**
@@ -241,6 +248,258 @@ export class IssuesService {
   }
 
 
+  // async getAllIssues(
+  //   entity: 'node' | 'club',
+  //   entityId: Types.ObjectId,
+  //   page: number = 1,
+  //   limit: number = 10
+  // ) {
+  //   try {
+  //     const validPage = Math.max(1, page);
+  //     const validLimit = Math.max(1, limit);
+  //     const skip = (validPage - 1) * validLimit;
+
+  //     // Get issues through aggregation pipeline
+  //     const aggregationPipeline = [
+  //       // First get all direct issues
+  //       {
+  //         $facet: {
+  //           // Pipeline for direct issues
+  //           directIssues: [
+  //             {
+  //               $match: {
+  //                 [entity]: entityId,
+  //                 isDeleted: { $ne: true }
+  //               }
+  //             },
+  //             {
+  //               $addFields: {
+  //                 isAdopted: false,
+  //                 adoptionStatus: null,
+  //                 adoptionMessage: null,
+  //                 proposedBy: null,
+  //                 acceptedBy: null,
+  //                 adoptionId: null
+  //               }
+  //             },
+  //             {
+  //               $lookup: {
+  //                 from: 'users',
+  //                 localField: 'createdBy',
+  //                 foreignField: '_id',
+  //                 as: 'createdBy'
+  //               }
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: '$createdBy',
+  //                 preserveNullAndEmptyArrays: true
+  //               }
+  //             },
+  //             {
+  //               $project: {
+  //                 'createdBy.password': 0
+  //               }
+  //             }
+  //           ],
+  //           // Pipeline for adopted issues
+  //           adoptedIssues: [
+  //             {
+  //               $lookup: {
+  //                 from: 'issuesadoptions',
+  //                 let: { issueId: '$_id' },
+  //                 pipeline: [
+  //                   {
+  //                     $match: {
+  //                       $expr: {
+  //                         $and: [
+  //                           { $eq: [`$${entity}`, entityId] },
+  //                           { $ne: ['$status', 'rejected'] }
+  //                         ]
+  //                       }
+  //                     }
+  //                   }
+  //                 ],
+  //                 as: 'adoption'
+  //               }
+  //             },
+  //             {
+  //               $unwind: '$adoption'
+  //             },
+  //             {
+  //               $lookup: {
+  //                 from: 'users',
+  //                 localField: 'createdBy',
+  //                 foreignField: '_id',
+  //                 as: 'createdBy'
+  //               }
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: '$createdBy',
+  //                 preserveNullAndEmptyArrays: true
+  //               }
+  //             },
+  //             {
+  //               $lookup: {
+  //                 from: 'users',
+  //                 localField: 'adoption.proposedBy',
+  //                 foreignField: '_id',
+  //                 as: 'proposedBy'
+  //               }
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: '$proposedBy',
+  //                 preserveNullAndEmptyArrays: true
+  //               }
+  //             },
+  //             {
+  //               $lookup: {
+  //                 from: 'users',
+  //                 localField: 'adoption.acceptedBy',
+  //                 foreignField: '_id',
+  //                 as: 'acceptedBy'
+  //               }
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: '$acceptedBy',
+  //                 preserveNullAndEmptyArrays: true
+  //               }
+  //             },
+  //             {
+  //               $addFields: {
+  //                 isAdopted: true,
+  //                 adoptionStatus: '$adoption.status',
+  //                 adoptionMessage: '$adoption.message',
+  //                 adoptionId: '$adoption._id'
+  //               }
+  //             },
+  //             {
+  //               $project: {
+  //                 'createdBy.password': 0,
+  //                 'proposedBy.password': 0,
+  //                 'acceptedBy.password': 0,
+  //                 adoption: 0
+  //               }
+  //             }
+  //           ]
+  //         }
+  //       },
+  //       // Combine both results
+  //       {
+  //         $project: {
+  //           allIssues: {
+  //             $concatArrays: ['$directIssues', '$adoptedIssues']
+  //           }
+  //         }
+  //       },
+  //       // Unwind the combined array
+  //       {
+  //         $unwind: '$allIssues'
+  //       },
+  //       // Sort by creation date
+  //       {
+  //         $sort: { 'allIssues.createdAt': -1 }
+  //       },
+  //       // Skip for pagination
+  //       {
+  //         $skip: skip
+  //       },
+  //       // Limit results
+  //       {
+  //         $limit: validLimit
+  //       },
+  //       // Group all results
+  //       {
+  //         $group: {
+  //           _id: null,
+  //           issues: { $push: '$allIssues' }
+  //         }
+  //       }
+  //     ];
+
+  //     // Get total count for pagination
+  //     const countPipeline = [
+  //       {
+  //         $facet: {
+  //           directCount: [
+  //             {
+  //               $match: {
+  //                 [entity]: entityId,
+  //                 isDeleted: { $ne: true }
+  //               }
+  //             },
+  //             {
+  //               $count: 'count'
+  //             }
+  //           ],
+  //           adoptedCount: [
+  //             {
+  //               $lookup: {
+  //                 from: 'issuesadoptions',
+  //                 pipeline: [
+  //                   {
+  //                     $match: {
+  //                       [entity]: entityId,
+  //                       status: { $ne: 'rejected' }
+  //                     }
+  //                   },
+  //                   {
+  //                     $count: 'count'
+  //                   }
+  //                 ],
+  //                 as: 'adoptedCount'
+  //               }
+  //             },
+  //             {
+  //               $unwind: {
+  //                 path: '$adoptedCount',
+  //                 preserveNullAndEmptyArrays: true
+  //               }
+  //             },
+  //             {
+  //               $group: {
+  //                 _id: null,
+  //                 count: { $sum: '$adoptedCount.count' }
+  //               }
+  //             }
+  //           ]
+  //         }
+  //       }
+  //     ];
+
+  //     // Execute both pipelines
+  //     const [results, countResults] = await Promise.all([
+  //       this.issuesModel.aggregate(aggregationPipeline).exec(),
+  //       this.issuesModel.aggregate(countPipeline).exec()
+  //     ]);
+
+  //     // Calculate total count
+  //     const directCount = countResults[0].directCount[0]?.count || 0;
+  //     const adoptedCount = countResults[0].adoptedCount[0]?.count || 0;
+  //     const totalCount = directCount + adoptedCount;
+  //     const totalPages = Math.ceil(totalCount / validLimit);
+
+  //     return {
+  //       issues: results[0]?.issues || [],
+  //       pagination: {
+  //         currentPage: validPage,
+  //         totalPages,
+  //         totalItems: totalCount,
+  //         itemsPerPage: validLimit,
+  //         hasNextPage: validPage < totalPages,
+  //         hasPreviousPage: validPage > 1
+  //       }
+  //     };
+  //   } catch (error) {
+  //     throw new InternalServerErrorException(
+  //       'Error while getting issues and adoptions',
+  //       error,
+  //     );
+  //   }
+  // }
   async getAllIssues(
     entity: 'node' | 'club',
     entityId: Types.ObjectId,
@@ -248,32 +507,231 @@ export class IssuesService {
     limit: number = 10
   ) {
     try {
-      // Ensure page and limit are positive numbers
       const validPage = Math.max(1, page);
       const validLimit = Math.max(1, limit);
       const skip = (validPage - 1) * validLimit;
 
-      // Construct the query based on entity type
-      const query = {
-        [entity]: entityId,
-      };
+      // Define the pipeline with proper typing
+      const aggregationPipeline: PipelineStage[] = [
+        {
+          $facet: {
+            directIssues: [
+              {
+                $match: {
+                  $and: [
+                    { [`${entity}`]: entityId },
+                    { isDeleted: { $ne: true } }
+                  ]
+                }
+              },
+              {
+                $addFields: {
+                  isAdopted: false,
+                  adoptionStatus: null,
+                  adoptionMessage: null,
+                  proposedBy: null,
+                  acceptedBy: null,
+                  adoptionId: null
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'createdBy',
+                  foreignField: '_id',
+                  as: 'createdBy'
+                }
+              },
+              {
+                $unwind: {
+                  path: '$createdBy',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $project: {
+                  'createdBy.password': 0
+                }
+              }
+            ],
+            adoptedIssues: [
+              {
+                $lookup: {
+                  from: 'issuesadoptions',
+                  let: { issueId: '$_id' },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $and: [
+                            { $eq: [`$${entity}`, entityId] },
+                            { $ne: ['$status', 'rejected'] }
+                          ]
+                        }
+                      }
+                    }
+                  ],
+                  as: 'adoption'
+                }
+              },
+              {
+                $unwind: '$adoption'
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'createdBy',
+                  foreignField: '_id',
+                  as: 'createdBy'
+                }
+              },
+              {
+                $unwind: {
+                  path: '$createdBy',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'adoption.proposedBy',
+                  foreignField: '_id',
+                  as: 'proposedBy'
+                }
+              },
+              {
+                $unwind: {
+                  path: '$proposedBy',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: 'adoption.acceptedBy',
+                  foreignField: '_id',
+                  as: 'acceptedBy'
+                }
+              },
+              {
+                $unwind: {
+                  path: '$acceptedBy',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $addFields: {
+                  isAdopted: true,
+                  adoptionStatus: '$adoption.status',
+                  adoptionMessage: '$adoption.message',
+                  adoptionId: '$adoption._id'
+                }
+              },
+              {
+                $project: {
+                  'createdBy.password': 0,
+                  'proposedBy.password': 0,
+                  'acceptedBy.password': 0,
+                  adoption: 0
+                }
+              }
+            ]
+          }
+        } as PipelineStage,
+        {
+          $project: {
+            allIssues: {
+              $concatArrays: ['$directIssues', '$adoptedIssues']
+            }
+          }
+        },
+        {
+          $unwind: '$allIssues'
+        },
+        {
+          $sort: { 'allIssues.createdAt': -1 }
+        },
+        {
+          $skip: skip
+        },
+        {
+          $limit: validLimit
+        },
+        {
+          $group: {
+            _id: null,
+            issues: { $push: '$allIssues' }
+          }
+        }
+      ];
 
-      // Get total count for pagination metadata
-      const totalCount = await this.issuesModel.countDocuments(query);
+      const countPipeline: PipelineStage[] = [
+        {
+          $facet: {
+            directCount: [
+              {
+                $match: {
+                  $and: [
+                    { [`${entity}`]: entityId },
+                    { isDeleted: { $ne: true } }
+                  ]
+                }
+              },
+              {
+                $count: 'count'
+              }
+            ],
+            adoptedCount: [
+              {
+                $lookup: {
+                  from: 'issuesadoptions',
+                  pipeline: [
+                    {
+                      $match: {
+                        $and: [
+                          { [`${entity}`]: entityId },
+                          { status: { $ne: 'rejected' } }
+                        ]
+                      }
+                    },
+                    {
+                      $count: 'count'
+                    }
+                  ],
+                  as: 'adoptedCount'
+                }
+              },
+              {
+                $unwind: {
+                  path: '$adoptedCount',
+                  preserveNullAndEmptyArrays: true
+                }
+              },
+              {
+                $group: {
+                  _id: null,
+                  count: { $sum: '$adoptedCount.count' }
+                }
+              }
+            ]
+          }
+        }
+      ];
+
+      // Execute both pipelines
+      const [results, countResults] = await Promise.all([
+        this.issuesModel.aggregate(aggregationPipeline),
+        this.issuesModel.aggregate(countPipeline)
+      ]);
+
+      // Calculate total count
+      const directCount = countResults[0]?.directCount[0]?.count || 0;
+      const adoptedCount = countResults[0]?.adoptedCount[0]?.count || 0;
+      const totalCount = directCount + adoptedCount;
       const totalPages = Math.ceil(totalCount / validLimit);
 
-      // Get paginated results
-      const issues = await this.issuesModel
-        .find(query)
-        .populate('createdBy', '-password')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(validLimit)
-        .exec();
-
-      // Return both the data and pagination metadata
       return {
-        issues,
+        issues: results[0]?.issues || [],
         pagination: {
           currentPage: validPage,
           totalPages,
@@ -285,12 +743,11 @@ export class IssuesService {
       };
     } catch (error) {
       throw new InternalServerErrorException(
-        'Error while getting active rules-regulations',
+        'Error while getting issues and adoptions',
         error,
       );
     }
   }
-
   /**
    * Returns all active issues created by the given user for a given entity
    * @param userId - The id of the user
@@ -458,115 +915,75 @@ export class IssuesService {
     }
   }
 
-  async adoptIssueAndPropose(userId: Types.ObjectId, data) {
+  async adoptIssueAndPropose(userId: Types.ObjectId, adoptForumDto
+    : { issues: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId, proposalMessage: string }) {
     try {
-      let clubOrNode: null | string = data?.club ? 'club' : 'node';
+      if (adoptForumDto.club && adoptForumDto.node) {
+        throw new BadRequestException(
+          'Forum must be either club or node, not both',
+        );
+      }
+      console.log({ userId });
 
-      if (!clubOrNode) throw new BadRequestException('Invalid club or node');
-      const role = await this.getMemberRoles(userId, data);
-
-      const existingIssue = await this.issuesModel.findById(data.issueId);
-
-      const rootParent =
-        existingIssue?.rootParent ?? new Types.ObjectId(data.issueId);
-      if (role === 'admin') {
-        if (data.club) {
-          await this.issuesModel.findByIdAndUpdate(
-            rootParent,
-            {
-              $addToSet: {
-                adoptedClubs: {
-                  club: new Types.ObjectId(data.club),
-                  date: new Date(),
-                },
-              },
-            },
-            { new: true }, // Returns the updated document
-          );
-        } else if (data.node) {
-          await this.issuesModel.findByIdAndUpdate(
-            rootParent,
-            {
-              $addToSet: {
-                adoptedNodes: {
-                  node: new Types.ObjectId(data.node),
-                  date: new Date(),
-                },
-              },
-            },
-            { new: true }, // Returns the updated document
-          );
-        }
-
-        const newIssueData = {
-          title: existingIssue.title,
-          issueType: existingIssue.issueType,
-          whereOrWho: existingIssue.whereOrWho,
-          deadline: existingIssue.deadline,
-          reasonOfDeadline: existingIssue.reasonOfDeadline,
-          significance: existingIssue.significance,
-          description: existingIssue.description,
-          files: existingIssue.files,
-          isPublic: existingIssue.isPublic,
-          isAnonymous: existingIssue.isAnonymous,
-          ...(clubOrNode === 'club'
-            ? { club: new Types.ObjectId(data.club) }
-            : { node: new Types.ObjectId(data.node) }),
-          createdBy: userId,
-          isActive: true,
-          publishedStatus: 'published',
-          publishedBy: userId,
-          publishedDate: new Date(),
-          version: 1,
-          rootParent,
-          adoptedDate: new Date(),
-          adoptedFrom: existingIssue._id,
-        };
-
-        // creating new fields with modified data
-        const newIssue = await this.issuesModel.create(newIssueData);
-
-        return newIssue;
-      } else if (role === 'member') {
-        const existingIssue = await this.issuesModel.findById(data.issueId);
-
-        const newIssueData = {
-          title: existingIssue.title,
-          issueType: existingIssue.issueType,
-          whereOrWho: existingIssue.whereOrWho,
-          deadline: existingIssue.deadline,
-          reasonOfDeadline: existingIssue.reasonOfDeadline,
-          significance: existingIssue.significance,
-          description: existingIssue.description,
-          files: existingIssue.files,
-          isPublic: existingIssue.isPublic,
-          isAnonymous: existingIssue.isAnonymous,
-          ...(clubOrNode === 'club'
-            ? { club: new Types.ObjectId(data.club) }
-            : { node: new Types.ObjectId(data.node) }),
-          createdBy: userId,
-          publishedStatus: 'proposed',
-          isActive: false,
-          version: 1,
-          rootParent,
-          adoptedDate: new Date(),
-          adoptedFrom: existingIssue._id,
-        };
-
-        // creating new fields with modified data
-        const newIssue = await this.issuesModel.create(newIssueData);
-
-        return newIssue;
+      let userDetails;
+      if (adoptForumDto.club) {
+        // Check role for club
+        userDetails = await this.clubMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          club: new Types.ObjectId(adoptForumDto.club),
+        });
+      } else if (adoptForumDto.node) {
+        // Check role for node
+        userDetails = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          node: new Types.ObjectId(adoptForumDto.node),
+        });
       }
 
-      // return adoptedIssue;
+      if (!userDetails) {
+        throw new NotAcceptableException(
+          'User not found in the specified forum',
+        );
+      }
+
+      console.log({ userDetails });
+
+      const adoptionData = {
+        project: new Types.ObjectId(adoptForumDto.issues),
+        proposedBy: new Types.ObjectId(userId),
+        ...(userDetails.role !== 'member' && {
+          acceptedBy: new Types.ObjectId(userId),
+        }),
+        ...(userDetails.role === 'member' && {
+          message: adoptForumDto.proposalMessage,  // Add message for members
+        }),
+        status: userDetails.role === 'member' ? 'proposed' : 'published',
+        node: adoptForumDto.node
+          ? new Types.ObjectId(adoptForumDto.node)
+          : null,
+        club: adoptForumDto.club
+          ? new Types.ObjectId(adoptForumDto.club)
+          : null,
+      };
+
+      // Create adoption record
+      const adoptedProject =
+        await this.issueAdoptionModel.create(adoptionData);
+
+      return {
+        success: true,
+        data: adoptedProject,
+        message: 'Project adopted successfully',
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        'Error while adopting issue',
-        error,
-      );
+      console.log({ error });
+
+      throw new NotAcceptableException('Failed to adopt forum');
     }
+
   }
+
+
 
   async adoptProposedIssue(userId: Types.ObjectId, issueId) {
     try {
@@ -906,6 +1323,61 @@ export class IssuesService {
         'Error while getting clubs and nodes not adopted',
         error,
       );
+    }
+  }
+
+
+
+  async createSolution(userId: Types.ObjectId, createSolutionDto: CreateSolutionDto) {
+    try {
+      console.log({ userId, createSolutionDto });
+      let isAdminOrModerator = null;
+
+      // checking the user is admin or moderator
+      if (createSolutionDto.forum === "node") {
+        isAdminOrModerator = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+          node: createSolutionDto.forumId,
+          role: { $in: ['admin', 'moderator'] }
+        });
+      } else if (createSolutionDto.forum === 'club') {
+        isAdminOrModerator = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          status: 'MEMBER',
+          club: createSolutionDto.forumId,
+          role: { $in: ['admin', 'moderator'] }
+        });
+      } else {
+        throw new BadRequestException('forum is required');
+      }
+
+      if (!isAdminOrModerator) {
+        throw new UnauthorizedException('Only admins and moderators can mark solutions');
+      }
+
+      const createdSolution = await this.issuesModel.findByIdAndUpdate(
+        new Types.ObjectId(createSolutionDto.postId),
+        {
+          $push: {
+            solutions: {
+              comment: new Types.ObjectId(createSolutionDto.commentId),
+              creator: userId,
+              date: new Date()
+            }
+          }
+        },
+        { new: true }
+      );
+
+      if (!createdSolution) {
+        throw new NotFoundException('Issue not found');
+      }
+
+      return { data: createdSolution, message: 'solution created', success: true };
+    } catch (error) {
+      console.log({ error })
+      throw new BadRequestException(error);
     }
   }
 }

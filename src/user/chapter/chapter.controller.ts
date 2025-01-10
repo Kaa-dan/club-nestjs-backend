@@ -82,6 +82,7 @@ export class ChapterController {
     }
 
     //----------------GET REJECTED CHAPTERS----------------
+
     @Get('get-rejected')
     async getRejectedChaptersOfNode(@Req() req: Request, @Query('nodeId') node: string) {
         const nodeId = new Types.ObjectId(node);
@@ -160,6 +161,7 @@ export class ChapterController {
     }
 
     //----------------LEAVE USER FROM CHAPTER----------------
+
     @Roles('owner', 'admin', 'moderator', 'member')
     @UseGuards(ChapterRoleGuard)
     @Put('leave-user')

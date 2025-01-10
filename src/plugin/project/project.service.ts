@@ -22,6 +22,7 @@ import { ProjectContribution } from 'src/shared/entities/projects/contribution.e
 import { PopulatedProject } from './project.interface';
 import { AnswerFaqDto, CreateDtoFaq } from './dto/faq.dto';
 import { ProjectAdoption } from 'src/shared/entities/projects/project-adoption.entity';
+import { ChapterProject } from 'src/shared/entities/chapters/modules/chapter-projects.entity';
 
 /**
  * Service responsible for managing all project-related operations
@@ -44,6 +45,7 @@ export class ProjectService {
     private readonly contributionModel: Model<ProjectContribution>,
     private readonly s3FileUpload: UploadService,
     @InjectConnection() private connection: Connection,
+    @InjectModel(ChapterProject.name) private readonly chapterProjectModel: Model<ChapterProject>,
   ) { }
 
   /**
@@ -63,6 +65,8 @@ export class ProjectService {
     documentFiles: Express.Multer.File[],
     bannerImage: Express.Multer.File | null,
   ) {
+    console.log({ createProjectDto, userId, documentFiles, bannerImage })
+
     const session = await this.connection.startSession();
     session.startTransaction();
 
@@ -159,6 +163,7 @@ export class ProjectService {
           throw new Error('You are not a member of this group');
         }
       }
+      console.log({ membership })
 
       // Set project status based on user's role
       const projectData = {
@@ -214,7 +219,7 @@ export class ProjectService {
 
       // Commit all changes
       await session.commitTransaction();
-
+      console.log({ savedProject })
       return savedProject;
     } catch (error) {
       // Rollback all changes if any operation fails
@@ -850,8 +855,7 @@ export class ProjectService {
     node?: Types.ObjectId,
     club?: Types.ObjectId,
   ) {
-    // console.log({ status });
-    // console.log({ node, club });
+    console.log({ status, page, limit, search, node, club })
 
     try {
       const query: any = {
@@ -859,8 +863,6 @@ export class ProjectService {
         // active: isActive,
       };
 
-      if (node) query.node = node;
-      else if (club) query.club = club;
 
       if (search) {
         query.$or = [
@@ -872,32 +874,248 @@ export class ProjectService {
 
       const total = await this.projectModel.countDocuments(query);
 
-      const projects = await this.projectModel
-        .find(query)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .populate('node', 'name profileImage')
-        .populate('club', 'name profileImage')
-        .populate('createdBy', 'userName profileImage firstName lastName');
 
       if (node) query.node = new Types.ObjectId(node);
       else query.club = new Types.ObjectId(club);
+      console.log({ query })
 
-      const adoptedProjects = await this.projectAdoptionModel
-        .find(query)
-        .populate('node', 'name profileImage')
-        .populate('club', 'name profileImage')
-        .populate('proposedBy', 'userName profileImage firstName lastName')
-        .populate(
-          'project',
-          '-club -node -status -proposedBy -acceptedBy -createdAt -updatedAt',
-        );
-      console.log({ adoptedProjects });
+      const projects = await this.projectModel.aggregate([
+        { $match: query },
+        { $sort: { createdAt: -1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: 'projectadoptions',
+            localField: '_id',
+            foreignField: 'project',
+            as: 'adoptions'
+          }
+        },
+        {
+          $addFields: {
+            adoptionCount: { $size: '$adoptions' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'node'
+          }
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'club'
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            as: 'createdBy'
+          }
+        },
+        {
+          $unwind: {
+            path: '$node',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$club',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$createdBy',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            'node.name': 1,
+            'node.profileImage': 1,
+            'club.name': 1,
+            'club.profileImage': 1,
+            'createdBy.userName': 1,
+            'createdBy.profileImage': 1,
+            'createdBy.firstName': 1,
+            'createdBy.lastName': 1,
+            adoptionCount: 1,
+            title: 1,
+            region: 1,
+            significance: 1,
+            solution: 1,
+            status: 1,
+            createdAt: 1
+          }
+        }
+      ]);
+
+      const adoptedProjects = await this.projectAdoptionModel.aggregate([
+        { $match: query },
+        {
+          $lookup: {
+            from: 'nodes',
+            localField: 'node',
+            foreignField: '_id',
+            as: 'node'
+          }
+        },
+        {
+          $lookup: {
+            from: 'clubs',
+            localField: 'club',
+            foreignField: '_id',
+            as: 'club'
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'proposedBy',
+            foreignField: '_id',
+            as: 'proposedBy'
+          }
+        },
+        {
+          $lookup: {
+            from: 'projects',
+            localField: 'project',
+            foreignField: '_id',
+            as: 'project'
+          }
+        },
+        {
+          $unwind: {
+            path: '$node',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$club',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: {
+            path: '$proposedBy',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $unwind: '$project'
+        },
+        {
+          $project: {
+            'node.name': 1,
+            'node.profileImage': 1,
+            'club.name': 1,
+            'club.profileImage': 1,
+            'proposedBy.userName': 1,
+            'proposedBy.profileImage': 1,
+            'proposedBy.firstName': 1,
+            'proposedBy.lastName': 1,
+            'project.title': 1,
+            'project.region': 1,
+            'project.significance': 1,
+            'project.solution': 1,
+            status: 1,
+            message: 1
+          }
+        }
+      ]);
+
+
+      console.log({ adoptedProjects, projects });
 
       return {
         projects,
         adoptedProjects,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to get all projects. Please try again later.',
+      );
+    }
+  }
+
+  async getChapterAllProjects(
+    status: 'proposed' | 'published',
+    page: number,
+    limit: number,
+    isActive: boolean,
+    search: string,
+    chapter?: Types.ObjectId,
+  ): Promise<any> {
+    try {
+      const query: any = { status };
+
+      if (chapter) query.chapter = new Types.ObjectId(chapter);
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { region: { $regex: search, $options: 'i' } },
+          { significance: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      // Get direct projects
+      const projects = await this.projectModel
+        .find()
+        .sort({ createdAt: -1 })
+        .populate('node', 'name profileImage')
+        .populate('club', 'name profileImage')
+        .populate('createdBy', 'userName profileImage firstName lastName')
+        .lean(); // Use lean() to get plain JavaScript objects
+
+      // Get chapter projects
+      const chapterProjects = await this.chapterProjectModel
+        .find(query)
+        .populate({
+          path: 'project',
+          populate: [
+            { path: 'node', select: 'name profileImage' },
+            { path: 'club', select: 'name profileImage' },
+            { path: 'createdBy', select: 'userName profileImage firstName lastName' }
+          ]
+        })
+        .populate('chapter', 'name profileImage')
+        .lean(); // Use lean() to get plain JavaScript objects
+
+      // Transform chapter projects
+      const transformedChapterProjects = chapterProjects.map(cp => ({
+        ...cp.project,
+        chapter: cp.chapter,
+        chapterProjectId: cp._id,
+        createdAt: (cp as any).createdAt
+      }));
+
+      // Merge and sort
+      const allProjects = [...projects, ...transformedChapterProjects]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      // Calculate pagination
+      const total = allProjects.length;
+      const startIndex = (page - 1) * limit;
+      const paginatedProjects = allProjects.slice(startIndex, startIndex + limit);
+
+      return {
+        projects: paginatedProjects,
         page,
         limit,
         total,

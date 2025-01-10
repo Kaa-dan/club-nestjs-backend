@@ -1,8 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { User } from './user.entity';
-import { Club } from './club.entity';
-import { Node_ } from './node.entity';
+import { User } from '../user.entity';
+import { Club } from '../club.entity';
+import { Node_ } from '../node.entity';
 
 export interface IRelevantAndView {
   user: Types.ObjectId;
@@ -57,6 +57,25 @@ export class Issues extends Document {
 
   @Prop({ default: false })
   isAnonymous: boolean;
+
+  @Prop({
+    type: [{
+      comment: { type: Types.ObjectId },
+      creator: { type: Types.ObjectId },
+      date: { type: Date, default: Date.now }
+    }],
+    validate: {
+      validator: function (solutions: any[]) {
+        return solutions.length <= 10;
+      },
+      message: 'Solutions cannot exceed 10 items'
+    }
+  })
+  solutions: {
+    comment: Types.ObjectId;
+    creator: Types.ObjectId;
+    date: Date;
+  }[];
 
   @Prop([
     {
