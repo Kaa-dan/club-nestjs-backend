@@ -17,7 +17,7 @@ import { NodeMembers } from 'src/shared/entities/node-members.entity';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { NodeJoinRequest } from 'src/shared/entities/node-join-requests.entity';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
-import { ChapterMember } from 'src/shared/entities/chapters/chapter-member';
+import { ChapterMember } from 'src/shared/entities/chapters/chapter-member.entity';
 
 @Injectable()
 export class UserService {

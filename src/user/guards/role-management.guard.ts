@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { Observable } from "rxjs";
-import { ChapterMember } from "src/shared/entities/chapters/chapter-member";
+import { ChapterMember } from "src/shared/entities/chapters/chapter-member.entity";
 import { ClubMembers } from "src/shared/entities/clubmembers.entitiy";
 import { NodeMembers } from "src/shared/entities/node-members.entity";
 
