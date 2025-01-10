@@ -22,7 +22,7 @@ import e, { query, Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { CreateSolutionDto } from './dto/create-solution.dto';
 
 @Controller('issues')

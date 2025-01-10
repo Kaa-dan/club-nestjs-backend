@@ -18,7 +18,7 @@ import {
   ReportOffenceSchema,
 } from './entities/report-offense.entity';
 import { Node_, NodeSchema } from './entities/node.entity';
-import { Issues, IssuesSchema } from './entities/issues.entity';
+import { Issues, IssuesSchema } from './entities/issues/issues.entity';
 import {
   ProposeRulesAndRegulation,
   ProposeRulesAndRegulationSchema,
@@ -53,6 +53,7 @@ import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
 import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects';
+import { IssuesAdoption, IssuesAdoptionSchema } from './entities/issues/issues-adoption.entity';
 
 @Module({
   imports: [
@@ -84,7 +85,7 @@ import { ChapterProject, ChapterProjectSchema } from './entities/chapters/module
       { name: Bookmarks.name, schema: BookmarksSchema },
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
-
+      { name: IssuesAdoption.name, schema: IssuesAdoptionSchema },
       { name: ChapterProject.name, schema: ChapterProjectSchema }
     ]),
     forwardRef(() => SearchModule),

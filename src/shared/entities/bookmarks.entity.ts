@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { User } from "./user.entity";
 import { RulesRegulations } from "./rules-regulations.entity";
-import { Issues } from "./issues.entity";
+import { Issues } from "./issues/issues.entity";
 import { Project } from "./projects/project.entity";
 
 interface IEntity {

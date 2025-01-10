@@ -2,12 +2,13 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotAcceptableException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { UploadService } from 'src/shared/upload/upload.service';
 import { CreateIssuesDto } from './dto/create-issue.dto';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
@@ -17,6 +18,7 @@ import { Node_ } from 'src/shared/entities/node.entity';
 import { Club } from 'src/shared/entities/club.entity';
 import { title } from 'process';
 import { CreateSolutionDto } from './dto/create-solution.dto';
+import { IssuesAdoption } from 'src/shared/entities/issues/issues-adoption.entity';
 
 
 
@@ -41,6 +43,7 @@ export class IssuesService {
     private readonly nodeModel: Model<Node_>,
     @InjectModel(Club.name)
     private readonly clubModel: Model<Club>,
+    @InjectModel(IssuesAdoption.name) private readonly issueAdoptionModel: Model<IssuesAdoption>
   ) { }
 
   /**
@@ -462,115 +465,75 @@ export class IssuesService {
     }
   }
 
-  async adoptIssueAndPropose(userId: Types.ObjectId, data) {
+  async adoptIssueAndPropose(userId: Types.ObjectId, adoptForumDto
+    : { issues: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId, proposalMessage: string }) {
     try {
-      let clubOrNode: null | string = data?.club ? 'club' : 'node';
+      if (adoptForumDto.club && adoptForumDto.node) {
+        throw new BadRequestException(
+          'Forum must be either club or node, not both',
+        );
+      }
+      console.log({ userId });
 
-      if (!clubOrNode) throw new BadRequestException('Invalid club or node');
-      const role = await this.getMemberRoles(userId, data);
-
-      const existingIssue = await this.issuesModel.findById(data.issueId);
-
-      const rootParent =
-        existingIssue?.rootParent ?? new Types.ObjectId(data.issueId);
-      if (role === 'admin') {
-        if (data.club) {
-          await this.issuesModel.findByIdAndUpdate(
-            rootParent,
-            {
-              $addToSet: {
-                adoptedClubs: {
-                  club: new Types.ObjectId(data.club),
-                  date: new Date(),
-                },
-              },
-            },
-            { new: true }, // Returns the updated document
-          );
-        } else if (data.node) {
-          await this.issuesModel.findByIdAndUpdate(
-            rootParent,
-            {
-              $addToSet: {
-                adoptedNodes: {
-                  node: new Types.ObjectId(data.node),
-                  date: new Date(),
-                },
-              },
-            },
-            { new: true }, // Returns the updated document
-          );
-        }
-
-        const newIssueData = {
-          title: existingIssue.title,
-          issueType: existingIssue.issueType,
-          whereOrWho: existingIssue.whereOrWho,
-          deadline: existingIssue.deadline,
-          reasonOfDeadline: existingIssue.reasonOfDeadline,
-          significance: existingIssue.significance,
-          description: existingIssue.description,
-          files: existingIssue.files,
-          isPublic: existingIssue.isPublic,
-          isAnonymous: existingIssue.isAnonymous,
-          ...(clubOrNode === 'club'
-            ? { club: new Types.ObjectId(data.club) }
-            : { node: new Types.ObjectId(data.node) }),
-          createdBy: userId,
-          isActive: true,
-          publishedStatus: 'published',
-          publishedBy: userId,
-          publishedDate: new Date(),
-          version: 1,
-          rootParent,
-          adoptedDate: new Date(),
-          adoptedFrom: existingIssue._id,
-        };
-
-        // creating new fields with modified data
-        const newIssue = await this.issuesModel.create(newIssueData);
-
-        return newIssue;
-      } else if (role === 'member') {
-        const existingIssue = await this.issuesModel.findById(data.issueId);
-
-        const newIssueData = {
-          title: existingIssue.title,
-          issueType: existingIssue.issueType,
-          whereOrWho: existingIssue.whereOrWho,
-          deadline: existingIssue.deadline,
-          reasonOfDeadline: existingIssue.reasonOfDeadline,
-          significance: existingIssue.significance,
-          description: existingIssue.description,
-          files: existingIssue.files,
-          isPublic: existingIssue.isPublic,
-          isAnonymous: existingIssue.isAnonymous,
-          ...(clubOrNode === 'club'
-            ? { club: new Types.ObjectId(data.club) }
-            : { node: new Types.ObjectId(data.node) }),
-          createdBy: userId,
-          publishedStatus: 'proposed',
-          isActive: false,
-          version: 1,
-          rootParent,
-          adoptedDate: new Date(),
-          adoptedFrom: existingIssue._id,
-        };
-
-        // creating new fields with modified data
-        const newIssue = await this.issuesModel.create(newIssueData);
-
-        return newIssue;
+      let userDetails;
+      if (adoptForumDto.club) {
+        // Check role for club
+        userDetails = await this.clubMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          club: new Types.ObjectId(adoptForumDto.club),
+        });
+      } else if (adoptForumDto.node) {
+        // Check role for node
+        userDetails = await this.nodeMembersModel.findOne({
+          user: new Types.ObjectId(userId),
+          node: new Types.ObjectId(adoptForumDto.node),
+        });
       }
 
-      // return adoptedIssue;
+      if (!userDetails) {
+        throw new NotAcceptableException(
+          'User not found in the specified forum',
+        );
+      }
+
+      console.log({ userDetails });
+
+      const adoptionData = {
+        project: new Types.ObjectId(adoptForumDto.issues),
+        proposedBy: new Types.ObjectId(userId),
+        ...(userDetails.role !== 'member' && {
+          acceptedBy: new Types.ObjectId(userId),
+        }),
+        ...(userDetails.role === 'member' && {
+          message: adoptForumDto.proposalMessage,  // Add message for members
+        }),
+        status: userDetails.role === 'member' ? 'proposed' : 'published',
+        node: adoptForumDto.node
+          ? new Types.ObjectId(adoptForumDto.node)
+          : null,
+        club: adoptForumDto.club
+          ? new Types.ObjectId(adoptForumDto.club)
+          : null,
+      };
+
+      // Create adoption record
+      const adoptedProject =
+        await this.issueAdoptionModel.create(adoptionData);
+
+      return {
+        success: true,
+        data: adoptedProject,
+        message: 'Project adopted successfully',
+      };
     } catch (error) {
-      throw new InternalServerErrorException(
-        'Error while adopting issue',
-        error,
-      );
+      console.log({ error });
+
+      throw new NotAcceptableException('Failed to adopt forum');
     }
+
   }
+
+
 
   async adoptProposedIssue(userId: Types.ObjectId, issueId) {
     try {
