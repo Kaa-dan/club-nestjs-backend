@@ -4,7 +4,7 @@ import { User } from './user.entity';
 import { Club } from './club.entity';
 import { Node_ } from './node.entity';
 import { RulesRegulations } from './rules-regulations.entity';
-import { Issues } from './issues.entity';
+import { Issues } from './issues/issues.entity';
 import { Project } from './projects/project.entity';
 
 interface IEntity {

@@ -19,7 +19,7 @@ import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
 import { FileValidationPipe } from 'src/shared/pipes/file-validation.pipe';
 import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
 
 @Controller('comments')
