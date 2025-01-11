@@ -56,6 +56,7 @@ import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
 import { IssuesAdoption, IssuesAdoptionSchema } from './entities/issues/issues-adoption.entity';
 import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
 import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
+import { DebateAdoption, DebateAdoptionSchema } from './entities/debate/debate-adoption-entity';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { ChapterProject, ChapterProjectSchema } from './entities/chapters/module
       { name: Issues.name, schema: IssuesSchema },
       { name: ProposeRulesAndRegulation.name, schema: ProposeRulesAndRegulationSchema },
       { name: Debate.name, schema: DebateSchema },
+      { name: DebateAdoption.name, schema: DebateAdoptionSchema },
       { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
