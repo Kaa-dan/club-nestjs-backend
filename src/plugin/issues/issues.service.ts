@@ -248,258 +248,7 @@ export class IssuesService {
   }
 
 
-  // async getAllIssues(
-  //   entity: 'node' | 'club',
-  //   entityId: Types.ObjectId,
-  //   page: number = 1,
-  //   limit: number = 10
-  // ) {
-  //   try {
-  //     const validPage = Math.max(1, page);
-  //     const validLimit = Math.max(1, limit);
-  //     const skip = (validPage - 1) * validLimit;
 
-  //     // Get issues through aggregation pipeline
-  //     const aggregationPipeline = [
-  //       // First get all direct issues
-  //       {
-  //         $facet: {
-  //           // Pipeline for direct issues
-  //           directIssues: [
-  //             {
-  //               $match: {
-  //                 [entity]: entityId,
-  //                 isDeleted: { $ne: true }
-  //               }
-  //             },
-  //             {
-  //               $addFields: {
-  //                 isAdopted: false,
-  //                 adoptionStatus: null,
-  //                 adoptionMessage: null,
-  //                 proposedBy: null,
-  //                 acceptedBy: null,
-  //                 adoptionId: null
-  //               }
-  //             },
-  //             {
-  //               $lookup: {
-  //                 from: 'users',
-  //                 localField: 'createdBy',
-  //                 foreignField: '_id',
-  //                 as: 'createdBy'
-  //               }
-  //             },
-  //             {
-  //               $unwind: {
-  //                 path: '$createdBy',
-  //                 preserveNullAndEmptyArrays: true
-  //               }
-  //             },
-  //             {
-  //               $project: {
-  //                 'createdBy.password': 0
-  //               }
-  //             }
-  //           ],
-  //           // Pipeline for adopted issues
-  //           adoptedIssues: [
-  //             {
-  //               $lookup: {
-  //                 from: 'issuesadoptions',
-  //                 let: { issueId: '$_id' },
-  //                 pipeline: [
-  //                   {
-  //                     $match: {
-  //                       $expr: {
-  //                         $and: [
-  //                           { $eq: [`$${entity}`, entityId] },
-  //                           { $ne: ['$status', 'rejected'] }
-  //                         ]
-  //                       }
-  //                     }
-  //                   }
-  //                 ],
-  //                 as: 'adoption'
-  //               }
-  //             },
-  //             {
-  //               $unwind: '$adoption'
-  //             },
-  //             {
-  //               $lookup: {
-  //                 from: 'users',
-  //                 localField: 'createdBy',
-  //                 foreignField: '_id',
-  //                 as: 'createdBy'
-  //               }
-  //             },
-  //             {
-  //               $unwind: {
-  //                 path: '$createdBy',
-  //                 preserveNullAndEmptyArrays: true
-  //               }
-  //             },
-  //             {
-  //               $lookup: {
-  //                 from: 'users',
-  //                 localField: 'adoption.proposedBy',
-  //                 foreignField: '_id',
-  //                 as: 'proposedBy'
-  //               }
-  //             },
-  //             {
-  //               $unwind: {
-  //                 path: '$proposedBy',
-  //                 preserveNullAndEmptyArrays: true
-  //               }
-  //             },
-  //             {
-  //               $lookup: {
-  //                 from: 'users',
-  //                 localField: 'adoption.acceptedBy',
-  //                 foreignField: '_id',
-  //                 as: 'acceptedBy'
-  //               }
-  //             },
-  //             {
-  //               $unwind: {
-  //                 path: '$acceptedBy',
-  //                 preserveNullAndEmptyArrays: true
-  //               }
-  //             },
-  //             {
-  //               $addFields: {
-  //                 isAdopted: true,
-  //                 adoptionStatus: '$adoption.status',
-  //                 adoptionMessage: '$adoption.message',
-  //                 adoptionId: '$adoption._id'
-  //               }
-  //             },
-  //             {
-  //               $project: {
-  //                 'createdBy.password': 0,
-  //                 'proposedBy.password': 0,
-  //                 'acceptedBy.password': 0,
-  //                 adoption: 0
-  //               }
-  //             }
-  //           ]
-  //         }
-  //       },
-  //       // Combine both results
-  //       {
-  //         $project: {
-  //           allIssues: {
-  //             $concatArrays: ['$directIssues', '$adoptedIssues']
-  //           }
-  //         }
-  //       },
-  //       // Unwind the combined array
-  //       {
-  //         $unwind: '$allIssues'
-  //       },
-  //       // Sort by creation date
-  //       {
-  //         $sort: { 'allIssues.createdAt': -1 }
-  //       },
-  //       // Skip for pagination
-  //       {
-  //         $skip: skip
-  //       },
-  //       // Limit results
-  //       {
-  //         $limit: validLimit
-  //       },
-  //       // Group all results
-  //       {
-  //         $group: {
-  //           _id: null,
-  //           issues: { $push: '$allIssues' }
-  //         }
-  //       }
-  //     ];
-
-  //     // Get total count for pagination
-  //     const countPipeline = [
-  //       {
-  //         $facet: {
-  //           directCount: [
-  //             {
-  //               $match: {
-  //                 [entity]: entityId,
-  //                 isDeleted: { $ne: true }
-  //               }
-  //             },
-  //             {
-  //               $count: 'count'
-  //             }
-  //           ],
-  //           adoptedCount: [
-  //             {
-  //               $lookup: {
-  //                 from: 'issuesadoptions',
-  //                 pipeline: [
-  //                   {
-  //                     $match: {
-  //                       [entity]: entityId,
-  //                       status: { $ne: 'rejected' }
-  //                     }
-  //                   },
-  //                   {
-  //                     $count: 'count'
-  //                   }
-  //                 ],
-  //                 as: 'adoptedCount'
-  //               }
-  //             },
-  //             {
-  //               $unwind: {
-  //                 path: '$adoptedCount',
-  //                 preserveNullAndEmptyArrays: true
-  //               }
-  //             },
-  //             {
-  //               $group: {
-  //                 _id: null,
-  //                 count: { $sum: '$adoptedCount.count' }
-  //               }
-  //             }
-  //           ]
-  //         }
-  //       }
-  //     ];
-
-  //     // Execute both pipelines
-  //     const [results, countResults] = await Promise.all([
-  //       this.issuesModel.aggregate(aggregationPipeline).exec(),
-  //       this.issuesModel.aggregate(countPipeline).exec()
-  //     ]);
-
-  //     // Calculate total count
-  //     const directCount = countResults[0].directCount[0]?.count || 0;
-  //     const adoptedCount = countResults[0].adoptedCount[0]?.count || 0;
-  //     const totalCount = directCount + adoptedCount;
-  //     const totalPages = Math.ceil(totalCount / validLimit);
-
-  //     return {
-  //       issues: results[0]?.issues || [],
-  //       pagination: {
-  //         currentPage: validPage,
-  //         totalPages,
-  //         totalItems: totalCount,
-  //         itemsPerPage: validLimit,
-  //         hasNextPage: validPage < totalPages,
-  //         hasPreviousPage: validPage > 1
-  //       }
-  //     };
-  //   } catch (error) {
-  //     throw new InternalServerErrorException(
-  //       'Error while getting issues and adoptions',
-  //       error,
-  //     );
-  //   }
-  // }
   async getAllIssues(
     entity: 'node' | 'club',
     entityId: Types.ObjectId,
@@ -874,23 +623,7 @@ export class IssuesService {
     }
   }
 
-  //handling file uploads
-  private async uploadFile(file: Express.Multer.File) {
-    try {
-      //uploading file
-      const response = await this.s3FileUpload.uploadFile(
-        file.buffer,
-        file.originalname,
-        file.mimetype,
-        'club',
-      );
-      return response;
-    } catch (error) {
-      throw new BadRequestException(
-        'Failed to upload file. Please try again later.',
-      );
-    }
-  }
+
 
   async getMemberRoles(userId: Types.ObjectId, createIssuesData: any) {
     try {
@@ -918,6 +651,27 @@ export class IssuesService {
   async adoptIssueAndPropose(userId: Types.ObjectId, adoptForumDto
     : { issues: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId, proposalMessage: string }) {
     try {
+
+      console.log({ adoptForumDto })
+      // check if previously issue is there or not 
+      const isAdopted = await this.issueAdoptionModel.findOne({
+        issues: new Types.ObjectId(adoptForumDto.issues),
+        status: { $in: ['published', 'proposed'] },
+        $or: [
+          // If node is provided, check for the same node
+          ...(adoptForumDto.node ? [{ node: new Types.ObjectId(adoptForumDto.node) }] : []),
+          // If club is provided, check for the same club
+          ...(adoptForumDto.club ? [{ club: new Types.ObjectId(adoptForumDto.club) }] : [])
+        ]
+      });
+
+      if (isAdopted) {
+        const forumType = isAdopted.node ? 'node' : 'club';
+        throw new BadRequestException(
+          `Issue is already ${isAdopted.status === 'published' ? 'adopted' : 'under proposal'} in this ${forumType}`
+        );
+      }
+
       if (adoptForumDto.club && adoptForumDto.node) {
         throw new BadRequestException(
           'Forum must be either club or node, not both',
@@ -932,6 +686,7 @@ export class IssuesService {
           user: new Types.ObjectId(userId),
           club: new Types.ObjectId(adoptForumDto.club),
         });
+
       } else if (adoptForumDto.node) {
         // Check role for node
         userDetails = await this.nodeMembersModel.findOne({
@@ -946,44 +701,46 @@ export class IssuesService {
         );
       }
 
-      console.log({ userDetails });
 
       const adoptionData = {
-        project: new Types.ObjectId(adoptForumDto.issues),
+
+        issues: new Types.ObjectId(adoptForumDto.issues),
+
         proposedBy: new Types.ObjectId(userId),
         ...(userDetails.role !== 'member' && {
           acceptedBy: new Types.ObjectId(userId),
         }),
+
         ...(userDetails.role === 'member' && {
           message: adoptForumDto.proposalMessage,  // Add message for members
         }),
+
         status: userDetails.role === 'member' ? 'proposed' : 'published',
+
         node: adoptForumDto.node
           ? new Types.ObjectId(adoptForumDto.node)
           : null,
+
         club: adoptForumDto.club
           ? new Types.ObjectId(adoptForumDto.club)
           : null,
       };
 
       // Create adoption record
-      const adoptedProject =
+      const adoptedIssue =
         await this.issueAdoptionModel.create(adoptionData);
+
 
       return {
         success: true,
-        data: adoptedProject,
-        message: 'Project adopted successfully',
+        data: adoptedIssue,
+        message: 'Issue adopted successfully',
       };
     } catch (error) {
-      console.log({ error });
-
       throw new NotAcceptableException('Failed to adopt forum');
     }
 
   }
-
-
 
   async adoptProposedIssue(userId: Types.ObjectId, issueId) {
     try {
@@ -1180,6 +937,7 @@ export class IssuesService {
     }
   }
 
+
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     issueId: Types.ObjectId,
@@ -1208,7 +966,7 @@ export class IssuesService {
         },
         {
           $lookup: {
-            from: 'node_', // Ensure this matches your actual collection name
+            from: 'node_',
             localField: 'node',
             foreignField: '_id',
             as: 'nodeDetails',
@@ -1219,7 +977,7 @@ export class IssuesService {
         },
         {
           $lookup: {
-            from: 'issues', // Ensure this matches your actual collection name
+            from: 'issues',
             let: { nodeId: '$node' },
             pipeline: [
               {
@@ -1245,6 +1003,11 @@ export class IssuesService {
           },
         },
         {
+          $addFields: {
+            "nodeDetails.role": "$role"
+          },
+        },
+        {
           $replaceRoot: {
             newRoot: '$nodeDetails',
           },
@@ -1260,7 +1023,7 @@ export class IssuesService {
         },
         {
           $lookup: {
-            from: 'clubs', // Ensure this matches your actual collection name
+            from: 'clubs',
             localField: 'club',
             foreignField: '_id',
             as: 'clubDetails',
@@ -1271,7 +1034,7 @@ export class IssuesService {
         },
         {
           $lookup: {
-            from: 'issues', // Ensure this matches your actual collection name
+            from: 'issues',
             let: { clubId: '$club' },
             pipeline: [
               {
@@ -1297,6 +1060,11 @@ export class IssuesService {
           },
         },
         {
+          $addFields: {
+            "clubDetails.role": "$role"
+          },
+        },
+        {
           $replaceRoot: {
             newRoot: '$clubDetails',
           },
@@ -1314,7 +1082,6 @@ export class IssuesService {
         nodes: memberNodes,
       };
     } catch (error) {
-
       if (error instanceof NotFoundException) {
         throw error;
       }
@@ -1325,8 +1092,6 @@ export class IssuesService {
       );
     }
   }
-
-
 
   async createSolution(userId: Types.ObjectId, createSolutionDto: CreateSolutionDto) {
     try {
@@ -1378,6 +1143,24 @@ export class IssuesService {
     } catch (error) {
       console.log({ error })
       throw new BadRequestException(error);
+    }
+  }
+
+  //handling file uploads
+  private async uploadFile(file: Express.Multer.File) {
+    try {
+      //uploading file
+      const response = await this.s3FileUpload.uploadFile(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+        'club',
+      );
+      return response;
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to upload file. Please try again later.',
+      );
     }
   }
 }
