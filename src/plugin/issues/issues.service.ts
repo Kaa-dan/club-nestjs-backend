@@ -91,7 +91,13 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param userId 
+   * @param dataToSave 
+   * @param updateFiles 
+   * @returns 
+   */
   async updateIssue(userId: Types.ObjectId, dataToSave: any, updateFiles) {
     try {
       const currentVersion = await this.issuesModel.findById(dataToSave._id);
@@ -248,7 +254,14 @@ export class IssuesService {
   }
 
 
-
+  /**
+   * 
+   * @param entity 
+   * @param entityId 
+   * @param page 
+   * @param limit 
+   * @returns 
+   */
   async getAllIssues(
     entity: 'node' | 'club',
     entityId: Types.ObjectId,
@@ -554,7 +567,12 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param page 
+   * @param limit 
+   * @returns 
+   */
   async getGlobalActiveIssues(page: number = 1, limit: number = 10) {
     try {
       // Ensure page and limit are positive numbers
@@ -602,7 +620,11 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param issueId 
+   * @returns 
+   */
   async getIssue(issueId: Types.ObjectId) {
     try {
       const response = await this.issuesModel
@@ -624,7 +646,12 @@ export class IssuesService {
   }
 
 
-
+  /**
+   * 
+   * @param userId 
+   * @param createIssuesData 
+   * @returns 
+   */
   async getMemberRoles(userId: Types.ObjectId, createIssuesData: any) {
     try {
       if (createIssuesData.node) {
@@ -647,7 +674,12 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param userId 
+   * @param adoptForumDto 
+   * @returns 
+   */
   async adoptIssueAndPropose(userId: Types.ObjectId, adoptForumDto
     : { issues: Types.ObjectId, node?: Types.ObjectId, club?: Types.ObjectId, proposalMessage: string }) {
     try {
@@ -696,6 +728,7 @@ export class IssuesService {
       }
 
       if (!userDetails) {
+
         throw new NotAcceptableException(
           'User not found in the specified forum',
         );
@@ -737,11 +770,16 @@ export class IssuesService {
         message: 'Issue adopted successfully',
       };
     } catch (error) {
-      throw new NotAcceptableException('Failed to adopt forum');
+      throw new BadRequestException(error);
     }
 
   }
-
+  /**
+   * 
+   * @param userId 
+   * @param issueId 
+   * @returns 
+   */
   async adoptProposedIssue(userId: Types.ObjectId, issueId) {
     try {
       // First get the issue data
@@ -809,7 +847,12 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param entity 
+   * @param entityId 
+   * @returns 
+   */
   async getProposedIssues(entity, entityId: Types.ObjectId) {
     try {
       if (entity === 'node') {
@@ -936,13 +979,19 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param userId 
+   * @param issueId 
+   * @returns 
+   */
 
   async getClubsNodesNotAdopted(
     userId: Types.ObjectId,
     issueId: Types.ObjectId,
   ) {
     try {
+      console.log({ userId, issueId })
       if (!issueId) {
         throw new NotFoundException('IssueId not found');
       }
@@ -975,6 +1024,28 @@ export class IssuesService {
         {
           $unwind: '$nodeDetails',
         },
+        // First check issuesadoptions collection
+        {
+          $lookup: {
+            from: 'issuesadoptions',
+            let: { nodeId: '$node' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$issues', new Types.ObjectId(issueId)] },
+                      { $eq: ['$node', '$$nodeId'] },
+                      { $in: ['$status', ['published', 'proposed']] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'existingAdoptions',
+          },
+        },
+        // Then check issues collection
         {
           $lookup: {
             from: 'issues',
@@ -982,25 +1053,35 @@ export class IssuesService {
             pipeline: [
               {
                 $match: {
-                  $or: [
-                    { _id: new Types.ObjectId(issueId) },
-                    { rootParent: rootParent },
-                  ],
-                  $expr: {
-                    $not: {
-                      $in: ['$$nodeId', '$adoptedNodes.node'],
+                  $and: [
+                    {
+                      $or: [
+                        { _id: new Types.ObjectId(issueId) },
+                        { rootParent: rootParent },
+                      ]
                     },
-                  },
-                },
-              },
+                    {
+                      $expr: {
+                        $not: {
+                          $in: ['$$nodeId', '$adoptedNodes.node']
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
             ],
             as: 'unadoptedIssues',
           },
         },
+        // Only include if both conditions are met
         {
           $match: {
-            unadoptedIssues: { $ne: [] },
-          },
+            $and: [
+              { existingAdoptions: { $size: 0 } },  // No adoptions in issuesadoptions
+              { unadoptedIssues: { $ne: [] } }      // Has unadopted issues
+            ]
+          }
         },
         {
           $addFields: {
@@ -1032,6 +1113,28 @@ export class IssuesService {
         {
           $unwind: '$clubDetails',
         },
+        // First check issuesadoptions collection
+        {
+          $lookup: {
+            from: 'issuesadoptions',
+            let: { clubId: '$club' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$issues', new Types.ObjectId(issueId)] },
+                      { $eq: ['$club', '$$clubId'] },
+                      { $in: ['$status', ['published', 'proposed']] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'existingAdoptions',
+          },
+        },
+        // Then check issues collection
         {
           $lookup: {
             from: 'issues',
@@ -1039,25 +1142,35 @@ export class IssuesService {
             pipeline: [
               {
                 $match: {
-                  $or: [
-                    { _id: new Types.ObjectId(issueId) },
-                    { rootParent: rootParent },
-                  ],
-                  $expr: {
-                    $not: {
-                      $in: ['$$clubId', '$adoptedClubs.club'],
+                  $and: [
+                    {
+                      $or: [
+                        { _id: new Types.ObjectId(issueId) },
+                        { rootParent: rootParent },
+                      ]
                     },
-                  },
-                },
-              },
+                    {
+                      $expr: {
+                        $not: {
+                          $in: ['$$clubId', '$adoptedClubs.club']
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
             ],
             as: 'unadoptedIssues',
           },
         },
+        // Only include if both conditions are met
         {
           $match: {
-            unadoptedIssues: { $ne: [] },
-          },
+            $and: [
+              { existingAdoptions: { $size: 0 } },  // No adoptions in issuesadoptions
+              { unadoptedIssues: { $ne: [] } }      // Has unadopted issues
+            ]
+          }
         },
         {
           $addFields: {
@@ -1077,6 +1190,7 @@ export class IssuesService {
         this.clubMembersModel.aggregate(clubsAggregation),
       ]);
 
+      console.log({ memberClubs, memberNodes })
       return {
         clubs: memberClubs,
         nodes: memberNodes,
@@ -1092,7 +1206,12 @@ export class IssuesService {
       );
     }
   }
-
+  /**
+   * 
+   * @param userId 
+   * @param createSolutionDto 
+   * @returns 
+   */
   async createSolution(userId: Types.ObjectId, createSolutionDto: CreateSolutionDto) {
     try {
       console.log({ userId, createSolutionDto });
