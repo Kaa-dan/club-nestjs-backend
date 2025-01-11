@@ -1,23 +1,23 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Types } from 'mongoose';
 import { User } from '../user.entity';
+import { Debate } from '../debate.entity';
 import { Club } from '../club.entity';
 import { Node_ } from '../node.entity';
 import { IsString } from 'class-validator';
-import { Issues } from './issues.entity';
 
 @Schema({
     timestamps: true,
 })
-export class IssuesAdoption {
+export class DebateAdoption {
     @Prop({ required: true, type: Types.ObjectId, ref: User.name })
     proposedBy: Types.ObjectId
 
     @Prop({ required: false, type: Types.ObjectId, ref: User.name })
     acceptedBy: Types.ObjectId
 
-    @Prop({ required: true, type: Types.ObjectId, ref: Issues.name })
-    issues: Types.ObjectId
+    @Prop({ required: true, type: Types.ObjectId, ref: Debate.name })
+    debate: Types.ObjectId
 
     @Prop({ required: false, type: Types.ObjectId, ref: Club.name })
     club: Types.ObjectId
@@ -41,4 +41,4 @@ export class IssuesAdoption {
 }
 
 
-export const IssuesAdoptionSchema = SchemaFactory.createForClass(IssuesAdoption)
+export const DebateAdoptionSchema = SchemaFactory.createForClass(DebateAdoption)

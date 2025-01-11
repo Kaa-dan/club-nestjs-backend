@@ -219,6 +219,7 @@ export class IssuesController {
   }
   @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
+    console.log({ data })
     return await this.issuesService.adoptIssueAndPropose(
       new Types.ObjectId(req.user._id),
       data,
