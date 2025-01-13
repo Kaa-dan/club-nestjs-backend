@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ENV } from './utils/config/env.config';
+import envConfig, { ENV } from './utils/config/env.config';
 import { printWithBorder } from './utils/text';
 import * as morgan from 'morgan';
 import { SpinUp } from 'spin-up-ping';
@@ -14,7 +14,7 @@ async function bootstrap() {
   });
 
   const pinger = new SpinUp({
-    url: "https://clubwize-backend.onrender.com",
+    url: ENV.RENDER_URL,
     intervalMinutes: 5,
     onSuccess: (response) => {
       console.log("Ping successful:", response);
