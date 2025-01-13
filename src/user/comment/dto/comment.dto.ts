@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { Types } from 'mongoose';
 import { Club } from 'src/shared/entities/club.entity';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { Node_ } from 'src/shared/entities/node.entity';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';

@@ -22,7 +22,7 @@ import e, { query, Request } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { Types } from 'mongoose';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 import { CreateSolutionDto } from './dto/create-solution.dto';
 
 @Controller('issues')
@@ -219,6 +219,7 @@ export class IssuesController {
   }
   @Post('adopt-issue')
   async adoptIssueAndPropose(@Req() req: Request, @Body() data) {
+    console.log({ data })
     return await this.issuesService.adoptIssueAndPropose(
       new Types.ObjectId(req.user._id),
       data,
@@ -272,7 +273,7 @@ export class IssuesController {
     );
   }
 
-  @Post('create-solution/:commentId/:forumId')
+  @Post('create-solution')
   async createSolution(@Body() createSolution: CreateSolutionDto, @Req() { user }) {
     return await this.issuesService.createSolution(user._id, createSolution)
   }

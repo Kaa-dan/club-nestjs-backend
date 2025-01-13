@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Project } from 'src/shared/entities/projects/project.entity';
 import { Debate } from 'src/shared/entities/debate.entity';
-import { Issues } from 'src/shared/entities/issues.entity';
+import { Issues } from 'src/shared/entities/issues/issues.entity';
 @Injectable()
 @Injectable()
 export class AssetsService {

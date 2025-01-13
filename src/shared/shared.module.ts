@@ -18,7 +18,7 @@ import {
   ReportOffenceSchema,
 } from './entities/report-offense.entity';
 import { Node_, NodeSchema } from './entities/node.entity';
-import { Issues, IssuesSchema } from './entities/issues.entity';
+import { Issues, IssuesSchema } from './entities/issues/issues.entity';
 import {
   ProposeRulesAndRegulation,
   ProposeRulesAndRegulationSchema,
@@ -52,8 +52,11 @@ import { ProjectAnnouncement, ProjectAnnouncementSchema } from './entities/proje
 import { Chapter, ChapterSchema } from './entities/chapters/chapter.entity';
 import { ChapterMember, ChapterMemberSchema } from './entities/chapters/chapter-member.entity';
 import { Bookmarks, BookmarksSchema } from './entities/bookmarks.entity';
-import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
+
+import { IssuesAdoption, IssuesAdoptionSchema } from './entities/issues/issues-adoption.entity';
 import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities/chapters/modules/chapter-rule-regulations.entity';
+import { ChapterProject, ChapterProjectSchema } from './entities/chapters/modules/chapter-projects.entity';
+import { DebateAdoption, DebateAdoptionSchema } from './entities/debate/debate-adoption-entity';
 
 @Module({
   imports: [
@@ -72,6 +75,7 @@ import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities
       { name: Issues.name, schema: IssuesSchema },
       { name: ProposeRulesAndRegulation.name, schema: ProposeRulesAndRegulationSchema },
       { name: Debate.name, schema: DebateSchema },
+      { name: DebateAdoption.name, schema: DebateAdoptionSchema },
       { name: NodeJoinRequest.name, schema: NodeJoinRequestSchema },
       { name: ClubJoinRequests.name, schema: ClubJoinRequestsSchema },
       { name: DebateArgument.name, schema: DebateArgumentSchema },
@@ -85,8 +89,9 @@ import { ChapterRuleRegulations, ChapterRuleRegulationsSchema } from './entities
       { name: Bookmarks.name, schema: BookmarksSchema },
       { name: Chapter.name, schema: ChapterSchema },
       { name: ChapterMember.name, schema: ChapterMemberSchema },
-
+      { name: IssuesAdoption.name, schema: IssuesAdoptionSchema },
       { name: ChapterProject.name, schema: ChapterProjectSchema },
+
       { name: ChapterRuleRegulations.name, schema: ChapterRuleRegulationsSchema },
     ]),
     forwardRef(() => SearchModule),
