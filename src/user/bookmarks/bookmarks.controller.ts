@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
 import { BookmarksService } from './bookmarks.service';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { Request } from 'express';
@@ -7,9 +7,9 @@ export class BookmarksController {
     constructor(private readonly bookmarksService: BookmarksService) { }
 
     @Get()
-    fetchFolders(@Req() req: Request) {
+    fetchFolders(@Req() req: Request, @Query('folderId') folderId?: string) {
         const userId = req.user._id
-        return this.bookmarksService.fetchFolders(userId);
+        return this.bookmarksService.fetchFolders(userId, folderId);
     }
     @Post('create')
     createFolder(@Body() createFolderDto: CreateFolderDto, @Req() req: Request) {

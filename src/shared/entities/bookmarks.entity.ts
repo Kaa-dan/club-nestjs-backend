@@ -29,7 +29,7 @@ export class Bookmarks extends Document {
                     entityId: {
                         type: Types.ObjectId,
                         required: true,
-                        refPath: 'entity.entityType',
+                        refPath: 'posts.entity.entityType',
                     },
                     entityType: {
                         type: String,
