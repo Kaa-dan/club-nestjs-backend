@@ -31,18 +31,42 @@ export class BookmarksService {
         }
     }
 
-    async fetchFolders(userId: string) {
+    async fetchFolders(userId: string, folderId?: string) {
         try {
 
             if (!userId) {
-                throw new BadRequestException('user Id is required')
+                throw new BadRequestException('userId is required');
             }
-            return await this.bookmarksModel.find({
-                user: new Types.ObjectId(userId)
-            })
 
+            const baseQuery = {
+                user: userId
+            };
+
+            // If folderId is provided, add it to the query
+            if (folderId !== 'undefined') {
+                const hell = await this.bookmarksModel.findOne({
+                    ...baseQuery,
+                    _id: new Types.ObjectId(folderId)
+                }).populate({
+                    path: 'posts.entity.entityId',
+                    populate: {
+                        path: 'entityId'
+                    }
+                });
+                console.log({ hell: JSON.stringify(hell) })
+            }
+
+            // If no folderId, fetch all folders for the user
+            return await this.bookmarksModel.find(baseQuery)
+                .populate({
+                    path: 'posts.entity.entityId',
+                    populate: {
+                        path: 'entityId'
+                    }
+                });
         } catch (error) {
-            console.log({ error })
+            console.error('Error in fetchFolders:', error);
+            throw error; // Re-throw the error to be handled by the caller
         }
     }
     async addToBookmark(
@@ -115,5 +139,41 @@ export class BookmarksService {
             }
             throw new InternalServerErrorException('Error adding to bookmark');
         }
+    }
+
+    async checkBookmarkStatus(userId: string, entities: Array<{ id: string; type: string }>) {
+        if (!userId || !entities.length) {
+            return [];
+        }
+
+        // Convert string ID to ObjectId
+        const userObjectId = new Types.ObjectId(userId);
+
+        // Find all bookmarks for the user
+        const userBookmarks = await this.bookmarksModel.find({
+            user: userObjectId,
+            'posts.entity.entityId': {
+                $in: entities.map(entity => new Types.ObjectId(entity.id)),
+            },
+        });
+
+        // Create a map of bookmarked entities
+        const bookmarkedMap = entities.map(entity => {
+            const isBookmarked = userBookmarks.some(bookmark =>
+                bookmark.posts.some(
+                    post =>
+                        post.entity.entityId.toString() === entity.id &&
+                        post.entity.entityType === entity.type
+                )
+            );
+
+            return {
+                entityId: entity.id,
+                entityType: entity.type,
+                isBookmarked,
+            };
+        });
+
+        return bookmarkedMap;
     }
 }
