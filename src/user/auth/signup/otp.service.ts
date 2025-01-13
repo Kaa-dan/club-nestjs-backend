@@ -26,6 +26,7 @@ export class OtpService {
     }
 
     const otp = generateOtp(); // Generate a 6-digit OTP
+    console.log({ otp })
 
     try {
       // Check if a user with the provided email already exists
@@ -193,6 +194,8 @@ export class OtpService {
     email: string,
     otp: string,
   ): Promise<{ message: string; token: string }> {
+
+    console.log({ otp })
     if (!email || !otp) {
       throw new BadRequestException('Email and OTP are required');
     }
