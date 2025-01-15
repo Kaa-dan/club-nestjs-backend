@@ -116,7 +116,6 @@ export class RulesRegulationsService {
   async createRulesRegulations(
     createRulesRegulationsDto: CreateRulesRegulationsDto,
   ) {
-    ('nithinS');
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
     let fileObjects = null;
     if (files) {

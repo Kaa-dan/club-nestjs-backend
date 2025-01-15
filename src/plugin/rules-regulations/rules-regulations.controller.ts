@@ -117,31 +117,22 @@ export class RulesRegulationsController {
 
       if (createRulesRegulationsDto.publishedStatus === 'draft') {
         //saving all the detail to sent to the service
-        const dataToSave = {
-          ...createRulesRegulationsDto,
-          createdBy: req['user']._id,
-          isActive: false,
-          files,
-        };
-
-        return await this.rulesRegulationsService.createRulesRegulations(
-          dataToSave,
-        );
-      } else {
-        const dataToSave = {
-          ...createRulesRegulationsDto,
-          createdBy: req['user']._id,
-          publishedBy: req['user']._id,
-          publishedDate: new Date(),
-          isActive: true,
-          version: 1,
-          files,
-        };
-
-        return await this.rulesRegulationsService.createRulesRegulations(
-          dataToSave,
-        );
+        throw new BadRequestException('cannot save to draft')
       }
+      const dataToSave = {
+        ...createRulesRegulationsDto,
+        createdBy: req.user._id,
+        publishedBy: req.user._id,
+        publishedDate: new Date(),
+        isActive: true,
+        version: 1,
+        files,
+      };
+
+      return await this.rulesRegulationsService.createRulesRegulations(
+        dataToSave,
+      );
+
     } catch (error) {
 
       if (error instanceof BadRequestException) {

@@ -90,7 +90,7 @@ export class RulesRegulations extends Document {
   version: number;
 
   @Prop({ default: true })
-  publishedStatus: 'draft' | 'published' | 'olderversion';
+  publishedStatus: 'draft' | 'published' | 'olderversion' | 'proposed';
 
   @Prop({})
   publishedDate: Date;
