@@ -54,21 +54,41 @@ export class RulesRegulationsService {
   /*
   @Param type :strgin  "node"|"club"
   */
-  async getAllRulesRegulations(page: number = 1, limit: number = 10) {
-    console.log({ page })
+  async getAllRulesRegulations(
+    page: number = 1,
+    limit: number = 10,
+    search: string = ''
+  ) {
     try {
       const skip = (page - 1) * limit;
-      console.log({ skip })
+
+      // Build base query
+      const baseQuery: any = {};
+
+      // Add search conditions if search string is provided
+      if (search && search.trim()) {
+        const searchRegex = new RegExp(search.trim(), 'i');
+        baseQuery.$or = [
+          { title: searchRegex },
+          { description: searchRegex },
+          { category: searchRegex },
+          { significance: searchRegex },
+          { tags: searchRegex }
+        ];
+      }
+
+      // Execute query for data
       const data = await this.rulesregulationModel
-        .find()
+        .find(baseQuery)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec();
-      console.log({ data })
 
-      const total = await this.rulesregulationModel.countDocuments();
-      console.log({ total: Math.ceil(total / limit) })
+      // Get total count for pagination
+      const total = await this.rulesregulationModel
+        .countDocuments(baseQuery);
+
       return {
         data,
         pagination: {
@@ -282,82 +302,67 @@ export class RulesRegulationsService {
 
   /*-------------------------GET ALL RULES AND REGULATION OF SINGLE CLUB OR NODE */
 
-  // async getAllActiveRulesRegulations(type: string, forId: Types.ObjectId) {
-  //   try {
-  //     ({ hehe: forId, type });
-  //     if (type === 'club') {
-  //       const response = await this.rulesregulationModel
-  //         .find({ isActive: true, club: forId })
-  //         .populate('createdBy')
-  //         .sort({ createdAt: -1 })
-  //         .exec();
-  //       ({ response });
-  //       return response;
-  //     } else if (type === 'node') {
-  //       return await this.rulesregulationModel
-  //         .find({ isActive: true, node: forId })
-  //         .exec();
-  //     }
-  //   } catch (error) {
-  //     throw new InternalServerErrorException(
-  //       'Error while getting active rules-regulations',
-  //       error,
-  //     );
-  //   }
-  // }
+
 
   async getAllActiveRulesRegulations(
     type: string,
     forId: Types.ObjectId,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    search: string
   ) {
     try {
-      ({ hehe: forId, type });
       const skip = (page - 1) * limit;
 
+      // Build the base query
+      const baseQuery: any = { isActive: true };
+
+      // Add type-specific condition
       if (type === 'club') {
-        const response = await this.rulesregulationModel
-          .find({ isActive: true, club: forId })
-          .populate('createdBy')
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit)
-          .exec();
-
-        const total = await this.rulesregulationModel
-          .countDocuments({ isActive: true, club: forId });
-
-        ({ response });
-        return {
-          data: response,
-          pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit)
-          }
-        };
+        baseQuery.club = forId;
       } else if (type === 'node') {
-        const response = await this.rulesregulationModel
-          .find({ isActive: true, node: forId })
-          .skip(skip)
-          .limit(limit)
-          .exec();
-
-        const total = await this.rulesregulationModel
-          .countDocuments({ isActive: true, node: forId });
-
-        return {
-          data: response,
-          pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit)
-          }
-        };
+        baseQuery.node = forId;
       }
+
+      // Add search conditions if search string is provided
+      if (search && search.trim()) {
+        const searchRegex = new RegExp(search.trim(), 'i');
+        baseQuery.$or = [
+          { title: searchRegex },
+          { description: searchRegex },
+          { category: searchRegex },
+          { significance: searchRegex },
+          { tags: searchRegex }
+        ];
+      }
+
+      // Execute query for data
+      const query = this.rulesregulationModel.find(baseQuery);
+
+      // Add population for club type
+      if (type === 'club') {
+        query.populate('createdBy');
+      }
+
+      const response = await query
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec();
+
+      // Get total count for pagination
+      const total = await this.rulesregulationModel
+        .countDocuments(baseQuery);
+
+      return {
+        data: response,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
@@ -375,27 +380,35 @@ export class RulesRegulationsService {
     type: 'node' | 'club',
     entity: Types.ObjectId,
     page: number = 1,
-    limit: number = 10
+    limit: number = 10,
+    search: string = ''
   ) {
     try {
-      ({ userId, type, entity });
       const skip = (page - 1) * limit;
-      let query = {};
 
-      if (type === 'club') {
-        query = {
-          createdBy: userId,
-          club: new Types.ObjectId(entity),
-        };
-      } else {
-        query = {
-          createdBy: userId,
-          node: new Types.ObjectId(entity),
-        };
+      // Build base query
+      const baseQuery: any = {
+        createdBy: userId,
+        [type === 'club' ? 'club' : 'node']: new Types.ObjectId(entity)
+      };
+
+      // Add search conditions if search string is provided
+      if (search && search.trim()) {
+        const searchRegex = new RegExp(search.trim(), 'i');
+        baseQuery.$or = [
+          { title: searchRegex },
+          { description: searchRegex },
+          { category: searchRegex },
+          { significance: searchRegex },
+          { tags: searchRegex }
+        ];
       }
+      console.log({ search })
+      console.log({ baseQuery })
 
+      // Execute query for data
       const data = await this.rulesregulationModel
-        .find(query)
+        .find(baseQuery)
         .populate({
           path: 'createdBy',
           select: '-password',
@@ -405,9 +418,10 @@ export class RulesRegulationsService {
         .limit(limit)
         .exec();
 
+      // Get total count for pagination
       const total = await this.rulesregulationModel
-        .countDocuments(query);
-      console.log({ hello: Math.ceil(total / limit) })
+        .countDocuments(baseQuery);
+
       return {
         data,
         pagination: {
@@ -417,7 +431,6 @@ export class RulesRegulationsService {
           totalPages: Math.ceil(total / limit)
         }
       };
-
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting active rules-regulations',
@@ -425,7 +438,6 @@ export class RulesRegulationsService {
       );
     }
   }
-
   /*--------------------------ADOPT RULES 
   @Body:rulesId,clubId,nodeId,type
   @Req:user_id

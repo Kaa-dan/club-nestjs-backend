@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   Req,
+  Search,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
@@ -44,14 +45,17 @@ export class RulesRegulationsController {
   async getAllRulesRegulations(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('search') search: string
   ) {
     try {
+
       const pageNumber = parseInt(page as any) || 1;
       const limitNumber = parseInt(limit as any) || 10;
 
       return await this.rulesRegulationsService.getAllRulesRegulations(
         pageNumber,
-        limitNumber
+        limitNumber,
+        search
       );
     } catch (error) {
       if (error instanceof BadRequestException) {
@@ -326,6 +330,7 @@ export class RulesRegulationsController {
     @Query('type') type: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('search') search: string,
     @Req() req: Request,
   ) {
     try {
@@ -338,7 +343,8 @@ export class RulesRegulationsController {
         type,
         ID,
         pageNumber,
-        limitNumber
+        limitNumber,
+        search
       );
     } catch (error) {
       throw new InternalServerErrorException(
@@ -359,17 +365,22 @@ export class RulesRegulationsController {
     @Query('type') type: 'node' | 'club',
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
+    @Query('search') search: string
   ) {
     try {
+      console.log("consolingsearch from controller", search)
+
       const pageNumber = parseInt(page as any) || 1;
       const limitNumber = parseInt(limit as any) || 10;
+
 
       return await this.rulesRegulationsService.getMyRules(
         req.user._id,
         type,
         entity,
         pageNumber,
-        limitNumber
+        limitNumber,
+        search
       );
     } catch (error) {
       throw new InternalServerErrorException(
