@@ -855,17 +855,151 @@ export class IssuesService {
    */
   async getProposedIssues(entity, entityId: Types.ObjectId) {
     try {
-      if (entity === 'node') {
-        return await this.issuesModel
-          .find({ node: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password').sort({ createdAt: -1 })
-          .exec();
-      } else {
-        return await this.issuesModel
-          .find({ club: entityId, publishedStatus: 'proposed' })
-          .populate('createdBy', '-password').sort({ createdAt: -1 })
-          .exec();
-      }
+
+      console.log({ entity, entityId })
+
+      // First pipeline: Get direct proposed issues
+      const directIssuesPipeline = [
+        {
+          $match: {
+            [entity]: entityId,
+            publishedStatus: 'proposed',
+            isDeleted: { $ne: true }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'createdBy',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  password: 0
+                }
+              }
+            ],
+            as: 'createdBy'
+          }
+        },
+        {
+          $unwind: '$createdBy'
+        },
+        {
+          $addFields: {
+            source: 'direct'
+          }
+        }
+      ];
+
+      // Second pipeline: Get adopted proposals
+      const adoptedIssuesPipeline = [
+        {
+          $match: {
+            [entity]: entityId,
+            status: 'proposed'
+          }
+        },
+        {
+          // Join with issues collection
+          $lookup: {
+            from: 'issues',
+            localField: 'issues',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $match: {
+                  isDeleted: { $ne: true }
+                }
+              }
+            ],
+            as: 'issueDetails'
+          }
+        },
+        {
+          $unwind: '$issueDetails'
+        },
+        {
+          // Get proposedBy user details
+          $lookup: {
+            from: 'users',
+            localField: 'proposedBy',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  password: 0
+                }
+              }
+            ],
+            as: 'proposedByUser'
+          }
+        },
+        {
+          $unwind: '$proposedByUser'
+        },
+        {
+          // Get original issue creator details
+          $lookup: {
+            from: 'users',
+            localField: 'issueDetails.createdBy',
+            foreignField: '_id',
+            pipeline: [
+              {
+                $project: {
+                  password: 0
+                }
+              }
+            ],
+            as: 'issueCreator'
+          }
+        },
+        {
+          $unwind: '$issueCreator'
+        },
+        {
+          // Reshape document to match Issues structure
+          $addFields: {
+            adoptionDetails: {
+              proposedBy: '$proposedByUser',
+              message: '$message',
+              adoptionId: '$_id',
+              type: '$type'
+            }
+          }
+        },
+        {
+          // Project final structure
+          $replaceRoot: {
+            newRoot: {
+              $mergeObjects: [
+                '$issueDetails',
+                {
+                  adoptionDetails: '$adoptionDetails',
+                  source: 'adopted'
+                }
+              ]
+            }
+          }
+        }
+      ];
+      console.log({ directIssuesPipeline, adoptedIssuesPipeline })
+
+      // Execute both pipelines in parallel
+      const [directIssues, adoptedIssues] = await Promise.all([
+        this.issuesModel.aggregate(directIssuesPipeline),
+        this.issueAdoptionModel.aggregate(adoptedIssuesPipeline)
+      ]);
+
+      console.log({ directIssues, adoptedIssues })
+
+      // Combine and sort results
+      const allIssues = [...directIssues, ...adoptedIssues].sort(
+        (a, b) => b.createdAt - a.createdAt
+      );
+
+      return allIssues;
+
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while getting proposed issues',

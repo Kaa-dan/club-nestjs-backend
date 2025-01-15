@@ -12,6 +12,7 @@ import { UploadService } from 'src/shared/upload/upload.service';
 import { ClubMembers } from 'src/shared/entities/clubmembers.entitiy';
 import { ClubJoinRequests } from 'src/shared/entities/club-join-requests.entity';
 import { randomUUID } from 'node:crypto';
+import { Chapter } from 'src/shared/entities/chapters/chapter.entity';
 
 @Injectable()
 export class ClubService {
@@ -25,6 +26,8 @@ export class ClubService {
     @InjectModel(ClubJoinRequests.name)
     private readonly clubJoinRequestsModel: Model<ClubJoinRequests>,
     private readonly s3FileUpload: UploadService,
+    @InjectModel(Chapter.name)
+    private readonly chapterModel: Model<Chapter>
   ) { }
 
   /*
@@ -106,7 +109,6 @@ export class ClubService {
   }
   /*
   --------------------GETTING SINGLE CLUB----------------------------
-
   @Returns {Promise<Club>} - SINGLE CLUB
   */
 
@@ -120,11 +122,13 @@ export class ClubService {
           select: '-password',
         });
 
+      const chapters = await this.chapterModel.find({ club: new Types.ObjectId(id) })
+
       if (!club) {
         throw new NotFoundException('Club not found');
       }
 
-      return { club, members };
+      return { club, members, chapters };
     } catch (error) {
       (error);
       if (error instanceof NotFoundException) {
