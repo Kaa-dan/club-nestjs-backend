@@ -79,7 +79,10 @@ export class RulesRegulationsService {
 
       // Execute query for data
       const data = await this.rulesregulationModel
-        .find(baseQuery)
+        .find(baseQuery).populate({
+          path: 'createdBy',
+          select: '-password',
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -337,12 +340,12 @@ export class RulesRegulationsService {
       }
 
       // Execute query for data
-      const query = this.rulesregulationModel.find(baseQuery);
+      const query = this.rulesregulationModel.find(baseQuery).populate({
+        path: 'createdBy',
+        select: '-password',
+      });
 
-      // Add population for club type
-      if (type === 'club') {
-        query.populate('createdBy');
-      }
+
 
       const response = await query
         .sort({ createdAt: -1 })
