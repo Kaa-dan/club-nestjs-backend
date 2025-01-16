@@ -23,6 +23,7 @@ import { Types } from 'mongoose';
 import { CommentService } from 'src/user/comment/comment.service';
 
 import { RulesRegulations } from 'src/shared/entities/rules-regulations.entity';
+import { all } from 'axios';
 
 export interface IFileObject {
   buffer: Buffer;
@@ -116,21 +117,20 @@ export class RulesRegulationsController {
       }
 
       if (createRulesRegulationsDto.publishedStatus === 'draft') {
-        //saving all the detail to sent to the service
+
         throw new BadRequestException('cannot save to draft')
       }
+
+      // saving all the detail to sent to the service
       const dataToSave = {
         ...createRulesRegulationsDto,
         createdBy: req.user._id,
-        publishedBy: req.user._id,
-        publishedDate: new Date(),
-        isActive: true,
         version: 1,
         files,
       };
 
       return await this.rulesRegulationsService.createRulesRegulations(
-        dataToSave,
+        dataToSave, req.user._id
       );
 
     } catch (error) {
@@ -195,32 +195,23 @@ export class RulesRegulationsController {
       }
 
       if (createRulesRegulationsDto.publishedStatus === 'draft') {
-        //saving all the detail to sent to the service
-        const dataToSave = {
-          ...createRulesRegulationsDto,
-          createdBy: req['user']._id,
-          isActive: false,
-          files,
-        };
-
-        return await this.rulesRegulationsService.createRulesRegulations(
-          dataToSave,
-        );
-      } else {
-        const dataToSave = {
-          ...createRulesRegulationsDto,
-          createdBy: req['user']._id,
-          isPublic: false,
-          isActive: false,
-          version: 1,
-          files,
-          publishedStatus: 'draft',
-        };
-
-        return await this.rulesRegulationsService.createRulesRegulations(
-          dataToSave,
-        );
+        throw new BadRequestException('error while saving to draft please try again ')
       }
+      //saving all the detail to sent to the service
+      const dataToSave = {
+        ...createRulesRegulationsDto,
+        createdBy: req['user']._id,
+        isPublic: false,
+        isActive: false,
+        version: 1,
+        files,
+        publishedStatus: 'draft',
+      };
+
+      return await this.rulesRegulationsService.saveToDraft(
+        dataToSave
+      );
+
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -230,6 +221,13 @@ export class RulesRegulationsController {
         error,
       );
     }
+  }
+
+
+
+  @Put('accept-proposed-rules')
+  async acceptProposedRulesAndRegulations(@Req() { user }, @Query('rulesId') rulesId: Types.ObjectId, @Query('entityId') enitityId: Types.ObjectId, @Query(';type') type: "node" | "club") {
+    return this.rulesRegulationsService.acceptProposedRulesAndRegulations(user._id, rulesId, enitityId, type)
   }
   /* ----------------------------------UPDATING RULES AND REGULATIONS
   @Param :updateRulesRegulationDto

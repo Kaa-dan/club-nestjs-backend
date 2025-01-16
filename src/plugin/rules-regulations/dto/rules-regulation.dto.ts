@@ -62,7 +62,7 @@ export class CreateRulesRegulationsDto {
   version: number;
 
   @IsString()
-  publishedStatus: 'draft' | 'published';
+  publishedStatus: 'draft' | 'published' | 'proposed';
 
   @IsDate()
   @IsOptional()
