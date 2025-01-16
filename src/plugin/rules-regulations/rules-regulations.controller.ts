@@ -183,6 +183,7 @@ export class RulesRegulationsController {
   ) {
     try {
 
+      console.log({ createRulesRegulationsDto })
       if (!createRulesRegulationsDto.node && !createRulesRegulationsDto.club) {
         throw new BadRequestException(
           'Invalid type parameter. Must be "node" or "club".',
@@ -194,7 +195,7 @@ export class RulesRegulationsController {
         throw new BadRequestException('Must provide between 1 and 5 file');
       }
 
-      if (createRulesRegulationsDto.publishedStatus === 'draft') {
+      if (createRulesRegulationsDto.publishedStatus !== 'draft') {
         throw new BadRequestException('error while saving to draft please try again ')
       }
       //saving all the detail to sent to the service
@@ -207,6 +208,7 @@ export class RulesRegulationsController {
         files,
         publishedStatus: 'draft',
       };
+      console.log({ dataToSave })
 
       return await this.rulesRegulationsService.saveToDraft(
         dataToSave

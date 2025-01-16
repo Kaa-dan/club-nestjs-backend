@@ -143,24 +143,27 @@ export class RulesRegulationsService {
     try {
       let userDetails = null
 
-      if (node) userDetails = this.nodeMembersModel.findOne({ user: userId })
+      if (node) userDetails = await this.nodeMembersModel.findOne({ user: userId, node: new Types.ObjectId(node) })
 
-      if (club) userDetails = this.clubMembersModel.findOne({ user: userId })
-
+      if (club) userDetails = await this.clubMembersModel.findOne({ user: userId, club: new Types.ObjectId(club) })
+      console.log({ userDetails })
 
       const dataToSave = {
         ...restData,
         createdBy: new Types.ObjectId(userId),
-        publishedStaus: userDetails.role === "member" ? "proposed" : "published",
+        publishedStatus: userDetails.role === "member" ? "proposed" : "published",
         node: node ? new Types.ObjectId(node) : null,
         club: club ? new Types.ObjectId(club) : null,
         isActive: userDetails.role === "member" ? false : true,
         files: fileObjects,
       };
 
+      console.log({ dataToSave })
+
       const newRulesRegulations = new this.rulesregulationModel(dataToSave);
 
-      return await newRulesRegulations.save();
+      const response = await newRulesRegulations.save();
+      return { data: response, success: true, message: userDetails.role === "member" ? "succesfully proposed rules and regulations" : 'rules and regulations creted succesfully' }
     } catch (error) {
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
@@ -201,7 +204,8 @@ export class RulesRegulationsService {
         files: fileObjects,
       });
 
-      return await newRulesRegulations.save();
+      const response = await newRulesRegulations.save();
+      return { data: response, message: 'saved to draft', success: true }
     } catch (error) {
       ({ error });
       throw new InternalServerErrorException(
