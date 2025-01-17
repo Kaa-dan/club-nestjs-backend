@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -114,7 +115,7 @@ export class RulesRegulationsService {
   @return :RulesRegulations */
 
   async createRulesRegulations(
-    createRulesRegulationsDto: CreateRulesRegulationsDto,
+    createRulesRegulationsDto, userId: Types.ObjectId
   ) {
     const { files: files, node, club, ...restData } = createRulesRegulationsDto;
     let fileObjects = null;
@@ -140,18 +141,30 @@ export class RulesRegulationsService {
     }
 
     try {
+      let userDetails = null
+
+      if (node) userDetails = await this.nodeMembersModel.findOne({ user: userId, node: new Types.ObjectId(node) })
+
+      if (club) userDetails = await this.clubMembersModel.findOne({ user: userId, club: new Types.ObjectId(club) })
+      console.log({ userDetails })
+
       const dataToSave = {
         ...restData,
+        createdBy: new Types.ObjectId(userId),
+        publishedStatus: userDetails.role === "member" ? "proposed" : "published",
         node: node ? new Types.ObjectId(node) : null,
         club: club ? new Types.ObjectId(club) : null,
+        isActive: userDetails.role === "member" ? false : true,
         files: fileObjects,
       };
 
+      console.log({ dataToSave })
+
       const newRulesRegulations = new this.rulesregulationModel(dataToSave);
 
-      return await newRulesRegulations.save();
+      const response = await newRulesRegulations.save();
+      return { data: response, success: true, message: userDetails.role === "member" ? "succesfully proposed rules and regulations" : 'rules and regulations creted succesfully' }
     } catch (error) {
-      ({ error });
       throw new InternalServerErrorException(
         'Error while creating rules-regulations',
         error,
@@ -191,7 +204,8 @@ export class RulesRegulationsService {
         files: fileObjects,
       });
 
-      return await newRulesRegulations.save();
+      const response = await newRulesRegulations.save();
+      return { data: response, message: 'saved to draft', success: true }
     } catch (error) {
       ({ error });
       throw new InternalServerErrorException(
@@ -302,6 +316,87 @@ export class RulesRegulationsService {
     }
   }
 
+
+  /**
+   * 
+   * @param userId 
+   * @param rulesId 
+   * @param enitityId 
+   * @param type 
+   */
+  async acceptProposedRulesAndRegulations(
+    userId: Types.ObjectId,
+    rulesId: Types.ObjectId,
+    entityId: Types.ObjectId,
+    type: 'node' | 'club',
+  ) {
+    try {
+      // Validate input parameters
+      if (!userId || !rulesId || !entityId) {
+        throw new BadRequestException('Missing required parameters');
+      }
+
+      // Check member permissions based on type
+      let member;
+      if (type === 'node') {
+        member = await this.nodeMembersModel.findOne({
+          user: userId,
+          node: entityId,
+        }).select('role').lean();
+      } else if (type === 'club') {
+        member = await this.clubMembersModel.findOne({
+          user: userId,
+          club: entityId,
+        }).select('role').lean();
+      }
+
+      // Check if user has membership
+      if (!member) {
+        throw new UnauthorizedException(
+          `User is not a member of this ${type}`
+        );
+      }
+
+      // Verify user has appropriate role
+      if (!['admin', 'moderator', 'owner'].includes(member.role)) {
+        throw new UnauthorizedException(
+          `Only ${['admin', 'moderator', 'owner'].join(', ')} can accept rules and regulations`
+        );
+      }
+
+      // Update rules status
+      const updatedRules = await this.rulesregulationModel.findByIdAndUpdate(
+        rulesId,
+        {
+          publishedStatus: 'published',
+          publishedBy: userId,
+          updatedAt: new Date(),
+          isActive: true
+        },
+        { new: true }
+      );
+
+      if (!updatedRules) {
+        throw new BadRequestException('Rules not found');
+      }
+
+      return {
+        success: true,
+        message: `Rules and regulations accepted successfully for ${type}`,
+        data: updatedRules
+      };
+    } catch (error) {
+      // Proper error handling with specific error types
+      if (error instanceof BadRequestException ||
+        error instanceof UnauthorizedException) {
+        throw error;
+      }
+
+      // Log unexpected errors
+      console.error('Error in acceptProposedRulesAndRegulations:', error);
+      throw new BadRequestException('Failed to accept rules and regulations');
+    }
+  }
   /*-------------------------GET ALL RULES AND REGULATION OF SINGLE CLUB OR NODE */
 
 
